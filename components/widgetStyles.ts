@@ -65,26 +65,26 @@ export const generateWidgetCSS = (): string => {
   min-width: var(--aether-touch-target);
   min-height: var(--aether-touch-target);
   border-radius: 28px;
-  background: linear-gradient(135deg, var(--aether-brand-color), color-mix(in srgb, var(--aether-brand-color), black 15%));
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  border: none;
-  color: white;
+  background: linear-gradient(135deg, var(--aether-brand-color), color-mix(in srgb, var(--aether-brand-color), black 15%)) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  border: none !important;
+  color: white !important;
   position: fixed !important;
   bottom: 20px !important;
   right: 20px !important;
   z-index: 99999 !important;
-  overflow: hidden;
-  visibility: visible;
-  opacity: 1;
+  overflow: hidden !important;
+  visibility: visible !important;
+  opacity: 1 !important;
   margin: 0 !important;
   padding: 0 !important;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent !important;
+  touch-action: manipulation !important;
 }
 
 #aether-widget-container[data-position="left"] #aether-launcher {
@@ -172,11 +172,11 @@ body.aether-chat-open #aether-launcher {
   min-width: 40px;
   min-height: 40px;
   border-radius: 10px;
-  background: var(--aether-brand-color);
+  background: var(--aether-brand-color) !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: white !important;
   flex-shrink: 0;
   touch-action: manipulation;
 }
@@ -401,8 +401,8 @@ body.aether-chat-open #aether-launcher {
 }
 
 .aether-msg.user {
-  background: var(--aether-brand-color);
-  color: white;
+  background: var(--aether-brand-color) !important;
+  color: white !important;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -836,9 +836,9 @@ body.aether-chat-open #aether-launcher {
   padding: var(--aether-spacing-md);
   min-height: var(--aether-touch-target);
   border-radius: 16px;
-  background: var(--aether-brand-color);
-  color: white;
-  border: none;
+  background: var(--aether-brand-color) !important;
+  color: white !important;
+  border: none !important;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
@@ -1117,11 +1117,17 @@ body.aether-chat-open #aether-launcher {
     border: 1px solid var(--aether-border-color);
     transform: translateY(20px) scale(0.95);
     transform-origin: bottom right;
-    position: relative;
+    position: fixed !important;
+    bottom: 100px !important;
+    top: auto !important;
+    right: 24px !important;
+    left: auto !important;
   }
 
   #aether-widget-container[data-position="left"] #aether-window {
     transform-origin: bottom left;
+    right: auto !important;
+    left: 24px !important;
   }
 
   #aether-window.open {

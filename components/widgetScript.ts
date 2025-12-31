@@ -396,6 +396,8 @@ export const generateWidgetJS = (): string => {
   const container = document.createElement('div');
   container.id = 'aether-widget-container';
   container.setAttribute('data-position', position);
+  // Set CSS custom properties for theme colors
+  container.style.setProperty('--aether-brand-color', brandColor);
   
   // Determine initial view (Chat or Form)
   const showForm = collectLeads;
@@ -462,7 +464,7 @@ export const generateWidgetJS = (): string => {
   const launcherBtn = document.createElement('button');
   launcherBtn.id = 'aether-launcher';
   launcherBtn.innerHTML = '<svg id="aether-launcher-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>';
-  // Set position directly
+  // Set position and brand color directly
   launcherBtn.style.position = 'fixed';
   launcherBtn.style.bottom = '24px';
   launcherBtn.style[position] = '24px';
@@ -470,6 +472,9 @@ export const generateWidgetJS = (): string => {
   launcherBtn.style.display = 'flex';
   launcherBtn.style.visibility = 'visible';
   launcherBtn.style.opacity = '1';
+  // Set brand color on launcher button
+  launcherBtn.style.setProperty('--aether-brand-color', brandColor);
+  launcherBtn.style.background = 'linear-gradient(135deg, ' + brandColor + ', ' + brandColor + 'dd)';
   document.body.appendChild(launcherBtn);
 
   // DOM Elements

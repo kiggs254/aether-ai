@@ -28,7 +28,7 @@ export const generateWidgetCSS = (): string => {
    MOBILE BASE STYLES (No Media Query)
    ============================================ */
 
-/* Reset all inherited styles for widget container */
+/* Widget container - only critical positioning needs !important */
 #aether-widget-container {
   position: fixed !important;
   bottom: 0 !important;
@@ -36,60 +36,22 @@ export const generateWidgetCSS = (): string => {
   left: 0 !important;
   right: 0 !important;
   z-index: 99999 !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-  font-size: 15px !important;
-  line-height: 1.4 !important;
-  color: var(--aether-text-color) !important;
-  pointer-events: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-sizing: border-box !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  word-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  font-variant: normal !important;
-  text-shadow: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  transform: none !important;
-  transition: none !important;
-  animation: none !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: none;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
 }
 
-/* Reset all child elements */
+/* Reset only critical inherited properties that commonly interfere */
 #aether-widget-container *,
 #aether-widget-container *::before,
 #aether-widget-container *::after {
   box-sizing: border-box !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-align: inherit !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  word-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  font-variant: normal !important;
-  text-shadow: none !important;
-  outline: none !important;
-  list-style: none !important;
-  quotes: none !important;
-  vertical-align: baseline !important;
 }
 
 #aether-widget-container > * {
@@ -150,68 +112,58 @@ body.aether-chat-open #aether-launcher {
 
 /* Window - Mobile First (Full Screen) */
 #aether-window {
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-  background: var(--aether-bg-color) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-  border: none !important;
-  opacity: 0 !important;
-  transform: translateY(100%) !important;
-  transform-origin: bottom !important;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  position: fixed !important;
-  bottom: 0 !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 99998 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  background: var(--aether-bg-color);
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  opacity: 0;
+  transform: translateY(100%);
+  transform-origin: bottom;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  visibility: hidden;
+  position: fixed;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99998;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 #aether-window.open {
-  opacity: 1 !important;
-  transform: translateY(0) !important;
-  pointer-events: auto !important;
-  visibility: visible !important;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
 }
 
 /* Header - Mobile First */
 .aether-header {
-  padding: var(--aether-spacing-md) !important;
-  padding-top: calc(var(--aether-spacing-md) + env(safe-area-inset-top, 0px)) !important;
-  padding-bottom: var(--aether-spacing-md) !important;
-  background: #0f172a !important;
-  color: white !important;
-  position: relative !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: var(--aether-spacing-md) !important;
-  min-height: 56px !important;
-  -webkit-tap-highlight-color: transparent !important;
-  margin: 0 !important;
-  border: none !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
+  padding: var(--aether-spacing-md);
+  padding-top: calc(var(--aether-spacing-md) + env(safe-area-inset-top, 0px));
+  padding-bottom: var(--aether-spacing-md);
+  background: #0f172a;
+  color: white;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--aether-spacing-md);
+  min-height: 56px;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
 }
 
 .aether-header-icon {
@@ -301,57 +253,35 @@ body.aether-chat-open #aether-launcher {
 
 /* Content Area - Mobile First */
 .aether-content {
-  flex: 1 !important;
-  overflow: hidden !important;
-  position: relative !important;
-  display: flex !important;
-  flex-direction: column !important;
-  background: var(--aether-bg-color) !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--aether-bg-color);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-sizing: border-box;
 }
 
 /* Messages - Mobile First */
 .aether-messages {
-  flex: 1 !important;
-  padding: var(--aether-spacing-md) var(--aether-spacing-sm) !important;
-  padding-bottom: 240px !important;
-  overflow-y: auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: var(--aether-spacing-sm) !important;
-  scroll-behavior: smooth !important;
-  background: var(--aether-bg-color) !important;
-  position: relative !important;
-  -webkit-overflow-scrolling: touch !important;
-  margin: 0 !important;
-  border: none !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
+  flex: 1;
+  padding: var(--aether-spacing-md) var(--aether-spacing-sm);
+  padding-bottom: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aether-spacing-sm);
+  scroll-behavior: smooth;
+  background: var(--aether-bg-color);
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
 }
 
 .aether-messages::-webkit-scrollbar {
@@ -436,28 +366,19 @@ body.aether-chat-open #aether-launcher {
 
 /* Message Bubbles - Mobile First (Native Style) */
 .aether-msg {
-  max-width: 85% !important;
-  padding: var(--aether-spacing-sm) var(--aether-spacing-md) !important;
-  border-radius: 18px !important;
-  font-size: 15px !important;
-  line-height: 1.4 !important;
-  position: relative !important;
-  word-wrap: break-word !important;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-  animation: messageSlideIn 0.25s ease-out !important;
-  white-space: pre-wrap !important;
-  -webkit-tap-highlight-color: transparent !important;
-  margin: 0 !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  display: block !important;
+  max-width: 85%;
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.4;
+  position: relative;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  animation: messageSlideIn 0.25s ease-out;
+  white-space: pre-wrap;
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 @keyframes messageSlideIn {
@@ -472,19 +393,19 @@ body.aether-chat-open #aether-launcher {
 }
 
 .aether-msg.bot {
-  background: #ffffff !important;
-  color: #333333 !important;
-  border-bottom-left-radius: 4px !important;
-  align-self: flex-start !important;
-  border: 1px solid rgba(0,0,0,0.05) !important;
+  background: #ffffff;
+  color: #333333;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+  border: 1px solid rgba(0,0,0,0.05);
 }
 
 .aether-msg.user {
-  background: var(--aether-brand-color) !important;
-  color: white !important;
-  align-self: flex-end !important;
-  border-bottom-right-radius: 4px !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  background: var(--aether-brand-color);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -584,36 +505,26 @@ body.aether-chat-open #aether-launcher {
 }
 
 /* Input Area - Mobile First */
+/* Input Area - Mobile First */
 .aether-input-area {
-  position: fixed !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  padding: var(--aether-spacing-md) var(--aether-spacing-md) !important;
-  padding-bottom: calc(var(--aether-spacing-md) + max(env(safe-area-inset-bottom, 0px), 30px)) !important;
-  background: var(--aether-bg-color) !important;
-  border-top: 1px solid var(--aether-border-color) !important;
-  z-index: 1000 !important;
-  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  will-change: bottom !important;
-  min-height: 80px !important;
-  box-sizing: border-box !important;
-  margin: 0 !important;
-  border-left: none !important;
-  border-right: none !important;
-  border-bottom: none !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  display: block !important;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--aether-spacing-md) var(--aether-spacing-md);
+  padding-bottom: calc(var(--aether-spacing-md) + max(env(safe-area-inset-bottom, 0px), 30px));
+  background: var(--aether-bg-color);
+  border-top: 1px solid var(--aether-border-color);
+  z-index: 1000;
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: bottom;
+  min-height: 80px;
+  box-sizing: border-box;
+  margin: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  display: block;
 }
 
 /* Increase bottom padding on mobile devices for better keyboard handling */
@@ -631,27 +542,16 @@ body.aether-chat-open #aether-launcher {
 }
 
 .aether-input-wrapper {
-  position: relative !important;
-  display: flex !important;
-  align-items: flex-end !important;
-  gap: var(--aether-spacing-xs) !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  width: 100% !important;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--aether-spacing-xs);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .aether-image-btn {
@@ -728,34 +628,27 @@ body.aether-chat-open #aether-launcher {
 
 /* Input Field - Mobile First */
 .aether-input {
-  flex: 1 !important;
-  padding: var(--aether-spacing-sm) var(--aether-spacing-md) !important;
-  border-radius: 20px !important;
-  border: 1px solid var(--aether-border-color) !important;
-  background: #f4f4f5 !important;
+  flex: 1;
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  border-radius: 20px;
+  border: 1px solid var(--aether-border-color);
+  background: #f4f4f5;
   color: var(--aether-text-color) !important;
-  outline: none !important;
-  font-size: 15px !important;
-  font-family: inherit !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  resize: none !important;
-  min-height: 44px !important;
-  max-height: 120px !important;
-  line-height: 1.4 !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  overflow-y: hidden !important; /* Hide scrollbar by default */
-  margin: 0 !important;
-  box-sizing: border-box !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  box-shadow: none !important;
-  width: auto !important;
-  height: auto !important;
+  outline: none;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  line-height: 1.4;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow-y: hidden; /* Hide scrollbar by default */
+  margin: 0;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
 }
 
 /* Hide scrollbar on mobile until needed (4+ lines) */
@@ -850,158 +743,119 @@ body.aether-chat-open #aether-launcher {
 
 /* Lead Form */
 #aether-lead-form {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  background: var(--aether-bg-color) !important;
-  z-index: 10 !important;
-  padding: var(--aether-spacing-xl) var(--aether-spacing-md) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  gap: var(--aether-spacing-lg) !important;
-  text-align: center !important;
-  margin: 0 !important;
-  border: none !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--aether-bg-color);
+  z-index: 10;
+  padding: var(--aether-spacing-xl) var(--aether-spacing-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--aether-spacing-lg);
+  text-align: center;
+  margin: 0;
+  border: none;
+  box-sizing: border-box;
 }
 
 .aether-form-title {
-  font-size: 24px !important;
-  font-weight: 700 !important;
-  color: var(--aether-text-color) !important;
-  margin-bottom: var(--aether-spacing-xs) !important;
-  margin-top: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  letter-spacing: -0.02em !important;
-  font-family: inherit !important;
-  line-height: 1.2 !important;
-  text-align: center !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  font-style: normal !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  display: block !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--aether-text-color);
+  margin-bottom: var(--aether-spacing-xs);
+  margin-top: 0;
+  margin-left: 0;
+  margin-right: 0;
+  letter-spacing: -0.02em;
+  font-family: inherit;
+  line-height: 1.2;
+  text-align: center;
+  box-sizing: border-box;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .aether-form-desc {
-  font-size: 15px !important;
-  color: #71717a !important;
-  margin-bottom: var(--aether-spacing-lg) !important;
-  margin-top: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  line-height: 1.5 !important;
-  font-family: inherit !important;
-  text-align: center !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  display: block !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
+  font-size: 15px;
+  color: #71717a;
+  margin-bottom: var(--aether-spacing-lg);
+  margin-top: 0;
+  margin-left: 0;
+  margin-right: 0;
+  line-height: 1.5;
+  font-family: inherit;
+  text-align: center;
+  box-sizing: border-box;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 .aether-form-group {
-  text-align: left !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
-  box-sizing: border-box !important;
-  font-family: inherit !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  color: inherit !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  display: block !important;
+  text-align: left;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-sizing: border-box;
+  display: block;
 }
 
 .aether-form-group label {
-  display: block !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  margin-bottom: var(--aether-spacing-xs) !important;
-  margin-top: 0 !important;
-  margin-left: var(--aether-spacing-xs) !important;
-  margin-right: 0 !important;
-  color: var(--aether-text-color) !important;
-  font-family: inherit !important;
-  line-height: inherit !important;
-  text-align: left !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  padding: 0 !important;
-  border: none !important;
-  background: transparent !important;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: var(--aether-spacing-xs);
+  margin-top: 0;
+  margin-left: var(--aether-spacing-xs);
+  margin-right: 0;
+  color: var(--aether-text-color);
+  font-family: inherit;
+  line-height: inherit;
+  text-align: left;
+  box-sizing: border-box;
+  padding: 0;
+  border: none;
+  background: transparent;
 }
 
 /* Make form inputs full width */
 #aether-lead-form .aether-input {
-  width: 100% !important;
-  box-sizing: border-box !important;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .aether-btn {
-  width: 100% !important;
-  padding: var(--aether-spacing-md) !important;
-  min-height: var(--aether-touch-target) !important;
-  border-radius: 16px !important;
-  background: var(--aether-brand-color) !important;
-  color: white !important;
-  border: none !important;
-  font-weight: 600 !important;
-  font-size: 16px !important;
-  cursor: pointer !important;
-  transition: opacity 0.2s, transform 0.2s !important;
-  margin-top: var(--aether-spacing-sm) !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  margin-bottom: 0 !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-  -webkit-tap-highlight-color: transparent !important;
-  touch-action: manipulation !important;
-  font-family: inherit !important;
-  line-height: inherit !important;
-  text-align: center !important;
-  text-decoration: none !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  font-style: normal !important;
-  outline: none !important;
-  box-sizing: border-box !important;
-  display: block !important;
+  width: 100%;
+  padding: var(--aether-spacing-md);
+  min-height: var(--aether-touch-target);
+  border-radius: 16px;
+  background: var(--aether-brand-color);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-top: var(--aether-spacing-sm);
+  margin-left: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  display: block;
 }
 
 .aether-btn:active {

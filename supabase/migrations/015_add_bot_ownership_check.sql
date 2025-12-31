@@ -1,10 +1,10 @@
--- Fix RLS policy for media file uploads
--- The policy needs to verify that the bot belongs to the authenticated user
+-- Add bot ownership verification to media upload policy
+-- This ensures users can only upload files for bots they own
 
--- Drop ALL existing INSERT policies for Assets bucket to avoid conflicts
+-- Drop the simplified test policy
 DROP POLICY IF EXISTS "Allow authenticated to upload media files" ON storage.objects;
 
--- Create a policy that verifies bot ownership
+-- Create the secure policy with bot ownership verification
 -- Files are stored in path: media/{botId}/{filename}
 -- PostgreSQL arrays are 1-indexed, so:
 --   string_to_array('media/botId/filename', '/') = ['media', 'botId', 'filename']

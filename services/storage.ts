@@ -130,6 +130,28 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
     throw new Error(validation.error || 'File validation failed');
   }
   
+  // Verify bot ownership before upload (application-level security)
+  const { data: bot, error: botError } = await supabase
+    .from('bots')
+    .select('id, user_id')
+    .eq('id', botId)
+    .single();
+  
+  if (botError || !bot) {
+    throw new Error('Bot not found or access denied');
+  }
+  
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+  
+  // Verify bot belongs to current user
+  if (bot.user_id !== user.id) {
+    throw new Error('You do not have permission to upload files for this bot');
+  }
+  
   // Get media type
   const mediaType = getMediaType(file);
   

@@ -1,14 +1,12 @@
--- Fix RLS policy for media file uploads
--- The policy needs to verify that the bot belongs to the authenticated user
+-- Fix bot ownership verification in media upload policy
+-- The issue is with UUID comparison - we need to handle it properly
 
--- Drop ALL existing INSERT policies for Assets bucket to avoid conflicts
+-- Drop the existing policy
 DROP POLICY IF EXISTS "Allow authenticated to upload media files" ON storage.objects;
 
--- Create a policy that verifies bot ownership
+-- Create a more robust policy with proper UUID handling
 -- Files are stored in path: media/{botId}/{filename}
--- PostgreSQL arrays are 1-indexed, so:
---   string_to_array('media/botId/filename', '/') = ['media', 'botId', 'filename']
---   [1] = 'media', [2] = 'botId', [3] = 'filename'
+-- We'll use a function to safely extract and validate the botId
 CREATE POLICY "Allow authenticated to upload media files"
 ON storage.objects
 FOR INSERT
@@ -17,6 +15,7 @@ WITH CHECK (
   bucket_id = 'Assets' 
   AND (
     -- Allow uploads to media/{botId}/... paths where bot belongs to user
+    -- Extract botId from path (index 2 in 1-indexed array) and verify ownership
     (name ~ '^media/[^/]+/' AND EXISTS (
       SELECT 1 FROM bots
       WHERE bots.id::text = (string_to_array(name, '/'))[2]

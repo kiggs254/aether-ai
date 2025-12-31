@@ -5,6 +5,7 @@ import BotBuilder from './components/BotBuilder';
 import ChatPlayground from './components/ChatPlayground';
 import EmbedCode from './components/EmbedCode';
 import Inbox from './components/Inbox';
+import Settings from './components/Settings';
 import Auth from './components/Auth';
 import { Bot, ViewState, Conversation } from './types';
 import { supabase } from './lib/supabase';
@@ -736,6 +737,10 @@ const AppContent: React.FC = () => {
              <p className="text-sm text-slate-500 mt-1">Select a bot from the sidebar to generate its embed code.</p>
           </div>
         );
+      case ViewState.SETTINGS:
+        return (
+          <Settings user={user} onSignOut={handleSignOut} />
+        );
       default:
         return <div>Not found</div>;
     }
@@ -805,13 +810,13 @@ const AppContent: React.FC = () => {
       />
       
       <main className="flex-1 relative z-10 h-screen overflow-y-auto overflow-x-hidden">
-        {/* Top bar mostly for mobile or extra actions */}
-        <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-20 bg-[#050505]/80 backdrop-blur-sm border-b border-white/5">
+        {/* Top bar for mobile only */}
+        <header className="lg:hidden h-16 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20 bg-[#050505]/80 backdrop-blur-sm border-b border-white/5">
           <div className="pointer-events-auto flex items-center gap-3">
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -834,7 +839,7 @@ const AppContent: React.FC = () => {
           </div>
         </header>
         
-        <div className="px-4 sm:px-6 lg:px-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
+        <div className="px-4 sm:px-6 lg:px-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] lg:min-h-screen">
           {renderContent()}
         </div>
       </main>

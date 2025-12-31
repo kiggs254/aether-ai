@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Bot, MessageSquare, Code, Settings, Zap, Plus, Layers, Inbox as InboxIcon, X } from 'lucide-react';
+import { LayoutDashboard, Bot, MessageSquare, Code, Settings, Zap, Plus, Layers, Inbox as InboxIcon, X, LogOut, User } from 'lucide-react';
 import { ViewState, Bot as BotType } from '../types';
 
 interface SidebarProps {
@@ -12,6 +12,8 @@ interface SidebarProps {
   unreadCount?: number;
   isOpen?: boolean;
   onClose?: () => void;
+  user?: any;
+  onSignOut?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -23,14 +25,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   onCreateNew,
   unreadCount = 0,
   isOpen = false,
-  onClose
+  onClose,
+  user,
+  onSignOut
 }) => {
   const navItems = [
     { id: ViewState.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
-    { id: ViewState.INBOX, icon: InboxIcon, label: 'Inbox & Leads' }, // New Inbox Item
+    { id: ViewState.INBOX, icon: InboxIcon, label: 'Inbox & Leads' },
     { id: ViewState.BOT_BUILDER, icon: Bot, label: 'Bot Builder' },
     { id: ViewState.PLAYGROUND, icon: MessageSquare, label: 'Playground' },
     { id: ViewState.INTEGRATION, icon: Code, label: 'Integration' },
+    { id: ViewState.SETTINGS, icon: Settings, label: 'Settings' },
   ];
 
   return (
@@ -150,17 +155,24 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Footer / User Profile */}
         <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-          <button className="flex items-center justify-start w-full p-2 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-            <Settings className="w-5 h-5" />
-            <span className="ml-3 font-medium text-sm">Settings</span>
-          </button>
-          <div className="mt-3 flex items-center gap-3 px-2 pt-3 border-t border-white/5">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 border-2 border-white/10 flex-shrink-0" />
-            <div className="overflow-hidden min-w-0">
-              <p className="text-sm font-semibold text-white truncate">Demo User</p>
-              <p className="text-[10px] text-slate-500 truncate uppercase tracking-wide">Pro Plan</p>
+          <div className="mb-3 flex items-center gap-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+              {user?.email?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="overflow-hidden min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white truncate">{user?.email?.split('@')[0] || 'User'}</p>
+              <p className="text-[10px] text-slate-500 truncate">{user?.email || ''}</p>
             </div>
           </div>
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              className="flex items-center justify-start w-full p-2 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="ml-3 font-medium text-sm">Sign Out</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -276,19 +288,26 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer / User Profile */}
       <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-        <button className="flex items-center justify-center lg:justify-start w-full p-2 rounded-xl text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-          <Settings className="w-5 h-5" />
-          <span className="ml-3 font-medium text-sm hidden lg:block">Settings</span>
-        </button>
-        <div className="mt-3 flex items-center gap-3 px-1 lg:px-2 pt-3 border-t border-white/5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 border-2 border-white/10 flex-shrink-0" />
-          <div className="hidden lg:block overflow-hidden min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Demo User</p>
-            <p className="text-[10px] text-slate-500 truncate uppercase tracking-wide">Pro Plan</p>
+        <div className="mb-3 flex items-center gap-3 px-1 lg:px-2">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+            {user?.email?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="hidden lg:block overflow-hidden min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white truncate">{user?.email?.split('@')[0] || 'User'}</p>
+            <p className="text-[10px] text-slate-500 truncate">{user?.email || ''}</p>
           </div>
         </div>
+        {onSignOut && (
+          <button
+            onClick={onSignOut}
+            className="flex items-center justify-center lg:justify-start w-full p-2 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="ml-3 font-medium text-sm hidden lg:block">Sign Out</span>
+          </button>
+        )}
       </div>
-      </div>
+    </div>
     </>
   );
 };

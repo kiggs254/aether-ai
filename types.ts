@@ -58,6 +58,7 @@ export enum ViewState {
   PLAYGROUND = 'PLAYGROUND',
   INTEGRATION = 'INTEGRATION',
   INBOX = 'INBOX',
+  SETTINGS = 'SETTINGS',
 }
 
 export interface DashboardStats {

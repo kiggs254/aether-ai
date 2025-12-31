@@ -1692,11 +1692,8 @@ export const generateWidgetJS = (): string => {
           btnClass = 'bg-indigo-600';
         }
         
-        // Use custom trigger message if available, otherwise use default
-        const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
-        
-        actionCard.innerHTML = (triggerMessage ? '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' + triggerMessage + '</div>' : '') +
-          '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
+        // Action card - no trigger message here, it's already in the message bubble
+        actionCard.innerHTML = '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
             iconSvg +
             '<span>' + action.label + '</span>' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +

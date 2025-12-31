@@ -1,0 +1,1083 @@
+/**
+ * Generates the base CSS for the Aether AI widget
+ * Mobile-first approach: base styles are for mobile, desktop is enhancement
+ */
+export const generateWidgetCSS = (): string => {
+  return `:root {
+  --aether-brand-color: #6366f1;
+  --aether-bg-color: #ffffff;
+  --aether-text-color: #18181b;
+  --aether-secondary-bg: #f4f4f5;
+  --aether-border-color: rgba(0,0,0,0.1);
+  --aether-bot-msg-bg: #f3f4f6;
+  --aether-bot-msg-text: #1f2937;
+  --aether-spacing-xs: 8px;
+  --aether-spacing-sm: 12px;
+  --aether-spacing-md: 16px;
+  --aether-spacing-lg: 24px;
+  --aether-spacing-xl: 32px;
+  --aether-touch-target: 44px;
+}
+
+/* ============================================
+   MOBILE BASE STYLES (No Media Query)
+   ============================================ */
+
+#aether-widget-container {
+  position: fixed;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: none;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+#aether-widget-container > * {
+  pointer-events: auto;
+}
+
+/* Launcher Button - Mobile First */
+#aether-launcher {
+  width: 56px;
+  height: 56px;
+  min-width: var(--aether-touch-target);
+  min-height: var(--aether-touch-target);
+  border-radius: 28px;
+  background: linear-gradient(135deg, var(--aether-brand-color), color-mix(in srgb, var(--aether-brand-color), black 15%));
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: none;
+  color: white;
+  position: fixed !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  z-index: 99999 !important;
+  overflow: hidden;
+  visibility: visible;
+  opacity: 1;
+  margin: 0 !important;
+  padding: 0 !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#aether-widget-container[data-position="left"] #aether-launcher {
+  right: auto;
+  left: 20px;
+}
+
+body.aether-chat-open #aether-launcher {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+#aether-launcher:active {
+  transform: scale(0.95);
+}
+
+#aether-launcher svg {
+  width: 28px;
+  height: 28px;
+  transition: transform 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+/* Window - Mobile First (Full Screen) */
+#aether-window {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  background: var(--aether-bg-color);
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  opacity: 0;
+  transform: translateY(100%);
+  transform-origin: bottom;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  visibility: hidden;
+  position: fixed;
+  bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99998;
+}
+
+#aether-window.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  visibility: visible;
+}
+
+/* Header - Mobile First */
+.aether-header {
+  padding: var(--aether-spacing-md);
+  padding-top: calc(var(--aether-spacing-md) + env(safe-area-inset-top, 0px));
+  padding-bottom: var(--aether-spacing-md);
+  background: #0f172a;
+  color: white;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--aether-spacing-md);
+  min-height: 56px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.aether-header-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  background: var(--aether-brand-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+.aether-header-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.aether-header-content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.aether-title {
+  font-weight: 700;
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.02em;
+  color: white;
+  line-height: 1.2;
+}
+
+.aether-subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+  color: white;
+  line-height: 1.3;
+}
+
+.aether-close-window-btn {
+  width: var(--aether-touch-target);
+  height: var(--aether-touch-target);
+  min-width: var(--aether-touch-target);
+  min-height: var(--aether-touch-target);
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative !important;
+  z-index: 20 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-close-window-btn:active {
+  background: rgba(255,255,255,0.15);
+  transform: scale(0.95);
+}
+
+.aether-close-window-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+/* Content Area - Mobile First */
+.aether-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--aether-bg-color);
+  min-height: 0;
+}
+
+/* Messages - Mobile First */
+.aether-messages {
+  flex: 1;
+  padding: var(--aether-spacing-md) var(--aether-spacing-sm);
+  padding-bottom: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--aether-spacing-sm);
+  scroll-behavior: smooth;
+  background: var(--aether-bg-color);
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.aether-messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+.aether-messages::-webkit-scrollbar-thumb {
+  background-color: rgba(0,0,0,0.2);
+  border-radius: 2px;
+}
+
+/* Welcome Container - Mobile First */
+.aether-welcome-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--aether-spacing-xl) var(--aether-spacing-md);
+  text-align: center;
+  min-height: 250px;
+  width: 100%;
+}
+
+.aether-sparkle-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: var(--aether-spacing-md);
+  color: var(--aether-brand-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aether-sparkle-icon svg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.aether-welcome-message {
+  font-size: 16px;
+  color: #71717a;
+  line-height: 1.5;
+  margin-bottom: var(--aether-spacing-lg);
+  max-width: 100%;
+  padding: 0 var(--aether-spacing-md);
+}
+
+.aether-quick-actions {
+  display: flex;
+  gap: var(--aether-spacing-xs);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--aether-spacing-xs);
+  width: 100%;
+  padding: 0 var(--aether-spacing-md);
+}
+
+.aether-quick-action-btn {
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  min-height: var(--aether-touch-target);
+  background: white;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--aether-text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.aether-quick-action-btn:active {
+  background: #f9fafb;
+  transform: scale(0.98);
+  box-shadow: 0 1px 1px rgba(0,0,0,0.05);
+}
+
+/* Message Bubbles - Mobile First (Native Style) */
+.aether-msg {
+  max-width: 85%;
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  border-radius: 18px;
+  font-size: 15px;
+  line-height: 1.4;
+  position: relative;
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  animation: messageSlideIn 0.25s ease-out;
+  white-space: pre-wrap;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes messageSlideIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px) scale(0.96); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+.aether-msg.bot {
+  background: #ffffff;
+  color: #333333;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.aether-msg.user {
+  background: var(--aether-brand-color);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .aether-msg.bot {
+    background: var(--aether-bot-msg-bg);
+    color: var(--aether-bot-msg-text);
+  }
+}
+
+/* Action Cards */
+.aether-action-card {
+  margin-top: var(--aether-spacing-sm);
+  padding: var(--aether-spacing-md);
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  border: 1px solid var(--aether-border-color);
+  max-width: 90%;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.aether-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  min-height: var(--aether-touch-target);
+  border-radius: 12px;
+  color: white;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: all 0.2s;
+  margin-top: var(--aether-spacing-sm);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-action-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.aether-action-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+/* Typing Indicator */
+.aether-typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--aether-spacing-md) var(--aether-spacing-md);
+  background: var(--aether-bot-msg-bg);
+  border-radius: 20px;
+  border-bottom-left-radius: 4px;
+  max-width: fit-content;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.aether-typing-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--aether-bot-msg-text);
+  opacity: 0.5;
+  animation: typingBounce 1.4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.aether-typing-dot:nth-child(1) { animation-delay: 0s; }
+.aether-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.aether-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    opacity: 0.4;
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.1);
+  }
+}
+
+/* Input Area - Mobile First */
+.aether-input-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--aether-spacing-md) var(--aether-spacing-md);
+  padding-bottom: calc(var(--aether-spacing-md) + max(env(safe-area-inset-bottom, 0px), 30px));
+  background: var(--aether-bg-color);
+  border-top: 1px solid var(--aether-border-color);
+  z-index: 1000;
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: bottom;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+
+/* Increase bottom padding on mobile devices for better keyboard handling */
+@media (max-width: 768px) {
+  .aether-input-area {
+    padding-bottom: calc(var(--aether-spacing-md) + max(env(safe-area-inset-bottom, 0px), 40px));
+  }
+}
+
+/* Extra padding for very small screens */
+@media (max-width: 480px) {
+  .aether-input-area {
+    padding-bottom: calc(var(--aether-spacing-md) + max(env(safe-area-inset-bottom, 0px), 50px));
+  }
+}
+
+.aether-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--aether-spacing-xs);
+}
+
+.aether-image-btn {
+  width: var(--aether-touch-target);
+  height: var(--aether-touch-target);
+  min-width: var(--aether-touch-target);
+  min-height: var(--aether-touch-target);
+  border-radius: 50%;
+  border: none;
+  background: var(--aether-secondary-bg);
+  color: var(--aether-text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-image-btn:active {
+  background: var(--aether-border-color);
+  transform: scale(0.95);
+}
+
+.aether-image-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.aether-image-input {
+  display: none;
+}
+
+.aether-image-preview {
+  margin-top: var(--aether-spacing-xs);
+  padding: var(--aether-spacing-xs);
+  background: var(--aether-secondary-bg);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--aether-spacing-xs);
+  max-width: 200px;
+}
+
+.aether-image-preview img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.aether-image-preview button {
+  background: transparent;
+  border: none;
+  color: var(--aether-text-color);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  min-width: var(--aether-touch-target);
+  min-height: var(--aether-touch-target);
+  opacity: 0.6;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-image-preview button:active {
+  opacity: 1;
+}
+
+/* Input Field - Mobile First */
+.aether-input {
+  flex: 1;
+  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
+  border-radius: 20px;
+  border: 1px solid var(--aether-border-color);
+  background: #f4f4f5;
+  color: var(--aether-text-color) !important;
+  outline: none;
+  font-size: 15px;
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  line-height: 1.4;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow-y: hidden; /* Hide scrollbar by default */
+}
+
+/* Hide scrollbar on mobile until needed (4+ lines) */
+.aether-input::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome, Safari, Edge */
+  width: 0;
+  height: 0;
+}
+
+.aether-input {
+  -ms-overflow-style: none; /* Hide scrollbar for IE and Edge */
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+/* Show scrollbar when content exceeds 4 lines (approximately 84px) */
+.aether-input.show-scrollbar {
+  overflow-y: auto;
+}
+
+.aether-input.show-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 4px;
+}
+
+.aether-input.show-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+.aether-input.show-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aether-input::placeholder {
+  color: var(--aether-text-color);
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .aether-input,
+.aether-input[data-theme="dark"] {
+  color: var(--aether-text-color) !important;
+}
+
+.aether-input:focus {
+  border-color: var(--aether-brand-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aether-brand-color) 10%, transparent);
+  background: var(--aether-bg-color);
+}
+
+/* Send Button - Mobile First (Fixed Icon Size) */
+.aether-send-btn {
+  width: var(--aether-touch-target);
+  height: var(--aether-touch-target);
+  min-width: var(--aether-touch-target);
+  min-height: var(--aether-touch-target);
+  border-radius: 10px;
+  background: var(--aether-brand-color);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  position: relative;
+  z-index: 1;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-send-btn svg {
+  width: 24px !important;
+  height: 24px !important;
+  stroke-width: 2.5;
+  display: block;
+  flex-shrink: 0;
+}
+
+.aether-send-btn:active:not(:disabled) {
+  transform: scale(0.95);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  opacity: 0.9;
+}
+
+.aether-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: scale(1);
+}
+
+/* Lead Form */
+#aether-lead-form {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--aether-bg-color);
+  z-index: 10;
+  padding: var(--aether-spacing-xl) var(--aether-spacing-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--aether-spacing-lg);
+  text-align: center;
+}
+
+.aether-form-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--aether-text-color);
+  margin-bottom: var(--aether-spacing-xs);
+  letter-spacing: -0.02em;
+}
+
+.aether-form-desc {
+  font-size: 15px;
+  color: #71717a;
+  margin-bottom: var(--aether-spacing-lg);
+  line-height: 1.5;
+}
+
+.aether-form-group {
+  text-align: left;
+}
+
+.aether-form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: var(--aether-spacing-xs);
+  color: var(--aether-text-color);
+  margin-left: var(--aether-spacing-xs);
+}
+
+/* Make form inputs full width */
+#aether-lead-form .aether-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.aether-btn {
+  width: 100%;
+  padding: var(--aether-spacing-md);
+  min-height: var(--aether-touch-target);
+  border-radius: 16px;
+  background: var(--aether-brand-color);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-top: var(--aether-spacing-sm);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.aether-btn:active {
+  opacity: 0.95;
+  transform: scale(0.98);
+}
+
+/* Input error styles */
+.aether-form-error {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.aether-input-error-border {
+  border-color: #ef4444 !important;
+}
+
+/* Date separator styles */
+.aether-date-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--aether-text-color);
+  opacity: 0.6;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aether-date-separator::before,
+.aether-date-separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--aether-border-color);
+  opacity: 0.3;
+}
+
+.aether-date-separator:not(:empty)::before {
+  margin-right: 0.75rem;
+}
+
+.aether-date-separator:not(:empty)::after {
+  margin-left: 0.75rem;
+}
+
+/* Markdown rendering styles */
+.aether-msg code {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+  font-size: 0.9em;
+}
+
+.aether-inline-code {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #e83e8c;
+}
+
+[data-theme="dark"] .aether-inline-code,
+.aether-msg[data-theme="dark"] .aether-inline-code {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f78fb3;
+}
+
+.aether-code-block {
+  display: block;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.75em 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .aether-code-block,
+.aether-msg[data-theme="dark"] .aether-code-block {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e9ecef;
+}
+
+.aether-msg pre {
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.aether-msg pre code {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.aether-msg strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.aether-msg em {
+  font-style: italic;
+  color: inherit;
+}
+
+.aether-msg .aether-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.aether-msg .aether-link:hover {
+  opacity: 1;
+}
+
+.aether-msg .aether-h1,
+.aether-msg .aether-h2,
+.aether-msg .aether-h3,
+.aether-msg .aether-h4,
+.aether-msg .aether-h5,
+.aether-msg .aether-h6 {
+  font-weight: 600;
+  margin: 0.75em 0 0.5em 0;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.aether-msg .aether-h1 {
+  font-size: 1.5em;
+}
+
+.aether-msg .aether-h2 {
+  font-size: 1.3em;
+}
+
+.aether-msg .aether-h3 {
+  font-size: 1.15em;
+}
+
+.aether-msg .aether-h4 {
+  font-size: 1.05em;
+}
+
+.aether-msg .aether-h5,
+.aether-msg .aether-h6 {
+  font-size: 1em;
+}
+
+.aether-msg .aether-blockquote {
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+  padding-left: 1em;
+  margin: 0.75em 0;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+[data-theme="dark"] .aether-blockquote,
+.aether-msg[data-theme="dark"] .aether-blockquote {
+  border-left-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.aether-msg .aether-hr {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+  margin: 1em 0;
+  height: 1px;
+}
+
+[data-theme="dark"] .aether-hr,
+.aether-msg[data-theme="dark"] .aether-hr {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.aether-msg .aether-unordered-list,
+.aether-msg .aether-ordered-list {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+  line-height: 1.6;
+}
+
+.aether-msg .aether-unordered-list {
+  list-style-type: disc;
+}
+
+.aether-msg .aether-ordered-list {
+  list-style-type: decimal;
+}
+
+.aether-msg .aether-list-item {
+  margin: 0.25em 0;
+  padding-left: 0.25em;
+}
+
+.aether-msg .aether-list-item::marker {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* Nested lists */
+.aether-msg .aether-list-item .aether-unordered-list,
+.aether-msg .aether-list-item .aether-ordered-list {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+/* ============================================
+   DESKTOP ENHANCEMENTS (min-width: 641px)
+   ============================================ */
+
+@media (min-width: 641px) {
+  #aether-widget-container {
+    bottom: 0;
+    top: auto;
+    left: auto;
+    right: 0;
+  }
+
+  #aether-widget-container[data-position="left"] {
+    right: auto;
+    left: 0;
+  }
+
+  #aether-launcher {
+    width: 64px;
+    height: 64px;
+    bottom: 24px !important;
+    right: 24px !important;
+  }
+
+  #aether-widget-container[data-position="left"] #aether-launcher {
+    left: 24px;
+    right: auto;
+  }
+
+  #aether-launcher:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 12px 48px rgba(0,0,0,0.4), 0 0 0 4px rgba(99, 102, 241, 0.2);
+  }
+
+  #aether-window {
+    width: 400px;
+    height: 700px;
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 120px);
+    border-radius: 24px;
+    box-shadow: 0 24px 48px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    border: 1px solid var(--aether-border-color);
+    transform: translateY(20px) scale(0.95);
+    transform-origin: bottom right;
+    position: relative;
+  }
+
+  #aether-widget-container[data-position="left"] #aether-window {
+    transform-origin: bottom left;
+  }
+
+  #aether-window.open {
+    transform: translateY(0) scale(1);
+  }
+
+  .aether-header {
+    padding: var(--aether-spacing-lg) var(--aether-spacing-lg);
+    padding-top: var(--aether-spacing-lg);
+    border-radius: 24px 24px 0 0;
+  }
+
+  .aether-messages {
+    padding: var(--aether-spacing-lg) var(--aether-spacing-md);
+    padding-bottom: 100px;
+  }
+
+  .aether-msg {
+    max-width: 75%;
+  }
+
+  .aether-input-area {
+    position: relative;
+    padding: var(--aether-spacing-md);
+    padding-bottom: var(--aether-spacing-md);
+    border-radius: 0 0 24px 24px;
+  }
+
+  .aether-quick-action-btn:hover {
+    background: #f9fafb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .aether-send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  .aether-btn:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+  }
+
+  .aether-image-btn:hover {
+    background: var(--aether-border-color);
+    transform: scale(1.05);
+  }
+
+  .aether-close-window-btn:hover {
+    background: rgba(255,255,255,0.1);
+    transform: scale(1.1);
+  }
+}
+`;
+};

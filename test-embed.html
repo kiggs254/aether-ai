@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Embed Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-info {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+    </style>
+    
+    <!-- Aether AI Widget -->
+    <link rel="stylesheet" href="/widget.css">
+
+    <style>
+      :root {
+        --aether-brand-color: #6366f1;
+        --aether-bg-color: #ffffff;
+        --aether-text-color: #18181b;
+        --aether-secondary-bg: #f4f4f5;
+        --aether-border-color: rgba(0,0,0,0.1);
+        --aether-bot-msg-bg: #f3f4f6;
+        --aether-bot-msg-text: #1f2937;
+      }
+    </style>
+
+    <script>
+      window.AetherBotConfig = {
+        botId: "test-bot-id",
+        name: "Test Bot",
+        welcomeMessage: "Hello! This is a test bot. How can I help you?",
+        brandColor: "#6366f1",
+        theme: "light",
+        position: "right",
+        collectLeads: false,
+        supabaseUrl: "https://your-project.supabase.co",
+        supabaseAnonKey: "your-anon-key",
+        bot: {
+          id: "test-bot-id",
+          name: "Test Bot",
+          systemInstruction: "You are a helpful assistant.",
+          knowledgeBase: [],
+          provider: "gemini",
+          model: "gemini-3-flash-preview",
+          temperature: 0.7,
+          actions: []
+        }
+      };
+    </script>
+
+    <script src="/widget.js"></script>
+</head>
+<body>
+    <div class="test-info">
+        <h1>Widget Embed Test</h1>
+        <p>This page tests the widget embed script. You should see a floating button in the bottom right corner.</p>
+        <p><strong>Expected behavior:</strong></p>
+        <ul>
+            <li>A floating button should appear in the bottom right corner</li>
+            <li>Clicking the button should open the chat widget</li>
+            <li>The widget should display the welcome message</li>
+            <li>You should be able to type and send messages</li>
+        </ul>
+        <p><strong>Note:</strong> The widget will try to connect to the Supabase proxy function. If the URL/key are not configured, API calls will fail, but the widget UI should still be visible.</p>
+    </div>
+    
+    <h2>Test Content</h2>
+    <p>This is some test content to ensure the widget doesn't interfere with the page layout.</p>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+</body>
+</html>
+

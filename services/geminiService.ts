@@ -80,7 +80,9 @@ export const createChatStream = async (
         throw new Error('Supabase anon key not configured. Please set VITE_SUPABASE_ANON_KEY in your environment variables.');
       }
       
-      const functionUrl = `${supabaseUrl}/functions/v1/proxy-ai`;
+      // Normalize URL (remove trailing slash if present)
+      const normalizedUrl = supabaseUrl.replace(/\/$/, '');
+      const functionUrl = `${normalizedUrl}/functions/v1/proxy-ai`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -234,7 +236,9 @@ export const generateBotResponse = async (
         throw new Error('Supabase anon key not configured. Please set VITE_SUPABASE_ANON_KEY in your environment variables.');
       }
       
-      const functionUrl = `${supabaseUrl}/functions/v1/proxy-ai`;
+      // Normalize URL (remove trailing slash if present)
+      const normalizedUrl = supabaseUrl.replace(/\/$/, '');
+      const functionUrl = `${normalizedUrl}/functions/v1/proxy-ai`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -307,7 +311,9 @@ export const optimizeSystemInstruction = async (currentInstruction: string, botN
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const functionUrl = `${supabaseUrl}/functions/v1/proxy-ai`;
+      // Normalize URL (remove trailing slash if present)
+      const normalizedUrl = supabaseUrl.replace(/\/$/, '');
+      const functionUrl = `${normalizedUrl}/functions/v1/proxy-ai`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -370,7 +376,9 @@ export const suggestBotDescription = async (botName: string): Promise<string> =>
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      const functionUrl = `${supabaseUrl}/functions/v1/proxy-ai`;
+      // Normalize URL (remove trailing slash if present)
+      const normalizedUrl = supabaseUrl.replace(/\/$/, '');
+      const functionUrl = `${normalizedUrl}/functions/v1/proxy-ai`;
 
       const response = await fetch(functionUrl, {
         method: 'POST',

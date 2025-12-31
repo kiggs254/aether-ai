@@ -1547,6 +1547,14 @@ export const generateWidgetJS = (): string => {
     return html;
   };
 
+  // Helper function to clean triggeraction patterns from text
+  const cleanTriggerActionText = (text) => {
+    if (!text || typeof text !== 'string') return text || '';
+    // Remove [triggeraction: ...] patterns (case insensitive, with optional whitespace)
+    const cleaned = text.replace(/\[triggeraction:\s*[^\]]+\]/gi, '').trim();
+    return cleaned;
+  };
+
   const addMessage = (text, type, actionId = null, imageUrl = null) => {
     if (!messages) return;
     
@@ -1643,7 +1651,12 @@ export const generateWidgetJS = (): string => {
             '<span>' + action.label + '</span>' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
           '</a>';
-        messages.appendChild(actionCard);
+        // Insert action card right after the message element
+        if (msg && msg.parentNode) {
+          msg.parentNode.insertBefore(actionCard, msg.nextSibling);
+        } else if (messages) {
+          messages.appendChild(actionCard);
+        }
       }
     }
     
@@ -1797,7 +1810,9 @@ export const generateWidgetJS = (): string => {
               
               if (data.text) {
                 fullText += data.text;
-                updateMessage(fullText);
+                // Clean triggeraction patterns from text as it accumulates
+                const cleanedText = cleanTriggerActionText(fullText);
+                updateMessage(cleanedText || fullText);
               }
               
               if (data.functionCalls && data.functionCalls.length > 0) {
@@ -1805,6 +1820,11 @@ export const generateWidgetJS = (): string => {
                 const call = data.functionCalls[0];
                 if (call.name === 'trigger_action') {
                   actionId = call.args?.action_id || null;
+                  // Clean any accumulated text that contains triggeraction patterns
+                  fullText = cleanTriggerActionText(fullText);
+                  if (fullText) {
+                    updateMessage(fullText);
+                  }
                 }
               }
               
@@ -1813,11 +1833,18 @@ export const generateWidgetJS = (): string => {
                 for (const part of parts) {
                   if (part.text) {
                     fullText += part.text;
-                    updateMessage(fullText);
+                    // Clean triggeraction patterns from text as it accumulates
+                    const cleanedText = cleanTriggerActionText(fullText);
+                    updateMessage(cleanedText || fullText);
                   }
                   if (part.functionCall && part.functionCall.name === 'trigger_action') {
                     functionCallFound = true;
                     actionId = part.functionCall.args?.action_id || null;
+                    // Clean any accumulated text that contains triggeraction patterns
+                    fullText = cleanTriggerActionText(fullText);
+                    if (fullText) {
+                      updateMessage(fullText);
+                    }
                   }
                 }
               }
@@ -1840,7 +1867,9 @@ export const generateWidgetJS = (): string => {
               const data = JSON.parse(jsonStr);
               if (data.text) {
                 fullText += data.text;
-                updateMessage(fullText);
+                // Clean triggeraction patterns from text
+                const cleanedText = cleanTriggerActionText(fullText);
+                updateMessage(cleanedText || fullText);
               }
             } catch (e) {
               console.warn('Failed to parse remaining buffer:', e);
@@ -1849,7 +1878,20 @@ export const generateWidgetJS = (): string => {
         }
       }
 
-      if (fullText) {
+      // Clean and finalize message text when function call is found
+      if (functionCallFound || actionId) {
+        fullText = cleanTriggerActionText(fullText);
+        const finalText = fullText || "I've triggered the requested action for you.";
+        updateMessage(finalText);
+        messageHistory.push({ role: 'model', text: finalText });
+        
+        // Save bot message if we have a conversation
+        if (conversationId) {
+          saveMessage(conversationId, 'model', finalText);
+        }
+      } else if (fullText) {
+        // No function call, just clean and save the text
+        fullText = cleanTriggerActionText(fullText);
         updateMessage(fullText);
         messageHistory.push({ role: 'model', text: fullText });
         
@@ -1857,10 +1899,6 @@ export const generateWidgetJS = (): string => {
         if (conversationId) {
           saveMessage(conversationId, 'model', fullText);
         }
-      } else if (functionCallFound) {
-        const finalText = "I've triggered the requested action for you.";
-        updateMessage(finalText);
-        messageHistory.push({ role: 'model', text: finalText });
       }
       
       if (actionId) {
@@ -1892,7 +1930,12 @@ export const generateWidgetJS = (): string => {
               '<span>' + action.label + '</span>' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
             '</a>';
-          if (messages) messages.appendChild(actionCard);
+          // Insert action card right after the message bubble
+          if (botMsg && botMsg.parentNode) {
+            botMsg.parentNode.insertBefore(actionCard, botMsg.nextSibling);
+          } else if (messages) {
+            messages.appendChild(actionCard);
+          }
         }
       }
       

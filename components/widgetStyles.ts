@@ -1172,18 +1172,22 @@ body.aether-chat-open #aether-launcher {
     transform: translateY(-1px);
   }
 
-  /* Lightbox styles */
+  /* Lightbox styles - Full screen on all devices */
   .aether-lightbox {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 100000;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 100000 !important;
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: auto;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .aether-lightbox-backdrop {
@@ -1192,48 +1196,55 @@ body.aether-chat-open #aether-launcher {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.9);
+    width: 100%;
+    height: 100%;
+    background: #000000;
     backdrop-filter: blur(8px);
   }
 
   .aether-lightbox-content {
     position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1;
+    padding: 0;
+    margin: 0;
   }
 
   .aether-lightbox-content img {
-    max-width: 100%;
-    max-height: 90vh;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .aether-lightbox-close {
-    position: absolute;
-    top: -40px;
-    right: 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     color: white;
-    transition: background 0.2s;
+    transition: all 0.2s;
     z-index: 2;
+    backdrop-filter: blur(10px);
   }
 
   .aether-lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
   }
 
   .aether-lightbox-close:active {
@@ -1241,8 +1252,9 @@ body.aether-chat-open #aether-launcher {
   }
 
   .aether-lightbox-close svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
+    stroke-width: 2.5;
   }
 
   .aether-clickable-image {
@@ -1251,6 +1263,41 @@ body.aether-chat-open #aether-launcher {
 
   .aether-clickable-image:hover {
     opacity: 0.9;
+  }
+
+  /* Mobile-specific lightbox adjustments */
+  @media (max-width: 640px) {
+    .aether-lightbox {
+      width: 100vw !important;
+      height: 100vh !important;
+      height: 100dvh !important; /* Use dynamic viewport height for mobile */
+    }
+
+    .aether-lightbox-content {
+      width: 100%;
+      height: 100%;
+      padding: 0;
+    }
+
+    .aether-lightbox-content img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .aether-lightbox-close {
+      top: 16px;
+      right: 16px;
+      width: 44px;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .aether-lightbox-close svg {
+      width: 22px;
+      height: 22px;
+    }
   }
 
   .aether-image-btn:hover {

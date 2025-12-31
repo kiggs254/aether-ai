@@ -1,12 +1,14 @@
-export type ActionType = 'link' | 'phone' | 'whatsapp' | 'handoff' | 'custom';
+export type ActionType = 'link' | 'phone' | 'whatsapp' | 'handoff' | 'custom' | 'media';
 
 export interface BotAction {
   id: string;
   type: ActionType;
   label: string;
-  payload: string; // URL, Phone Number, or Function ID
+  payload: string; // URL, Phone Number, Function ID, or Media File URL
   description: string; // Instruction for the AI on when to use this
   triggerMessage?: string; // Custom message to show when action is triggered
+  mediaType?: 'image' | 'audio' | 'pdf' | 'video'; // File type for media actions
+  fileSize?: number; // File size in bytes for media actions
 }
 
 export type AIProvider = 'gemini' | 'openai';

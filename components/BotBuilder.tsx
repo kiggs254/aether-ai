@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
-import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users } from 'lucide-react';
+import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
+import { uploadMediaFile, validateMediaFile, getMediaType, MediaType } from '../services/storage';
+import { useNotification } from './Notification';
 
 interface BotBuilderProps {
   bot: Bot | null;
@@ -11,6 +13,7 @@ interface BotBuilderProps {
 }
 
 const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBack }) => {
+  const { showSuccess, showError } = useNotification();
   const [name, setName] = useState(bot?.name || '');
   const [description, setDescription] = useState(bot?.description || '');
   const [website, setWebsite] = useState(bot?.website || '');
@@ -31,6 +34,9 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [currentAction, setCurrentAction] = useState<BotAction>({
     id: '', type: 'link', label: '', payload: '', description: ''
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (bot) {
@@ -89,8 +95,89 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
     setIsOptimizing(false);
   };
 
-  const handleSaveAction = () => {
-    if (!currentAction.label || !currentAction.payload) return;
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file
+    const validation = validateMediaFile(file);
+    if (!validation.valid) {
+      showError('Invalid file', validation.error || 'Please select a valid media file.');
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFilePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const handleSaveAction = async () => {
+    if (!currentAction.label) {
+      showError('Missing label', 'Please provide a button label for the action.');
+      return;
+    }
+
+    // For media actions, we need a file
+    if (currentAction.type === 'media') {
+      if (!selectedFile && !currentAction.payload) {
+        showError('Missing file', 'Please select a media file to upload.');
+        return;
+      }
+
+      // If we have a new file, upload it
+      if (selectedFile) {
+        if (!bot?.id) {
+          showError('No bot ID', 'Please save the bot first before adding media actions.');
+          return;
+        }
+
+        setIsUploading(true);
+        try {
+          const fileUrl = await uploadMediaFile(bot.id, selectedFile);
+          const mediaType = getMediaType(selectedFile);
+          
+          const actionToSave: BotAction = {
+            ...currentAction,
+            payload: fileUrl,
+            mediaType: mediaType,
+            fileSize: selectedFile.size,
+          };
+
+          if (currentAction.id) {
+            setActions(prev => prev.map(a => a.id === currentAction.id ? actionToSave : a));
+          } else {
+            setActions(prev => [...prev, { ...actionToSave, id: crypto.randomUUID() }]);
+          }
+
+          setIsEditingAction(false);
+          setCurrentAction({ id: '', type: 'link', label: '', payload: '', description: '' });
+          setSelectedFile(null);
+          setFilePreview(null);
+          showSuccess('Media uploaded', 'Media file uploaded successfully.');
+        } catch (error: any) {
+          showError('Upload failed', error.message || 'Failed to upload media file.');
+        } finally {
+          setIsUploading(false);
+        }
+        return;
+      }
+    } else {
+      // For non-media actions, payload is required
+      if (!currentAction.payload) {
+        showError('Missing payload', `Please provide a ${currentAction.type === 'link' ? 'URL' : currentAction.type === 'phone' || currentAction.type === 'whatsapp' ? 'phone number' : 'value'}.`);
+        return;
+      }
+    }
     
     if (currentAction.id) {
        setActions(prev => prev.map(a => a.id === currentAction.id ? currentAction : a));
@@ -99,17 +186,27 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
     }
     setIsEditingAction(false);
     setCurrentAction({ id: '', type: 'link', label: '', payload: '', description: '' });
+    setSelectedFile(null);
+    setFilePreview(null);
   };
 
   const handleDeleteAction = (id: string) => {
     setActions(prev => prev.filter(a => a.id !== id));
   };
 
-  const getActionIcon = (type: ActionType) => {
+  const getActionIcon = (type: ActionType, mediaType?: MediaType) => {
     switch (type) {
       case 'whatsapp': return <MessageCircle className="w-4 h-4" />;
       case 'phone': return <Phone className="w-4 h-4" />;
       case 'handoff': return <Users className="w-4 h-4" />;
+      case 'media':
+        switch (mediaType) {
+          case 'image': return <Image className="w-4 h-4" />;
+          case 'video': return <Video className="w-4 h-4" />;
+          case 'audio': return <Music className="w-4 h-4" />;
+          case 'pdf': return <File className="w-4 h-4" />;
+          default: return <File className="w-4 h-4" />;
+        }
       default: return <ExternalLink className="w-4 h-4" />;
     }
   };
@@ -354,10 +451,21 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     <div>
                        <label className="text-xs font-medium text-slate-300 mb-1 block">Action Type</label>
                        <div className="grid grid-cols-2 gap-2">
-                          {['link', 'phone', 'whatsapp', 'handoff'].map((t) => (
+                          {['link', 'phone', 'whatsapp', 'handoff', 'media'].map((t) => (
                              <button
                                 key={t}
-                                onClick={() => setCurrentAction(prev => ({ ...prev, type: t as ActionType, label: t === 'whatsapp' ? 'Chat on WhatsApp' : prev.label }))}
+                                onClick={() => {
+                                  setCurrentAction(prev => ({ 
+                                    ...prev, 
+                                    type: t as ActionType, 
+                                    label: t === 'whatsapp' ? 'Chat on WhatsApp' : t === 'media' ? 'View Media' : prev.label,
+                                    payload: t === 'media' ? '' : prev.payload
+                                  }));
+                                  if (t !== 'media') {
+                                    setSelectedFile(null);
+                                    setFilePreview(null);
+                                  }
+                                }}
                                 className={`p-2 rounded-lg text-xs font-medium border flex items-center justify-center gap-2 transition-all ${currentAction.type === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5'}`}
                              >
                                 {getActionIcon(t as ActionType)}
@@ -378,7 +486,35 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                        />
                     </div>
 
-                    {currentAction.type !== 'handoff' && (
+                    {currentAction.type === 'media' ? (
+                       <div>
+                          <label className="text-xs font-medium text-slate-300 mb-1 block">Media File</label>
+                          <input 
+                            type="file" 
+                            accept="image/*,audio/*,video/*,application/pdf"
+                            onChange={handleFileSelect}
+                            className="w-full p-2.5 rounded-xl glass-input text-sm file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 file:cursor-pointer"
+                          />
+                          {filePreview && (
+                            <div className="mt-2 rounded-lg overflow-hidden border border-white/10">
+                              <img src={filePreview} alt="Preview" className="w-full max-h-48 object-contain" />
+                            </div>
+                          )}
+                          {selectedFile && (
+                            <div className="mt-2 text-xs text-slate-400">
+                              <p>File: {selectedFile.name}</p>
+                              <p>Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                              <p>Type: {getMediaType(selectedFile)}</p>
+                            </div>
+                          )}
+                          {currentAction.payload && !selectedFile && (
+                            <div className="mt-2 text-xs text-slate-400">
+                              <p>Current file: {currentAction.mediaType || 'media'}</p>
+                              {currentAction.fileSize && <p>Size: {(currentAction.fileSize / 1024 / 1024).toFixed(2)} MB</p>}
+                            </div>
+                          )}
+                       </div>
+                    ) : currentAction.type !== 'handoff' && (
                        <div>
                           <label className="text-xs font-medium text-slate-300 mb-1 block">
                              {currentAction.type === 'link' ? 'URL' : currentAction.type === 'whatsapp' ? 'WhatsApp Number' : 'Phone Number'}
@@ -421,10 +557,17 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
 
                     <button 
                        onClick={handleSaveAction}
-                       disabled={!currentAction.label}
-                       className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                       disabled={!currentAction.label || isUploading}
+                       className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2"
                     >
-                       {currentAction.id ? 'Update Action' : 'Add Action'}
+                       {isUploading ? (
+                         <>
+                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                           Uploading...
+                         </>
+                       ) : (
+                         currentAction.id ? 'Update Action' : 'Add Action'
+                       )}
                     </button>
                  </div>
                </div>
@@ -444,20 +587,27 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                            <div key={action.id} className="p-4 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center group hover:border-indigo-500/30 transition-all">
                               <div className="flex items-start gap-4">
                                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                                    {getActionIcon(action.type)}
+                                    {getActionIcon(action.type, action.mediaType)}
                                  </div>
                                  <div>
                                     <h4 className="text-white font-medium text-sm">{action.label}</h4>
                                     <p className="text-xs text-slate-400 mt-0.5">{action.description}</p>
-                                    <div className="mt-2 flex gap-2">
+                                    <div className="mt-2 flex gap-2 flex-wrap">
                                        <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-slate-300 uppercase">{action.type}</span>
-                                       {action.payload && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{action.payload}</span>}
+                                       {action.mediaType && <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 uppercase">{action.mediaType}</span>}
+                                       {action.fileSize && <span className="text-[10px] text-slate-500">{(action.fileSize / 1024 / 1024).toFixed(2)} MB</span>}
+                                       {action.type !== 'media' && action.payload && <span className="text-[10px] text-slate-500 truncate max-w-[150px]">{action.payload}</span>}
                                     </div>
                                  </div>
                               </div>
                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                  <button 
-                                    onClick={() => { setCurrentAction(action); setIsEditingAction(true); }}
+                                    onClick={() => { 
+                                      setCurrentAction(action); 
+                                      setIsEditingAction(true);
+                                      setSelectedFile(null);
+                                      setFilePreview(null);
+                                    }}
                                     className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
                                  >
                                     <Sliders className="w-4 h-4" />

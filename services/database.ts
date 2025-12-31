@@ -40,6 +40,8 @@ export const botService = {
         payload: action.payload,
         description: action.description || '',
         triggerMessage: action.trigger_message || undefined,
+        mediaType: action.media_type || undefined,
+        fileSize: action.file_size || undefined,
       })),
       userId: bot.user_id,
       brandingText: bot.branding_text || undefined,
@@ -86,6 +88,8 @@ export const botService = {
         payload: action.payload,
         description: action.description || '',
         triggerMessage: action.trigger_message || undefined,
+        mediaType: action.media_type || undefined,
+        fileSize: action.file_size || undefined,
       })),
       userId: data.user_id,
       brandingText: data.branding_text || undefined,
@@ -181,6 +185,8 @@ export const botService = {
           payload: action.payload,
           description: action.description,
           trigger_message: action.triggerMessage || null,
+          media_type: action.mediaType || null,
+          file_size: action.fileSize || null,
         }));
 
         await supabase

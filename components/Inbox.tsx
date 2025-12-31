@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot } from '../types';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File } from 'lucide-react';
 import { useNotification } from './Notification';
 
 interface InboxProps {
@@ -476,8 +476,19 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                                 {action.type === 'phone' && <Phone className="w-4 h-4 text-blue-400" />}
                                                 {action.type === 'whatsapp' && <MessageCircle className="w-4 h-4 text-green-400" />}
                                                 {action.type === 'handoff' && <Users className="w-4 h-4 text-orange-400" />}
+                                                {action.type === 'media' && (
+                                                  action.mediaType === 'image' ? <Image className="w-4 h-4 text-purple-400" /> :
+                                                  action.mediaType === 'video' ? <Video className="w-4 h-4 text-purple-400" /> :
+                                                  action.mediaType === 'audio' ? <Music className="w-4 h-4 text-purple-400" /> :
+                                                  <File className="w-4 h-4 text-purple-400" />
+                                                )}
                                                 <span className="text-slate-300 font-medium">{action.label}</span>
-                                                {action.payload && (
+                                                {action.type === 'media' && action.mediaType && (
+                                                  <span className="text-xs text-slate-500 ml-auto uppercase">
+                                                     {action.mediaType}
+                                                  </span>
+                                                )}
+                                                {action.type !== 'media' && action.payload && (
                                                    <span className="text-xs text-slate-500 ml-auto truncate max-w-[200px]">
                                                       {action.payload}
                                                    </span>

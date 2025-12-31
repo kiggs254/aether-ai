@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, ChatMessage, BotAction } from '../types';
-import { Send, User, Bot as BotIcon, RefreshCw, Eraser, AlertTriangle, Sparkles, ExternalLink, Phone, MessageCircle, Users, ArrowRight } from 'lucide-react';
+import { Send, User, Bot as BotIcon, RefreshCw, Eraser, AlertTriangle, Sparkles, ExternalLink, Phone, MessageCircle, Users, ArrowRight, Image, Video, Music, File } from 'lucide-react';
 import { createChatStream } from '../services/geminiService';
 import { conversationService } from '../services/database';
 import { useNotification } from './Notification';
@@ -152,6 +152,47 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
   const renderActionCard = (actionId: string) => {
       const action = bot.actions?.find(a => a.id === actionId);
       if (!action) return null;
+
+      // Handle media actions
+      if (action.type === 'media') {
+        const mediaType = action.mediaType || 'image';
+        
+        if (mediaType === 'image') {
+          return (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="rounded-xl overflow-hidden">
+                <img src={action.payload} alt={action.label || 'Media'} className="w-full max-h-96 object-contain" />
+              </div>
+            </div>
+          );
+        } else if (mediaType === 'video') {
+          return (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <video src={action.payload} controls className="w-full rounded-xl max-h-96" />
+            </div>
+          );
+        } else if (mediaType === 'audio') {
+          return (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <audio src={action.payload} controls className="w-full" />
+            </div>
+          );
+        } else if (mediaType === 'pdf') {
+          return (
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <a 
+                href={action.payload} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl transition-all"
+              >
+                <File className="w-5 h-5" />
+                <span>{action.label || 'View PDF'}</span>
+              </a>
+            </div>
+          );
+        }
+      }
 
       let icon = <ExternalLink className="w-5 h-5" />;
       let bgColor = 'bg-indigo-600';

@@ -1652,30 +1652,37 @@ export const generateWidgetJS = (): string => {
       hideWelcomeContainer();
     }
     
-    const msg = document.createElement('div');
-    msg.className = 'aether-msg ' + type;
-    msg.dataset.timestamp = currentMessageDate.getTime().toString();
+    // Create message bubble only if there's text or image content
+    // If there's only an actionId with no text/image, skip the bubble and only show action card
+    const hasTextOrImage = (text && text.trim()) || imageUrl;
+    let msg = null;
     
-    let content = '';
-    if (imageUrl) {
-      content += '<img src="' + imageUrl + '" alt="Uploaded image" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block;" />';
-    }
-    if (text) {
-      // Apply markdown parsing for bot messages, plain text for user messages
-      if (type === 'bot') {
-        content += parseMarkdown(text);
-      } else {
-        // User messages: just convert newlines and auto-link URLs
-        let processedText = text.split(String.fromCharCode(10)).join('<br>');
-        const urlRegex = new RegExp('(https?:\\/\\/[^\\s]+)', 'g');
-        processedText = processedText.replace(urlRegex, function(match) {
-          return '<a href="' + match + '" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">' + match + '</a>';
-        });
-        content += processedText;
+    if (hasTextOrImage) {
+      msg = document.createElement('div');
+      msg.className = 'aether-msg ' + type;
+      msg.dataset.timestamp = currentMessageDate.getTime().toString();
+      
+      let content = '';
+      if (imageUrl) {
+        content += '<img src="' + imageUrl + '" alt="Uploaded image" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block;" />';
       }
+      if (text && text.trim()) {
+        // Apply markdown parsing for bot messages, plain text for user messages
+        if (type === 'bot') {
+          content += parseMarkdown(text);
+        } else {
+          // User messages: just convert newlines and auto-link URLs
+          let processedText = text.split(String.fromCharCode(10)).join('<br>');
+          const urlRegex = new RegExp('(https?:\\/\\/[^\\s]+)', 'g');
+          processedText = processedText.replace(urlRegex, function(match) {
+            return '<a href="' + match + '" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">' + match + '</a>';
+          });
+          content += processedText;
+        }
+      }
+      msg.innerHTML = content;
+      messages.appendChild(msg);
     }
-    msg.innerHTML = content;
-    messages.appendChild(msg);
     
     if (actionId && bot.actions) {
       const action = bot.actions.find(a => a.id === actionId);
@@ -1711,7 +1718,7 @@ export const generateWidgetJS = (): string => {
             '<span>' + action.label + '</span>' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
           '</a>';
-        // Insert action card right after the message element
+        // Insert action card - after message if it exists, otherwise append to messages
         if (msg && msg.parentNode) {
           msg.parentNode.insertBefore(actionCard, msg.nextSibling);
         } else if (messages) {
@@ -2128,7 +2135,15 @@ export const generateWidgetJS = (): string => {
           
           // Add message to UI
           var role = msg.role === 'user' ? 'user' : 'bot';
-          addMessage(msg.text || '', role, actionId);
+          
+          // If this is an action message, don't show the text bubble - just the action card
+          if (actionId) {
+            // Only add the action card, no message bubble
+            addMessage('', role, actionId);
+          } else {
+            // Regular message - show both text and any action
+            addMessage(msg.text || '', role, actionId);
+          }
           
           // Add to messageHistory for context
           messageHistory.push({ role: msg.role, text: msg.text || '' });

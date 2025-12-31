@@ -160,18 +160,9 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
     fileType: file.type
   });
   
-  // Check if bucket exists first
-  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-  if (listError) {
-    console.error('Error listing buckets:', listError);
-  } else {
-    const assetsBucket = buckets?.find(b => b.id === 'Assets');
-    if (!assetsBucket) {
-      throw new Error(`Storage bucket 'Assets' not found. Please create it in Supabase Dashboard: Storage > Buckets > New Bucket (Name: Assets, Public: true)`);
-    }
-  }
-  
   // Upload file to Supabase storage
+  // Note: We skip bucket existence check since listBuckets() may require special permissions
+  // If the bucket doesn't exist, Supabase will return a clear error message
   const { data, error } = await supabase.storage
     .from('Assets')
     .upload(filePath, file, {
@@ -187,7 +178,12 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
     console.error('Original filename:', file.name);
     
     // Provide more helpful error messages
-    if (error.message?.includes('Invalid key') || error.message?.includes('not found') || error.message?.includes('Bucket')) {
+    if (error.message?.includes('Invalid key')) {
+      // This usually means the filename/path has invalid characters
+      throw new Error(`Invalid file path. The filename may contain unsupported characters. Please try renaming the file.`);
+    }
+    
+    if (error.message?.includes('not found') || error.message?.includes('Bucket') || error.message?.includes('does not exist')) {
       throw new Error(`Storage bucket 'Assets' not found. Please create it in Supabase Dashboard: Storage > Buckets > New Bucket (Name: Assets, Public: true)`);
     }
     

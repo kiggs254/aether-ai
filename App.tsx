@@ -839,7 +839,7 @@ const AppContent: React.FC = () => {
           </div>
         </header>
         
-        <div className="px-4 sm:px-6 lg:px-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] lg:min-h-screen">
+        <div className="px-4 sm:px-6 lg:px-8 pt-6 lg:pt-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)] lg:min-h-screen">
           {renderContent()}
         </div>
       </main>

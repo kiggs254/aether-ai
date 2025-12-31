@@ -164,7 +164,8 @@ export const generateWidgetJS = (): string => {
                 type: action.type,
                 label: action.label,
                 payload: action.payload,
-                description: action.description || ''
+                description: action.description || '',
+                triggerMessage: action.trigger_message || undefined
               };
             });
             console.log('Mapped actions:', botConfig.actions);
@@ -310,7 +311,8 @@ export const generateWidgetJS = (): string => {
           type: action.type,
           label: action.label,
           payload: action.payload,
-          description: action.description || ''
+          description: action.description || '',
+          triggerMessage: action.trigger_message || undefined
         };
       });
     }
@@ -362,7 +364,8 @@ export const generateWidgetJS = (): string => {
           type: action.type,
           label: action.label,
           payload: action.payload,
-          description: action.description || ''
+          description: action.description || '',
+          triggerMessage: action.trigger_message || undefined
         };
       });
     }
@@ -1937,7 +1940,17 @@ export const generateWidgetJS = (): string => {
       // Clean and finalize message text when function call is found
       if (functionCallFound || actionId) {
         fullText = cleanTriggerActionText(fullText);
-        const finalText = fullText || "I've triggered the requested action for you.";
+        
+        // Get custom trigger message from action if available
+        let defaultMessage = "I've triggered the requested action for you.";
+        if (actionId && bot.actions) {
+          const action = bot.actions.find(a => a.id === actionId);
+          if (action && action.triggerMessage) {
+            defaultMessage = action.triggerMessage;
+          }
+        }
+        
+        const finalText = fullText || defaultMessage;
         updateMessage(finalText);
         messageHistory.push({ role: 'model', text: finalText });
         

@@ -39,6 +39,7 @@ export const botService = {
         label: action.label,
         payload: action.payload,
         description: action.description || '',
+        triggerMessage: action.trigger_message || undefined,
       })),
       userId: bot.user_id,
     }));
@@ -83,6 +84,7 @@ export const botService = {
         label: action.label,
         payload: action.payload,
         description: action.description || '',
+        triggerMessage: action.trigger_message || undefined,
       })),
       userId: data.user_id,
     };
@@ -175,6 +177,7 @@ export const botService = {
           label: action.label,
           payload: action.payload,
           description: action.description,
+          trigger_message: action.triggerMessage || null,
         }));
 
         await supabase

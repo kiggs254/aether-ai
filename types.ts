@@ -6,6 +6,7 @@ export interface BotAction {
   label: string;
   payload: string; // URL, Phone Number, or Function ID
   description: string; // Instruction for the AI on when to use this
+  triggerMessage?: string; // Custom message to show when action is triggered
 }
 
 export type AIProvider = 'gemini' | 'openai';

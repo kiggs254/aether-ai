@@ -410,6 +410,22 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                        />
                     </div>
 
+                    <div>
+                       <label className="text-xs font-medium text-slate-300 mb-1 block">
+                         Trigger Message <span className="text-slate-500">(optional)</span>
+                       </label>
+                       <input 
+                         type="text" 
+                         value={currentAction.triggerMessage || ''}
+                         onChange={(e) => setCurrentAction(prev => ({ ...prev, triggerMessage: e.target.value }))}
+                         placeholder="e.g., 'Opening the link for you...' or leave empty for default"
+                         className="w-full p-2.5 rounded-xl glass-input text-sm placeholder-slate-600"
+                       />
+                       <p className="text-xs text-slate-500 mt-1">
+                         Custom message shown when this action is triggered. Leave empty to use default message.
+                       </p>
+                    </div>
+
                     <button 
                        onClick={handleSaveAction}
                        disabled={!currentAction.label}

@@ -115,7 +115,7 @@ export const generateWidgetJS = (): string => {
         headers['Authorization'] = 'Bearer ' + supabaseAnonKey;
       }
       
-      const response = await fetch(supabaseUrl + '/rest/v1/bots?id=eq.' + botId + '&select=*', {
+      const response = await fetch(supabaseUrl + '/rest/v1/bots?id=eq.' + botId + '&select=*,bot_actions(*)', {
         method: 'GET',
         headers: headers,
       });
@@ -125,6 +125,21 @@ export const generateWidgetJS = (): string => {
         if (data && data.length > 0) {
           const botConfig = data[0];
           console.log('Fetched bot config for:', botId);
+          
+          // Map bot_actions to actions format
+          if (botConfig.bot_actions) {
+            botConfig.actions = botConfig.bot_actions.map(function(action) {
+              return {
+                id: action.id,
+                type: action.type,
+                label: action.label,
+                payload: action.payload,
+                description: action.description || ''
+              };
+            });
+          } else {
+            botConfig.actions = [];
+          }
           
           // Cache the config
           try {
@@ -240,6 +255,22 @@ export const generateWidgetJS = (): string => {
     }
     
     // Build bot object from fetched config
+    // Map bot_actions to actions if not already mapped
+    let actions = [];
+    if (fetchedBot.actions && Array.isArray(fetchedBot.actions)) {
+      actions = fetchedBot.actions;
+    } else if (fetchedBot.bot_actions && Array.isArray(fetchedBot.bot_actions)) {
+      actions = fetchedBot.bot_actions.map(function(action) {
+        return {
+          id: action.id,
+          type: action.type,
+          label: action.label,
+          payload: action.payload,
+          description: action.description || ''
+        };
+      });
+    }
+    
     bot = {
       id: fetchedBot.id || integrationConfig.botId,
       name: fetchedBot.name || 'Chat Assistant',
@@ -248,7 +279,7 @@ export const generateWidgetJS = (): string => {
       provider: fetchedBot.provider || 'gemini',
       model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : 'gemini-3-flash-preview'),
       temperature: fetchedBot.temperature ?? 0.7,
-      actions: fetchedBot.actions || [],
+      actions: actions,
       collectLeads: collectLeads // Use collectLeads from integration config
     };
     
@@ -275,6 +306,22 @@ export const generateWidgetJS = (): string => {
     welcomeMessage = config.welcomeMessage || ('Hello! I am ' + (fetchedBot.name || 'Chat Assistant') + '. How can I assist you?');
     collectLeads = config.collectLeads !== undefined ? config.collectLeads : (fetchedBot.collect_leads || fetchedBot.collectLeads || false);
     
+    // Map bot_actions to actions if not already mapped
+    let actions = [];
+    if (fetchedBot.actions && Array.isArray(fetchedBot.actions)) {
+      actions = fetchedBot.actions;
+    } else if (fetchedBot.bot_actions && Array.isArray(fetchedBot.bot_actions)) {
+      actions = fetchedBot.bot_actions.map(function(action) {
+        return {
+          id: action.id,
+          type: action.type,
+          label: action.label,
+          payload: action.payload,
+          description: action.description || ''
+        };
+      });
+    }
+    
     bot = {
       id: fetchedBot.id || config.botId,
       name: fetchedBot.name || 'Chat Assistant',
@@ -283,7 +330,7 @@ export const generateWidgetJS = (): string => {
       provider: fetchedBot.provider || 'gemini',
       model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : 'gemini-3-flash-preview'),
       temperature: fetchedBot.temperature ?? 0.7,
-      actions: fetchedBot.actions || [],
+      actions: actions,
       collectLeads: collectLeads
     };
     

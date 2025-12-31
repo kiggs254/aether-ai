@@ -42,19 +42,33 @@ try {
 }
 
 try {
+  // Remove existing files first (ignore errors if they don't exist)
+  console.log('  🗑️  Removing existing files (if any)...');
+  try {
+    execSync('supabase storage rm ss:///Assets/public/widget.js --experimental --linked --yes', { stdio: 'ignore' });
+  } catch (e) {
+    // File might not exist, ignore error
+  }
+  try {
+    execSync('supabase storage rm ss:///Assets/public/widget.css --experimental --linked --yes', { stdio: 'ignore' });
+  } catch (e) {
+    // File might not exist, ignore error
+  }
+  
   // Upload widget.js
   console.log('  📤 Uploading widget.js...');
-  execSync('supabase storage cp public/widget.js Assets/public/widget.js --experimental --linked', { stdio: 'inherit' });
+  execSync('supabase storage cp public/widget.js ss:///Assets/public/widget.js --experimental --linked', { stdio: 'inherit' });
   
   // Upload widget.css
   console.log('  📤 Uploading widget.css...');
-  execSync('supabase storage cp public/widget.css Assets/public/widget.css --experimental --linked', { stdio: 'inherit' });
+  execSync('supabase storage cp public/widget.css ss:///Assets/public/widget.css --experimental --linked', { stdio: 'inherit' });
   
   console.log('✅ Files uploaded to Supabase storage\n');
 } catch (error) {
   console.error('❌ Error uploading to Supabase storage:', error.message);
   console.error('   Make sure you are logged in: supabase login');
   console.error('   And linked to your project: supabase link');
+  console.error('   And that the Assets bucket exists in your Supabase project');
   process.exit(1);
 }
 

@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }`}
               >
                 <div className="relative">
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-white'}`} />
+                <item.icon className={`w-5 h-5 ${isActive ? 'text-indigo-400' : 'text-slate-400 group-hover:text-white'}`} />
                   {showUnreadBadge && (
                     <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-[#050505] animate-pulse">
                       {unreadCount > 99 ? '99+' : unreadCount}

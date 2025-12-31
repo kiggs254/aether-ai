@@ -184,23 +184,23 @@ export const createChatStream = async (
       if (!ai) {
         throw new Error('AI client not initialized. Set USE_EDGE_FUNCTION=false and provide API_KEY.');
       }
-      const tools = buildTools(bot);
-      
-      const chat = ai.chats.create({
-        model: bot.model || 'gemini-3-flash-preview',
-        config: {
-          systemInstruction: buildSystemInstruction(bot),
-          temperature: bot.temperature ?? 0.7,
-          tools: tools,
-        },
-        history: history.map(h => ({
-          role: h.role,
+    const tools = buildTools(bot);
+    
+    const chat = ai.chats.create({
+      model: bot.model || 'gemini-3-flash-preview',
+      config: {
+        systemInstruction: buildSystemInstruction(bot),
+        temperature: bot.temperature ?? 0.7,
+        tools: tools,
+      },
+      history: history.map(h => ({
+        role: h.role,
           parts: [{ text: h.text }]
-        }))
-      });
+      }))
+    });
 
-      const result = await chat.sendMessageStream({ message: newMessage });
-      return result;
+    const result = await chat.sendMessageStream({ message: newMessage });
+    return result;
     }
   } catch (error) {
     console.error("AI API Error:", error);
@@ -270,23 +270,23 @@ export const generateBotResponse = async (
       if (!ai) {
         throw new Error('AI client not initialized. Set USE_EDGE_FUNCTION=false and provide API_KEY.');
       }
-      const tools = buildTools(bot);
+    const tools = buildTools(bot);
 
-      const chat = ai.chats.create({
-        model: bot.model || 'gemini-3-flash-preview',
-        config: {
-          systemInstruction: buildSystemInstruction(bot),
-          temperature: bot.temperature ?? 0.7,
-          tools: tools,
-        },
-        history: history.map(h => ({
-          role: h.role,
-          parts: [{ text: h.text }]
-        }))
-      });
+    const chat = ai.chats.create({
+      model: bot.model || 'gemini-3-flash-preview',
+      config: {
+        systemInstruction: buildSystemInstruction(bot),
+        temperature: bot.temperature ?? 0.7,
+        tools: tools,
+      },
+      history: history.map(h => ({
+        role: h.role,
+        parts: [{ text: h.text }]
+      }))
+    });
 
-      const result: GenerateContentResponse = await chat.sendMessage({ message: newMessage });
-      return result.text || "I'm having trouble thinking right now.";
+    const result: GenerateContentResponse = await chat.sendMessage({ message: newMessage });
+    return result.text || "I'm having trouble thinking right now.";
     }
   } catch (error) {
     console.error("AI API Error:", error);
@@ -340,19 +340,19 @@ export const optimizeSystemInstruction = async (currentInstruction: string, botN
       if (!ai) {
         return currentInstruction;
       }
-      const model = ai.models;
-      const response = await model.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `
-          Act as an expert prompt engineer. Improve the following system instruction for an AI bot named "${botName}".
-          Make it more robust, clear, and effective, while keeping the original intent.
-          
-          Original Instruction: "${currentInstruction}"
-          
-          Return ONLY the improved instruction text, nothing else.
-        `,
-      });
-      return response.text?.trim() || currentInstruction;
+    const model = ai.models;
+    const response = await model.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `
+        Act as an expert prompt engineer. Improve the following system instruction for an AI bot named "${botName}".
+        Make it more robust, clear, and effective, while keeping the original intent.
+        
+        Original Instruction: "${currentInstruction}"
+        
+        Return ONLY the improved instruction text, nothing else.
+      `,
+    });
+    return response.text?.trim() || currentInstruction;
     }
   } catch (e) {
     console.error(e);
@@ -396,12 +396,12 @@ export const suggestBotDescription = async (botName: string): Promise<string> =>
       if (!ai) {
         return "A helpful AI assistant.";
       }
-      const model = ai.models;
-      const response = await model.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Write a short, catchy 1-sentence description for an AI chatbot named "${botName}".`,
-      });
-      return response.text?.trim() || "A helpful AI assistant.";
+    const model = ai.models;
+    const response = await model.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Write a short, catchy 1-sentence description for an AI chatbot named "${botName}".`,
+    });
+    return response.text?.trim() || "A helpful AI assistant.";
     }
   } catch (e) {
     return "A custom AI assistant.";

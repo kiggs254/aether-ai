@@ -125,9 +125,12 @@ export const generateWidgetJS = (): string => {
         if (data && data.length > 0) {
           const botConfig = data[0];
           console.log('Fetched bot config for:', botId);
+          console.log('Raw bot config response:', botConfig);
+          console.log('bot_actions in response:', botConfig.bot_actions);
           
           // Map bot_actions to actions format
-          if (botConfig.bot_actions) {
+          if (botConfig.bot_actions && Array.isArray(botConfig.bot_actions) && botConfig.bot_actions.length > 0) {
+            console.log('Mapping', botConfig.bot_actions.length, 'bot_actions to actions');
             botConfig.actions = botConfig.bot_actions.map(function(action) {
               return {
                 id: action.id,
@@ -137,7 +140,9 @@ export const generateWidgetJS = (): string => {
                 description: action.description || ''
               };
             });
+            console.log('Mapped actions:', botConfig.actions);
           } else {
+            console.warn('No bot_actions found in response. bot_actions value:', botConfig.bot_actions);
             botConfig.actions = [];
           }
           
@@ -159,6 +164,13 @@ export const generateWidgetJS = (): string => {
       } else {
         const errorText = await response.text();
         console.error('Failed to fetch bot config:', response.status, errorText);
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('Error details:', errorJson);
+        } catch (e) {
+          // Not JSON, already logged as text
+        }
         return null;
       }
     } catch (err) {

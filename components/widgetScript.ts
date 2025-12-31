@@ -139,7 +139,10 @@ export const generateWidgetJS = (): string => {
         headers['Authorization'] = 'Bearer ' + supabaseAnonKey;
       }
       
-      const response = await fetch(supabaseUrl + '/rest/v1/bots?id=eq.' + botId + '&select=*,bot_actions(*)', {
+      // Query bot with bot_actions - using proper PostgREST syntax
+      const queryUrl = supabaseUrl + '/rest/v1/bots?id=eq.' + botId + '&select=*,bot_actions(*)';
+      console.log('Fetching bot config from URL:', queryUrl);
+      const response = await fetch(queryUrl, {
         method: 'GET',
         headers: headers,
       });

@@ -42,6 +42,7 @@ export const botService = {
         triggerMessage: action.trigger_message || undefined,
       })),
       userId: bot.user_id,
+      brandingText: bot.branding_text || undefined,
     }));
   },
 
@@ -87,6 +88,7 @@ export const botService = {
         triggerMessage: action.trigger_message || undefined,
       })),
       userId: data.user_id,
+      brandingText: data.branding_text || undefined,
     };
   },
 
@@ -108,6 +110,7 @@ export const botService = {
       provider: bot.provider || 'gemini',
       status: bot.status,
       collect_leads: bot.collectLeads || false,
+      branding_text: bot.brandingText || null,
     };
 
     let savedBot;

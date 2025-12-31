@@ -269,7 +269,7 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
             </button>
           </div>
           <p className="text-center text-[10px] text-slate-600 mt-3 flex items-center justify-center gap-1">
-            <Sparkles className="w-3 h-3" /> Powered by Gemini
+            <Sparkles className="w-3 h-3" /> {bot.brandingText || 'Powered by Aether AI'}
           </p>
         </div>
       </div>

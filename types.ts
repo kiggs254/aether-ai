@@ -29,6 +29,7 @@ export interface Bot {
   collectLeads?: boolean;
   actions?: BotAction[]; // New field for actions
   userId?: string; // Supabase user ID
+  brandingText?: string; // Custom "Powered by" text for premium users
 }
 
 export interface ChatMessage {

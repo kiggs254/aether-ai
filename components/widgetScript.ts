@@ -256,6 +256,10 @@ export const generateWidgetJS = (): string => {
     if (!bot.actions) {
       bot.actions = [];
     }
+    // Ensure brandingText exists (for old format)
+    if (!bot.brandingText) {
+      bot.brandingText = undefined;
+    }
     theme = config.theme || 'dark';
     position = config.position || 'right';
     brandColor = config.brandColor || '#6366f1';
@@ -326,7 +330,8 @@ export const generateWidgetJS = (): string => {
       model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : 'gemini-3-flash-preview'),
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
-      collectLeads: collectLeads // Use collectLeads from integration config
+      collectLeads: collectLeads, // Use collectLeads from integration config
+      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined
     };
     
     console.log('Integration and bot configs loaded successfully');
@@ -379,7 +384,8 @@ export const generateWidgetJS = (): string => {
       model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : 'gemini-3-flash-preview'),
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
-      collectLeads: collectLeads
+      collectLeads: collectLeads,
+      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined
     };
     
     console.log('Bot config loaded and merged with UI overrides');
@@ -389,8 +395,8 @@ export const generateWidgetJS = (): string => {
     return;
   }
 
-  // Determine provider text for "Powered by"
-  const providerText = bot.provider === 'openai' ? 'OpenAI' : (bot.provider === 'gemini' ? 'Gemini' : 'AI');
+  // Determine branding text - use custom if provided, otherwise default to "Powered by Aether AI"
+  const brandingText = bot.brandingText || 'Powered by Aether AI';
 
   // Inject HTML
   const container = document.createElement('div');
@@ -409,7 +415,7 @@ export const generateWidgetJS = (): string => {
       '</div>' +
       '<div class="aether-header-content">' +
         '<div class="aether-title">' + (config.name || bot.name || 'Chat Assistant') + '</div>' +
-        '<div class="aether-subtitle">Powered by ' + providerText + '</div>' +
+        '<div class="aether-subtitle">' + brandingText + '</div>' +
       '</div>' +
       '<button class="aether-close-window-btn" id="aether-close-window-btn" type="button">' +
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +

@@ -20,6 +20,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [provider, setProvider] = useState<'gemini' | 'openai'>(bot?.provider || 'gemini');
   const [model, setModel] = useState(bot?.model || 'gemini-3-flash-preview');
   const [actions, setActions] = useState<BotAction[]>(bot?.actions || []);
+  const [brandingText, setBrandingText] = useState(bot?.brandingText || '');
   
   const [activeTab, setActiveTab] = useState<'persona' | 'knowledge' | 'actions'>('persona');
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -42,6 +43,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setProvider(bot.provider || 'gemini');
       setModel(bot.model || 'gemini-3-flash-preview');
       setActions(bot.actions || []);
+      setBrandingText(bot.brandingText || '');
     } else {
       setName('');
       setDescription('');
@@ -52,6 +54,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setProvider('gemini');
       setModel('gemini-3-flash-preview');
       setActions([]);
+      setBrandingText('');
     }
   }, [bot]);
 
@@ -70,7 +73,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       model,
       provider,
       status: bot?.status || 'active',
-      actions
+      actions,
+      brandingText: brandingText.trim() || undefined
     };
     onSave(newBot);
     setSaveStatus('saved');
@@ -319,6 +323,21 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             </>
                           )}
                         </select>
+                     </div>
+                     
+                     <div className="pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-2">
+                           <label className="text-sm text-slate-300">Branding Text</label>
+                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={brandingText}
+                          onChange={(e) => setBrandingText(e.target.value)}
+                          placeholder="Powered by Aether AI"
+                          className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm"
+                        />
+                        <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>
                      </div>
                   </div>
                </div>

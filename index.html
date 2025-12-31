@@ -25,20 +25,79 @@
         background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
       }
 
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
+      /* Custom Scrollbar - Hidden by default, auto-hide on scrollable containers */
+      /* Hide scrollbars globally */
+      * {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE and Edge */
+      }
+      
+      *::-webkit-scrollbar {
         width: 6px;
         height: 6px;
       }
-      ::-webkit-scrollbar-track {
-        background: transparent; 
+      
+      *::-webkit-scrollbar-track {
+        background: transparent;
       }
-      ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.1); 
+      
+      *::-webkit-scrollbar-thumb {
+        background: transparent;
+        border-radius: 10px;
+        transition: background 0.3s ease;
+      }
+      
+      /* Show scrollbar on hover for elements with overflow classes */
+      [class*="overflow"]:hover::-webkit-scrollbar-thumb,
+      [class*="overflow-y"]:hover::-webkit-scrollbar-thumb,
+      [class*="overflow-x"]:hover::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      
+      [class*="overflow"]:hover::-webkit-scrollbar-thumb:hover,
+      [class*="overflow-y"]:hover::-webkit-scrollbar-thumb:hover,
+      [class*="overflow-x"]:hover::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      
+      /* Firefox - show on hover for overflow elements */
+      [class*="overflow"]:hover,
+      [class*="overflow-y"]:hover,
+      [class*="overflow-x"]:hover {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+      }
+      
+      /* Always show scrollbar in text areas, inputs, and elements with show-scrollbar class */
+      textarea,
+      textarea::-webkit-scrollbar,
+      input[type="text"],
+      input[type="text"]::-webkit-scrollbar,
+      input[type="email"],
+      input[type="email"]::-webkit-scrollbar,
+      input[type="password"],
+      input[type="password"]::-webkit-scrollbar,
+      .show-scrollbar,
+      .show-scrollbar::-webkit-scrollbar {
+        scrollbar-width: thin !important;
+        scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+      }
+      
+      textarea::-webkit-scrollbar-thumb,
+      input[type="text"]::-webkit-scrollbar-thumb,
+      input[type="email"]::-webkit-scrollbar-thumb,
+      input[type="password"]::-webkit-scrollbar-thumb,
+      .show-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1) !important;
         border-radius: 10px;
       }
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2); 
+      
+      textarea:hover::-webkit-scrollbar-thumb,
+      input[type="text"]:hover::-webkit-scrollbar-thumb,
+      input[type="email"]:hover::-webkit-scrollbar-thumb,
+      input[type="password"]:hover::-webkit-scrollbar-thumb,
+      .show-scrollbar:hover::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2) !important;
       }
       
       .glass-panel {

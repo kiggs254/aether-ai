@@ -19,7 +19,6 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [temperature, setTemperature] = useState(bot?.temperature ?? 0.7);
   const [provider, setProvider] = useState<'gemini' | 'openai'>(bot?.provider || 'gemini');
   const [model, setModel] = useState(bot?.model || 'gemini-3-flash-preview');
-  const [collectLeads, setCollectLeads] = useState(bot?.collectLeads || false);
   const [actions, setActions] = useState<BotAction[]>(bot?.actions || []);
   
   const [activeTab, setActiveTab] = useState<'persona' | 'knowledge' | 'actions'>('persona');
@@ -42,7 +41,6 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setTemperature(bot.temperature ?? 0.7);
       setProvider(bot.provider || 'gemini');
       setModel(bot.model || 'gemini-3-flash-preview');
-      setCollectLeads(bot.collectLeads || false);
       setActions(bot.actions || []);
     } else {
       setName('');
@@ -53,7 +51,6 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setTemperature(0.7);
       setProvider('gemini');
       setModel('gemini-3-flash-preview');
-      setCollectLeads(false);
       setActions([]);
     }
   }, [bot]);
@@ -73,7 +70,6 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       model,
       provider,
       status: bot?.status || 'active',
-      collectLeads,
       actions
     };
     onSave(newBot);
@@ -259,28 +255,6 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                   </h3>
                   
                   <div className="space-y-4">
-                     {/* Lead Collection Toggle */}
-                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                        <div className="flex items-center gap-3">
-                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
-                              <UserPlus className="w-4 h-4" />
-                           </div>
-                           <div>
-                              <div className="text-sm font-medium text-white">Collect Leads</div>
-                              <div className="text-[10px] text-slate-400">Require email before chat</div>
-                           </div>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                           <input 
-                              type="checkbox" 
-                              checked={collectLeads} 
-                              onChange={(e) => setCollectLeads(e.target.checked)}
-                              className="sr-only peer" 
-                           />
-                           <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                        </label>
-                     </div>
-
                      <div>
                         <div className="flex justify-between mb-2">
                            <label className="text-sm text-slate-300">Creativity (Temperature)</label>

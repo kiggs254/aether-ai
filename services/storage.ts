@@ -72,7 +72,7 @@ export function validateMediaFile(file: File): { valid: boolean; error?: string 
 
 /**
  * Sanitize filename to prevent path traversal and special characters
- * Supabase storage requires URL-safe filenames
+ * Supabase storage requires URL-safe filenames without spaces or special chars
  */
 function sanitizeFilename(filename: string): string {
   // Extract just the filename (remove any path)
@@ -81,23 +81,40 @@ function sanitizeFilename(filename: string): string {
   // Remove extension temporarily
   const lastDot = baseName.lastIndexOf('.');
   const nameWithoutExt = lastDot > 0 ? baseName.substring(0, lastDot) : baseName;
-  const extension = lastDot > 0 ? baseName.substring(lastDot) : '';
+  const extension = lastDot > 0 ? baseName.substring(lastDot).toLowerCase() : '';
   
-  // Sanitize the name part: replace spaces and special characters
-  const sanitized = nameWithoutExt
-    .replace(/\s+/g, '_') // Replace spaces with underscores
-    .replace(/[\/\\<>:"|?*]/g, '_') // Replace dangerous characters
-    .replace(/\.\./g, '_') // Replace parent directory references
-    .replace(/[^\w\-_.]/g, '_') // Replace any non-word characters (except - and _)
+  // Supabase Storage requires URL-safe filenames
+  // Only allow: alphanumeric, hyphens, underscores, and dots
+  // Replace everything else with underscores
+  let sanitized = nameWithoutExt
+    .replace(/[^a-zA-Z0-9\-_.]/g, '_') // Replace ANY non-allowed character with underscore
     .replace(/_+/g, '_') // Replace multiple underscores with single
     .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
     .trim();
   
-  // Ensure we have a valid name
-  const finalName = sanitized || 'file';
+  // If after sanitization we have nothing, use a default
+  if (!sanitized || sanitized.length === 0) {
+    sanitized = 'file';
+  }
+  
+  // Limit length to avoid issues (keep it reasonable, e.g., 200 chars)
+  if (sanitized.length > 200) {
+    sanitized = sanitized.substring(0, 200);
+  }
   
   // Return sanitized name with extension
-  return finalName + extension;
+  let finalName = sanitized + extension;
+  
+  // Final safety check: ensure no problematic characters remain
+  // This should never happen, but just in case
+  finalName = finalName.replace(/[^a-zA-Z0-9\-_.]/g, '_');
+  
+  // Final validation: ensure the name is not empty
+  if (!finalName || finalName.trim().length === 0) {
+    finalName = 'file' + (extension || '.bin');
+  }
+  
+  return finalName;
 }
 
 /**
@@ -119,9 +136,21 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
   // Sanitize filename - ensure it's URL-safe
   const sanitizedFilename = sanitizeFilename(file.name);
   
+  // Double-check: ensure no spaces or invalid characters in the final filename
+  if (sanitizedFilename.includes(' ') || sanitizedFilename.includes('/') || sanitizedFilename.includes('\\')) {
+    console.error('Filename sanitization failed! Original:', file.name, 'Sanitized:', sanitizedFilename);
+    throw new Error('Filename contains invalid characters after sanitization. Please rename the file.');
+  }
+  
   // Create file path: media/{botId}/{timestamp}-{filename}
   const timestamp = Date.now();
   const filePath = `media/${botId}/${timestamp}-${sanitizedFilename}`;
+  
+  // Final validation: ensure path doesn't contain spaces
+  if (filePath.includes(' ')) {
+    console.error('File path contains spaces! Path:', filePath);
+    throw new Error('File path contains invalid characters. Please try a different filename.');
+  }
   
   console.log('Uploading file:', {
     originalName: file.name,

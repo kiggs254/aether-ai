@@ -1956,7 +1956,10 @@ export const generateWidgetJS = (): string => {
             saveMessage(conversationId, 'model', fullText);
           }
         } else {
-          // No text content, just the action - don't show empty message
+          // No text content, just the action - remove the empty message bubble
+          if (botMsg && botMsg.parentNode) {
+            botMsg.parentNode.removeChild(botMsg);
+          }
           // The action card will show the trigger message
         }
       } else if (fullText) {
@@ -1992,15 +1995,18 @@ export const generateWidgetJS = (): string => {
             btnClass = 'bg-indigo-600';
           }
           
+          // Get trigger message to show in action card (replaces "Click below to proceed:")
+          const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+          
           actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-            (action.type === 'handoff' ? 'Transferring you to an agent...' : 'Click below to proceed:') +
+            triggerMessage +
             '</div>' +
             '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
               iconSvg +
               '<span>' + action.label + '</span>' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
             '</a>';
-          // Insert action card right after the message bubble
+          // Insert action card - if botMsg was removed, append to messages container
           if (botMsg && botMsg.parentNode) {
             botMsg.parentNode.insertBefore(actionCard, botMsg.nextSibling);
           } else if (messages) {

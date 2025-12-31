@@ -2,6 +2,8 @@
 -- This is needed for the widget to fetch actions when loading bot configuration
 -- Actions are public-facing UI elements (links, phone numbers) meant to be displayed in the widget
 
+DROP POLICY IF EXISTS "Allow anonymous to read bot_actions" ON bot_actions;
+
 CREATE POLICY "Allow anonymous to read bot_actions"
   ON bot_actions
   FOR SELECT

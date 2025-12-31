@@ -96,13 +96,37 @@ export const generateWidgetJS = (): string => {
         const cachedData = JSON.parse(cached);
         const cacheAge = Date.now() - cachedData.timestamp;
         const cacheExpiry = 5 * 60 * 1000; // 5 minutes
-        if (cacheAge < cacheExpiry) {
+        
+        // If cached config doesn't have actions or has empty actions, force refresh
+        const hasActions = cachedData.config && cachedData.config.actions && Array.isArray(cachedData.config.actions) && cachedData.config.actions.length > 0;
+        const hasBotActions = cachedData.config && cachedData.config.bot_actions && Array.isArray(cachedData.config.bot_actions) && cachedData.config.bot_actions.length > 0;
+        
+        if (cacheAge < cacheExpiry && (hasActions || hasBotActions)) {
           console.log('Using cached bot config for:', botId);
+          // Ensure actions are mapped if we have bot_actions but not actions
+          if (hasBotActions && !hasActions) {
+            cachedData.config.actions = cachedData.config.bot_actions.map(function(action) {
+              return {
+                id: action.id,
+                type: action.type,
+                label: action.label,
+                payload: action.payload,
+                description: action.description || ''
+              };
+            });
+            // Update cache with mapped actions
+            sessionStorage.setItem(cacheKey, JSON.stringify(cachedData));
+          }
           return cachedData.config;
+        } else if (cacheAge < cacheExpiry && !hasActions && !hasBotActions) {
+          // Cache exists but no actions - clear it and fetch fresh
+          console.log('Cached config has no actions, clearing cache and fetching fresh');
+          sessionStorage.removeItem(cacheKey);
         }
       }
     } catch (e) {
       // Cache read failed, continue to fetch
+      console.warn('Cache read failed:', e);
     }
     
     try {

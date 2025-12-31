@@ -588,50 +588,72 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                          </div>
                       </div>
                       
-                      {/* Widget Simulation (MATCHING THE INJECTED CSS) */}
+                      {/* Widget Simulation (MATCHING THE ACTUAL WIDGET) */}
                       <div 
-                         className="absolute flex flex-col items-end gap-5"
+                         className="absolute"
                          style={{ 
                             bottom: '24px', 
                             [position]: '24px',
-                            alignItems: position === 'right' ? 'flex-end' : 'flex-start'
                          }}
                       >
-                         {/* Chat Window */}
+                         {/* Chat Window - Desktop: 400px x 700px, Mobile: Full screen */}
                          <div 
                             className={`
-                               width-[400px] h-[600px] rounded-[24px] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom border
-                               ${isWidgetOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4 pointer-events-none'}
+                               w-[400px] h-[700px] rounded-[24px] shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom border
+                               ${isWidgetOpen ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-[20px] pointer-events-none'}
                             `}
                             style={{ 
                               backgroundColor: s.windowBg,
                               borderColor: s.borderColor,
-                              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.5)'
+                              boxShadow: '0 24px 48px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+                              transformOrigin: position === 'right' ? 'bottom right' : 'bottom left'
                             }}
                          >
+                            {/* Header - Matching actual widget */}
                             <div 
-                              className="p-6 text-white relative overflow-hidden" 
+                              className="p-6 flex justify-between items-center gap-4 relative"
                               style={{ 
-                                background: `linear-gradient(135deg, ${brandColor}, black)` 
+                                background: '#0f172a',
+                                borderRadius: '24px 24px 0 0'
                               }}
                             >
-                               <h4 className="font-bold text-lg leading-tight relative z-10">{bot.name}</h4>
-                               <p className="text-xs opacity-90 flex items-center gap-1.5 mt-1 relative z-10">
-                                  <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> Online
-                               </p>
+                               <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div 
+                                    className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0"
+                                    style={{ backgroundColor: brandColor }}
+                                  >
+                                     <Bot className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                     <h4 className="font-bold text-lg leading-tight text-white" style={{ letterSpacing: '-0.02em' }}>{bot.name}</h4>
+                                     <p className="text-[13px] opacity-85 flex items-center gap-1.5 mt-0.5 text-white">
+                                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span> Online
+                                     </p>
+                                  </div>
+                               </div>
+                               <button
+                                  onClick={() => setIsWidgetOpen(false)}
+                                  className="w-11 h-11 rounded-full flex items-center justify-center text-white hover:bg-white/15 transition-all flex-shrink-0"
+                               >
+                                  <X className="w-5 h-5" />
+                               </button>
                             </div>
                             
+                            {/* Content Area */}
                             <div className="flex-1 relative flex flex-col overflow-hidden" style={{ backgroundColor: s.windowBg }}>
                                 {!hasSubmittedLead ? (
-                                  <div className="absolute inset-0 z-10 p-10 flex flex-col justify-center gap-6 text-center" style={{ backgroundColor: s.windowBg }}>
-                                     <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-white" style={{backgroundColor: brandColor}}>
-                                        <User className="w-8 h-8" />
+                                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: s.windowBg }}>
+                                     <div 
+                                        className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-white mb-4"
+                                        style={{backgroundColor: brandColor}}
+                                     >
+                                        <User className="w-10 h-10" />
                                      </div>
-                                     <div>
-                                        <h3 className="text-2xl font-bold mb-2" style={{color: s.textColor}}>Start Conversation</h3>
+                                     <div className="mb-6">
+                                        <h3 className="text-xl font-bold mb-2" style={{color: s.textColor}}>Start Conversation</h3>
                                         <p className="text-[15px] opacity-70 leading-relaxed" style={{color: s.textColor}}>Please share your details to connect with us.</p>
                                      </div>
-                                     <div className="space-y-4 text-left">
+                                     <div className="space-y-4 text-left w-full max-w-sm">
                                         <div>
                                           <label className="block text-xs font-bold mb-2 ml-2" style={{color: s.textColor}}>Email Address</label>
                                           <input 
@@ -640,7 +662,11 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                                             onChange={(e) => setPreviewEmail(e.target.value)}
                                             placeholder="you@company.com"
                                             className="w-full p-4 rounded-2xl border text-[15px] outline-none transition-all focus:ring-2"
-                                            style={{ backgroundColor: s.secondaryBg, borderColor: s.borderColor, color: s.textColor, '--tw-ring-color': brandColor } as any}
+                                            style={{ 
+                                              backgroundColor: theme === 'dark' ? '#18181b' : '#f4f4f5',
+                                              borderColor: s.borderColor, 
+                                              color: s.textColor
+                                            }}
                                           />
                                         </div>
                                         <div>
@@ -651,14 +677,18 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                                             onChange={(e) => setPreviewPhone(e.target.value)}
                                             placeholder="+1 (555) 000-0000"
                                             className="w-full p-4 rounded-2xl border text-[15px] outline-none transition-all focus:ring-2"
-                                            style={{ backgroundColor: s.secondaryBg, borderColor: s.borderColor, color: s.textColor, '--tw-ring-color': brandColor } as any}
+                                            style={{ 
+                                              backgroundColor: theme === 'dark' ? '#18181b' : '#f4f4f5',
+                                              borderColor: s.borderColor, 
+                                              color: s.textColor
+                                            }}
                                           />
                                         </div>
                                      </div>
                                      <button 
                                        onClick={handlePreviewSubmit}
                                        disabled={!previewEmail || !previewPhone}
-                                       className="w-full py-4 rounded-2xl text-white font-bold text-base mt-2 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg active:scale-95"
+                                       className="w-full max-w-sm py-4 rounded-2xl text-white font-bold text-base mt-6 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-all shadow-lg active:scale-95"
                                        style={{ backgroundColor: brandColor }}
                                      >
                                        Start Chatting
@@ -666,24 +696,51 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                                   </div>
                                 ) : (
                                   <div className="h-full flex flex-col">
-                                    <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                                    {/* Messages Area */}
+                                    <div 
+                                      className="flex-1 p-6 overflow-y-auto space-y-3 flex flex-col"
+                                      style={{ 
+                                        backgroundColor: s.windowBg,
+                                        paddingBottom: '100px'
+                                      }}
+                                    >
                                         <div 
-                                          className="p-4 rounded-[20px] rounded-bl-sm text-[15px] leading-relaxed max-w-[85%] shadow-sm self-start"
-                                          style={{ backgroundColor: s.botMsgBg, color: s.botMsgText }}
+                                          className="p-3 px-4 rounded-[18px] rounded-bl-[4px] text-[15px] leading-relaxed max-w-[75%] shadow-sm self-start"
+                                          style={{ 
+                                            backgroundColor: s.botMsgBg, 
+                                            color: s.botMsgText,
+                                            border: theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)'
+                                          }}
                                         >
                                             {welcomeMessage}
                                         </div>
                                     </div>
-                                    <div className="p-5 border-t" style={{ borderColor: s.borderColor, backgroundColor: s.windowBg }}>
-                                        <div className="relative flex items-center">
+                                    {/* Input Area - Matching actual widget */}
+                                    <div 
+                                      className="p-4 border-t"
+                                      style={{ 
+                                        borderColor: s.borderColor, 
+                                        backgroundColor: s.windowBg,
+                                        borderRadius: '0 0 24px 24px'
+                                      }}
+                                    >
+                                        <div className="relative flex items-end gap-2">
                                           <input 
                                             type="text"
-                                            className="w-full p-4 pr-12 rounded-full border text-[15px] outline-none focus:ring-2 transition-all"
+                                            className="flex-1 p-3 pr-12 rounded-[20px] border text-[15px] outline-none transition-all resize-none"
                                             placeholder="Type a message..."
-                                            style={{ backgroundColor: s.secondaryBg, borderColor: s.borderColor, color: s.textColor, '--tw-ring-color': brandColor } as any}
+                                            style={{ 
+                                              backgroundColor: theme === 'dark' ? '#18181b' : '#f4f4f5',
+                                              borderColor: s.borderColor, 
+                                              color: s.textColor,
+                                              minHeight: '44px'
+                                            }}
                                           />
-                                          <button className="absolute right-2 w-9 h-9 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105" style={{ backgroundColor: brandColor }}>
-                                            <Send className="w-4 h-4 ml-[-2px]" />
+                                          <button 
+                                            className="w-11 h-11 rounded-full flex items-center justify-center text-white transition-transform hover:scale-105 flex-shrink-0"
+                                            style={{ backgroundColor: brandColor }}
+                                          >
+                                            <Send className="w-5 h-5" style={{ marginLeft: '-2px' }} />
                                           </button>
                                         </div>
                                     </div>
@@ -692,17 +749,17 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                             </div>
                          </div>
 
-                         {/* Launcher */}
+                         {/* Launcher Button - Matching actual widget (64px on desktop) */}
                          <button
                             onClick={() => setIsWidgetOpen(!isWidgetOpen)}
-                            className="w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95"
-                            style={{ backgroundColor: brandColor, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
+                            className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95 ${isWidgetOpen ? 'hidden' : ''}`}
+                            style={{ 
+                              background: `linear-gradient(135deg, ${brandColor}, ${brandColor}dd)`,
+                              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                              marginTop: '20px'
+                            }}
                          >
-                            {isWidgetOpen ? (
-                               <X className="w-8 h-8" />
-                            ) : (
-                               <MessageSquare className="w-8 h-8" />
-                            )}
+                            <MessageSquare className="w-7 h-7" />
                          </button>
                       </div>
 

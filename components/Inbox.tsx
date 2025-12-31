@@ -329,48 +329,48 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
          {selectedConversation ? (
             <>
                {/* Detail Header */}
-               <div className="h-20 border-b border-white/5 bg-black/20 p-6 flex justify-between items-center">
-                  <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+               <div className="min-h-24 border-b border-white/5 bg-black/20 px-6 py-5 flex justify-between items-start">
+                  <div className="flex items-start gap-5 flex-1 min-w-0">
+                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                         {selectedConversation.userPhone 
                            ? selectedConversation.userPhone.slice(-1).toUpperCase() 
                            : selectedConversation.userEmail 
                               ? selectedConversation.userEmail[0].toUpperCase() 
-                              : <User className="w-5 h-5" />}
+                              : <User className="w-6 h-6" />}
                      </div>
-                     <div>
-                        <h3 className="font-bold text-white text-lg mb-1">{selectedConversation.userPhone || selectedConversation.userEmail || 'Anonymous User'}</h3>
-                        <div className="flex flex-col gap-1.5 text-xs text-slate-400">
+                     <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white text-xl mb-2 truncate">{selectedConversation.userPhone || selectedConversation.userEmail || 'Anonymous User'}</h3>
+                        <div className="flex flex-col gap-2 text-sm text-slate-400">
                            {selectedConversation.userEmail && (
-                              <span className="flex items-center gap-2">
-                                 <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                                 <span className="text-slate-300">{selectedConversation.userEmail}</span>
+                              <span className="flex items-center gap-2.5">
+                                 <Mail className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                                 <span className="text-slate-300 truncate">{selectedConversation.userEmail}</span>
                               </span>
                            )}
                            {selectedConversation.userPhone && (
-                              <span className="flex items-center gap-2">
-                                 <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="flex items-center gap-2.5">
+                                 <Phone className="w-4 h-4 flex-shrink-0 text-slate-500" />
                                  <span className="text-slate-300">{selectedConversation.userPhone}</span>
                               </span>
                            )}
-                           <span className="flex items-center gap-2 mt-1">
-                              <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                           <span className="flex items-center gap-2.5">
+                              <Clock className="w-4 h-4 flex-shrink-0 text-slate-500" />
                               <span>{new Date(selectedConversation.startedAt).toLocaleString()}</span>
                            </span>
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                      {onDeleteConversation && (
                         <button 
                            onClick={() => handleDeleteConversation(selectedConversation.id)}
-                           className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                           className="p-2.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                            title="Delete conversation"
                         >
                            <Trash2 className="w-5 h-5" />
                         </button>
                      )}
-                  <button className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                  <button className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
                      <Download className="w-5 h-5" />
                   </button>
                   </div>

@@ -353,7 +353,7 @@ const AppContent: React.FC = () => {
           // First, check if this message belongs to a conversation that belongs to user's bots
           const { data: convData, error } = await supabase
             .from('conversations')
-            .select('bot_id, message_count, user_id, user_email, user_phone')
+            .select('bot_id, message_count, user_id, user_email, user_phone, archived_at, archived_bot_id')
             .eq('id', message.conversation_id)
             .single();
           
@@ -394,6 +394,26 @@ const AppContent: React.FC = () => {
                 timestamp: new Date(message.timestamp).getTime(),
                 actionInvoked: message.action_invoked,
               };
+              
+              // Check if conversation is archived - if so, unarchive it
+              const isArchived = convData.archived_at !== null;
+              if (isArchived) {
+                console.log('Unarchiving conversation due to new message:', message.conversation_id);
+                // Unarchive the conversation in the database
+                const { error: unarchiveError } = await supabase
+                  .from('conversations')
+                  .update({
+                    archived_at: null,
+                    archived_bot_id: null,
+                  })
+                  .eq('id', message.conversation_id);
+                
+                if (unarchiveError) {
+                  console.error('Failed to unarchive conversation:', unarchiveError);
+                } else {
+                  console.log('Conversation unarchived successfully');
+                }
+              }
               
               // Update conversations state directly - add message to the conversation
               setConversations(prev => {
@@ -436,6 +456,9 @@ const AppContent: React.FC = () => {
                     (a, b) => a.timestamp - b.timestamp
                   ),
                   messageCount: convData.message_count || conversation.messageCount + 1,
+                  // Clear archived fields if conversation was unarchived
+                  archivedAt: isArchived ? undefined : conversation.archivedAt,
+                  archivedBotId: isArchived ? undefined : conversation.archivedBotId,
                 };
                 
                 // Move conversation to the top of the list (most recent message first)

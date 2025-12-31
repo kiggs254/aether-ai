@@ -208,7 +208,7 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
             </div>
             
             {/* Bot Filter */}
-            <div className="mb-3">
+            <div className="mb-3 mt-4">
                <div className="flex items-center gap-2 mb-2">
                   <Filter className="w-4 h-4 text-slate-400" />
                   <label className="text-xs text-slate-400 font-medium">Filter by Bot</label>

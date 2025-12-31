@@ -98,16 +98,56 @@ const AppContent: React.FC = () => {
     }
   }, [showError]);
 
+  // Load last viewed timestamps from localStorage
+  const getLastViewedTimestamps = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('aether_conversation_last_viewed');
+      return stored ? new Map<string, number>(JSON.parse(stored)) : new Map<string, number>();
+    } catch (err) {
+      console.warn('Failed to load last viewed timestamps:', err);
+      return new Map<string, number>();
+    }
+  }, []);
+
+  // Save last viewed timestamp to localStorage
+  const saveLastViewedTimestamp = useCallback((conversationId: string) => {
+    try {
+      const timestamps = getLastViewedTimestamps();
+      timestamps.set(conversationId, Date.now());
+      localStorage.setItem('aether_conversation_last_viewed', JSON.stringify(Array.from(timestamps.entries())));
+    } catch (err) {
+      console.warn('Failed to save last viewed timestamp:', err);
+    }
+  }, [getLastViewedTimestamps]);
+
   const loadConversations = useCallback(async () => {
     try {
       // Load all conversations including archived so Inbox can filter them
       const loadedConversations = await conversationService.getAllConversations(true);
       setConversations(loadedConversations);
+      
+      // Calculate unread counts based on last viewed timestamps
+      const lastViewedTimestamps = getLastViewedTimestamps();
+      const unreadCounts = new Map<string, number>();
+      
+      loadedConversations.forEach(conv => {
+        const lastViewed = lastViewedTimestamps.get(conv.id) || 0;
+        // Count messages that came after the last viewed timestamp
+        const unreadMessages = conv.messages.filter(msg => 
+          msg.timestamp > lastViewed && msg.role === 'user'
+        );
+        if (unreadMessages.length > 0) {
+          unreadCounts.set(conv.id, unreadMessages.length);
+        }
+      });
+      
+      setUnreadConversations(unreadCounts);
+      console.log('Loaded unread counts:', Array.from(unreadCounts.entries()));
     } catch (error: any) {
       // Silently fail for conversations - not critical
       console.error('Error loading conversations:', error);
     }
-  }, []);
+  }, [getLastViewedTimestamps]);
 
   // Update ref when loadConversations changes
   useEffect(() => {
@@ -405,7 +445,7 @@ const AppContent: React.FC = () => {
               // Use ref to get latest viewedConversationId value
               const currentlyViewed = viewedConversationIdRef.current === message.conversation_id;
               
-              if (!currentlyViewed) {
+              if (!currentlyViewed && message.role === 'user') {
                 setUnreadConversations(prev => {
                   const next = new Map(prev);
                   const currentCount = next.get(message.conversation_id) || 0;
@@ -414,7 +454,7 @@ const AppContent: React.FC = () => {
                   return next;
                 });
               } else {
-                console.log('Message received for currently viewed conversation, not incrementing unread count');
+                console.log('Message received for currently viewed conversation or bot message, not incrementing unread count');
               }
               
               // Show notification for new messages (only if it's a user message, not bot response)
@@ -621,6 +661,9 @@ const AppContent: React.FC = () => {
             unreadConversations={unreadConversations}
             viewedConversationId={viewedConversationId}
             onConversationRead={(conversationId) => {
+              // Save last viewed timestamp to persist across page reloads
+              saveLastViewedTimestamp(conversationId);
+              
               // Reset unread count when conversation is viewed
               setUnreadConversations(prev => {
                 const next = new Map(prev);

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNotification } from './Notification';
+import { Modal } from './Modal';
 import { Bot, Integration } from '../types';
 import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2 } from 'lucide-react';
 import { integrationService } from '../services/database';
@@ -89,9 +91,10 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
       await loadIntegrations();
       setSelectedIntegration(newIntegration);
       setIsCreating(false);
+      showSuccess('Integration created', 'Your integration has been created successfully.');
     } catch (error) {
       console.error('Failed to create integration:', error);
-      alert('Failed to create integration. Please try again.');
+      showError('Failed to create integration', 'Please try again.');
     }
   };
 
@@ -108,24 +111,33 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
       });
       await loadIntegrations();
       setSelectedIntegration(updated);
+      showSuccess('Integration updated', 'Your integration has been updated successfully.');
     } catch (error) {
       console.error('Failed to update integration:', error);
-      alert('Failed to update integration. Please try again.');
+      showError('Failed to update integration', 'Please try again.');
     }
   };
 
   const handleDeleteIntegration = async (integrationId: string) => {
-    if (!confirm('Are you sure you want to delete this integration? This cannot be undone.')) return;
-    try {
-      await integrationService.deleteIntegration(integrationId);
-      await loadIntegrations();
-      if (selectedIntegration?.id === integrationId) {
-        setSelectedIntegration(null);
-      }
-    } catch (error) {
-      console.error('Failed to delete integration:', error);
-      alert('Failed to delete integration. Please try again.');
-    }
+    setModal({
+      isOpen: true,
+      title: 'Delete Integration',
+      message: 'Are you sure you want to delete this integration? This cannot be undone.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await integrationService.deleteIntegration(integrationId);
+          await loadIntegrations();
+          if (selectedIntegration?.id === integrationId) {
+            setSelectedIntegration(null);
+          }
+          showSuccess('Integration deleted', 'The integration has been deleted successfully.');
+        } catch (error) {
+          console.error('Failed to delete integration:', error);
+          showError('Failed to delete integration', 'Please try again.');
+        }
+      },
+    });
   };
 
   // Generate the actual functional script
@@ -688,6 +700,17 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         </div>
 
       </div>
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '' })}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type="confirm"
+        variant={modal.variant || 'info'}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

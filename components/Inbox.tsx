@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot } from '../types';
 import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive } from 'lucide-react';
+import { useNotification } from './Notification';
 
 interface InboxProps {
   conversations: Conversation[];
@@ -13,6 +14,7 @@ interface InboxProps {
 }
 
 const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations = new Map(), viewedConversationId, onConversationRead, onConversationViewChange, onDeleteConversation }) => {
+  const { showError } = useNotification();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBotId, setSelectedBotId] = useState<string>('all');
@@ -129,7 +131,7 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
     const leads = filteredConversations.filter(conv => conv.userEmail && conv.userPhone);
     
     if (leads.length === 0) {
-      alert('No leads found to export. Leads must have both email and phone number.');
+      showError('No leads to export', 'Leads must have both email and phone number.');
       return;
     }
 

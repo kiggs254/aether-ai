@@ -10,6 +10,7 @@ import { Bot, ViewState, Conversation } from './types';
 import { supabase } from './lib/supabase';
 import { botService, conversationService } from './services/database';
 import { NotificationProvider, useNotification } from './components/Notification';
+import { Modal } from './components/Modal';
 
 // Mock data removed - now loading from Supabase
 
@@ -28,6 +29,19 @@ const AppContent: React.FC = () => {
   
   // Initialize ref with current value
   const viewedConversationIdRef = useRef<string | null>(viewedConversationId);
+  
+  // Modal state
+  const [modal, setModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     // Check active session
@@ -528,42 +542,50 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteBot = async (botId: string) => {
-    if (!confirm('Are you sure you want to delete this bot? This will also delete all conversations and messages associated with it.')) {
-      return;
-    }
-
-    try {
-      await botService.deleteBot(botId);
-      await loadBots(); // Reload bots from database
-      await loadConversations(); // Reload conversations
-      
-      // Clear active bot if it was deleted
-      if (activeBot?.id === botId) {
-        setActiveBot(null);
-        if (view === ViewState.BOT_BUILDER || view === ViewState.PLAYGROUND || view === ViewState.INTEGRATION) {
-          setView(ViewState.DASHBOARD);
+    setModal({
+      isOpen: true,
+      title: 'Delete Bot',
+      message: 'Are you sure you want to delete this bot? This will also delete all conversations and messages associated with it.',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await botService.deleteBot(botId);
+          await loadBots(); // Reload bots from database
+          await loadConversations(); // Reload conversations
+          
+          // Clear active bot if it was deleted
+          if (activeBot?.id === botId) {
+            setActiveBot(null);
+            if (view === ViewState.BOT_BUILDER || view === ViewState.PLAYGROUND || view === ViewState.INTEGRATION) {
+              setView(ViewState.DASHBOARD);
+            }
+          }
+          
+          showSuccess('Bot deleted', 'Bot has been deleted. All conversations have been archived.');
+        } catch (error: any) {
+          showError('Failed to delete bot', error.message || 'Please check your connection and try again');
         }
-      }
-      
-      showSuccess('Bot deleted', 'Bot has been deleted. All conversations have been archived.');
-    } catch (error: any) {
-      showError('Failed to delete bot', error.message || 'Please check your connection and try again');
-    }
+      },
+    });
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
-    if (!confirm('Are you sure you want to archive this conversation? It will be hidden but can be viewed in the archive.')) {
-      return;
-    }
-
-    try {
-      await conversationService.deleteConversation(conversationId);
-      await loadConversations(); // Reload conversations from database
-      
-      showSuccess('Conversation archived', 'Conversation has been archived. You can view it in the archive view.');
-    } catch (error: any) {
-      showError('Failed to archive conversation', error.message || 'Please check your connection and try again');
-    }
+    setModal({
+      isOpen: true,
+      title: 'Archive Conversation',
+      message: 'Are you sure you want to archive this conversation? It will be hidden but can be viewed in the archive.',
+      variant: 'warning',
+      onConfirm: async () => {
+        try {
+          await conversationService.deleteConversation(conversationId);
+          await loadConversations(); // Reload conversations from database
+          
+          showSuccess('Conversation archived', 'Conversation has been archived. You can view it in the archive view.');
+        } catch (error: any) {
+          showError('Failed to archive conversation', error.message || 'Please check your connection and try again');
+        }
+      },
+    });
   };
 
   const renderContent = () => {
@@ -717,6 +739,17 @@ const AppContent: React.FC = () => {
           {renderContent()}
         </div>
       </main>
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ isOpen: false, title: '', message: '' })}
+        onConfirm={modal.onConfirm}
+        title={modal.title}
+        message={modal.message}
+        type="confirm"
+        variant={modal.variant || 'info'}
+        confirmText="Confirm"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

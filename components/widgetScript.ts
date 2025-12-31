@@ -212,12 +212,17 @@ export const generateWidgetJS = (): string => {
   if (config.bot) {
     // Old format: full bot object in config (backward compatibility)
     bot = config.bot;
+    // Ensure actions array exists (for old format)
+    if (!bot.actions) {
+      bot.actions = [];
+    }
     theme = config.theme || 'dark';
     position = config.position || 'right';
     brandColor = config.brandColor || '#6366f1';
     welcomeMessage = config.welcomeMessage || ('Hello! I am ' + bot.name + '. How can I assist you?');
     collectLeads = config.collectLeads !== undefined ? config.collectLeads : bot.collectLeads;
     console.log('Using bot config from embed code (old format)');
+    console.log('Bot actions from config:', bot.actions ? bot.actions.length : 0, 'actions:', bot.actions);
   } else if (config.integrationId) {
     // New format: fetch integration config (UI settings) and bot config (AI settings)
     console.log('Fetching integration config from Supabase for integrationId:', config.integrationId);
@@ -284,6 +289,7 @@ export const generateWidgetJS = (): string => {
     };
     
     console.log('Integration and bot configs loaded successfully');
+    console.log('Bot actions loaded:', actions.length, 'actions:', actions);
   } else if (config.botId) {
     // Intermediate format: fetch bot config from Supabase (UI settings from config)
     console.log('Fetching bot config from Supabase for botId:', config.botId);
@@ -335,6 +341,7 @@ export const generateWidgetJS = (): string => {
     };
     
     console.log('Bot config loaded and merged with UI overrides');
+    console.log('Bot actions loaded:', actions.length, 'actions:', actions);
   } else {
     console.error('No bot configuration found. Please provide config.bot, config.botId, or config.integrationId');
     return;
@@ -1746,6 +1753,16 @@ export const generateWidgetJS = (): string => {
       } else if (functionUrl.includes('supabase.co')) {
         console.error('Widget error: Supabase anon key required for direct Supabase calls. Please add supabaseAnonKey to AetherBotConfig or use Netlify proxy.');
       }
+      
+      // Log bot configuration being sent (for debugging)
+      console.log('Sending bot config to API:', {
+        id: bot.id,
+        name: bot.name,
+        provider: bot.provider,
+        model: bot.model,
+        actionsCount: bot.actions ? bot.actions.length : 0,
+        actions: bot.actions
+      });
       
       const response = await fetch(functionUrl, {
         method: 'POST',

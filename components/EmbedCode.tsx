@@ -34,6 +34,19 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
   const [previewEmail, setPreviewEmail] = useState('');
   const [previewPhone, setPreviewPhone] = useState('');
 
+  // Modal state
+  const [modal, setModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+  });
+
   // Load integrations for this bot
   useEffect(() => {
     loadIntegrations();

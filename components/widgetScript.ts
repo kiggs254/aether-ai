@@ -1062,7 +1062,7 @@ export const generateWidgetJS = (): string => {
   };
   
   // Function to save message to conversation
-  const saveMessage = async (convId, role, text) => {
+  const saveMessage = async (convId, role, text, actionId = null) => {
     if (!convId || !text) {
       console.warn('Cannot save message: missing convId or text', { convId, text: text?.substring(0, 50) });
       return;
@@ -1087,15 +1087,22 @@ export const generateWidgetJS = (): string => {
         console.warn('Warning: supabaseAnonKey not found in config, message save may fail');
       }
       
+      const messageData = {
+        conversation_id: convId,
+        role: role,
+        text: text,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Add action_invoked if actionId is provided
+      if (actionId) {
+        messageData.action_invoked = actionId;
+      }
+      
       const response = await fetch(supabaseUrl + '/rest/v1/messages', {
         method: 'POST',
         headers: headers,
-        body: JSON.stringify({
-          conversation_id: convId,
-          role: role,
-          text: text,
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify(messageData),
       });
       
       if (!response.ok) {
@@ -1975,10 +1982,20 @@ export const generateWidgetJS = (): string => {
       }
       
       if (actionId) {
-        const actionCard = document.createElement('div');
-        actionCard.className = 'aether-action-card';
         const action = bot.actions.find(a => a.id === actionId);
         if (action) {
+          // Get trigger message to save as message text
+          const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+          
+          // Save action as a message with action_invoked field
+          if (conversationId) {
+            saveMessage(conversationId, 'model', triggerMessage, actionId);
+          }
+          
+          // Create and display action card
+          const actionCard = document.createElement('div');
+          actionCard.className = 'aether-action-card';
+          
           let iconSvg = '';
           let btnClass = '';
           if (action.type === 'whatsapp') {
@@ -1994,9 +2011,6 @@ export const generateWidgetJS = (): string => {
             iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
             btnClass = 'bg-indigo-600';
           }
-          
-          // Get trigger message to show in action card (replaces "Click below to proceed:")
-          const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
           
           actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
             triggerMessage +
@@ -2082,6 +2096,7 @@ export const generateWidgetJS = (): string => {
         for (var i = 0; i < historyMessages.length; i++) {
           var msg = historyMessages[i];
           var msgDate = new Date(msg.timestamp);
+          var actionId = msg.action_invoked || null;
           
           // Add date separator if needed
           if (lastMessageDate) {
@@ -2113,7 +2128,7 @@ export const generateWidgetJS = (): string => {
           
           // Add message to UI
           var role = msg.role === 'user' ? 'user' : 'bot';
-          addMessage(msg.text || '', role);
+          addMessage(msg.text || '', role, actionId);
           
           // Add to messageHistory for context
           messageHistory.push({ role: msg.role, text: msg.text || '' });

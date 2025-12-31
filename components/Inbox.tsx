@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot } from '../types';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users } from 'lucide-react';
 import { useNotification } from './Notification';
 
 interface InboxProps {
@@ -426,6 +426,34 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                     : 'bg-[#1e1e24] text-slate-200 rounded-bl-none border border-white/5'
                               }`}>
                                  {msg.text}
+                                 {msg.actionInvoked && !isUser && (
+                                    <div className="mt-3 pt-3 border-t border-white/10">
+                                       <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                          <Zap className="w-3 h-3" />
+                                          <span>Action triggered:</span>
+                                       </div>
+                                       {(() => {
+                                          const bot = bots.find(b => b.id === selectedConversation.botId);
+                                          const action = bot?.actions?.find(a => a.id === msg.actionInvoked);
+                                          return action ? (
+                                             <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg">
+                                                {action.type === 'link' && <ExternalLink className="w-4 h-4 text-indigo-400" />}
+                                                {action.type === 'phone' && <Phone className="w-4 h-4 text-blue-400" />}
+                                                {action.type === 'whatsapp' && <MessageCircle className="w-4 h-4 text-green-400" />}
+                                                {action.type === 'handoff' && <Users className="w-4 h-4 text-orange-400" />}
+                                                <span className="text-slate-300 font-medium">{action.label}</span>
+                                                {action.payload && (
+                                                   <span className="text-xs text-slate-500 ml-auto truncate max-w-[200px]">
+                                                      {action.payload}
+                                                   </span>
+                                                )}
+                                             </div>
+                                          ) : (
+                                             <div className="text-xs text-slate-500 italic">Action ID: {msg.actionInvoked}</div>
+                                          );
+                                       })()}
+                                    </div>
+                                 )}
                               </div>
                            </div>
                         </div>

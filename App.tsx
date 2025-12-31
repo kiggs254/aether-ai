@@ -430,13 +430,17 @@ const AppContent: React.FC = () => {
                 
                 // Add the new message to the conversation
                 const updated = [...prev];
-                updated[index] = {
+                const updatedConversation = {
                   ...conversation,
                   messages: [...conversation.messages, newMessage].sort(
                     (a, b) => a.timestamp - b.timestamp
                   ),
                   messageCount: convData.message_count || conversation.messageCount + 1,
                 };
+                
+                // Move conversation to the top of the list (most recent message first)
+                updated.splice(index, 1); // Remove from current position
+                updated.unshift(updatedConversation); // Add to beginning
                 
                 return updated;
               });

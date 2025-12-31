@@ -81,7 +81,21 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
     }
   }, [selectedConversation?.messages.length, lastMessageTimestamp]);
 
-  const filteredConversations = conversations.filter(c => {
+  // Sort conversations by most recent message timestamp (newest first)
+  const sortedConversations = [...conversations].sort((a, b) => {
+    // Get the most recent message timestamp for each conversation
+    const aLastMessage = a.messages.length > 0 
+      ? Math.max(...a.messages.map(m => m.timestamp))
+      : a.startedAt;
+    const bLastMessage = b.messages.length > 0
+      ? Math.max(...b.messages.map(m => m.timestamp))
+      : b.startedAt;
+    
+    // Sort by most recent message (descending)
+    return bLastMessage - aLastMessage;
+  });
+
+  const filteredConversations = sortedConversations.filter(c => {
     // Filter by archive status
     if (showArchived && !c.archivedAt) {
       return false; // Show only archived when filter is on

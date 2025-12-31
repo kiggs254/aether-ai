@@ -229,7 +229,7 @@ serve(async (req) => {
         );
       }
 
-      // Return streaming response - Gemini API returns SSE format
+      // Transform Gemini SSE to match expected format (similar to OpenAI transformation)
       if (!response.body) {
         return new Response(
           JSON.stringify({ error: 'No response body from Gemini API' }),
@@ -237,7 +237,94 @@ serve(async (req) => {
         );
       }
 
-      return new Response(response.body, {
+      // Transform Gemini SSE stream to include function calls in expected format
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            let buffer = '';
+            
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (line.trim() === '') continue;
+                
+                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    
+                    // Handle Gemini streaming response format
+                    if (data.candidates && data.candidates[0]?.content?.parts) {
+                      const parts = data.candidates[0].content.parts;
+                      for (const part of parts) {
+                        // Handle text content
+                        if (part.text) {
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                        }
+                        // Handle function calls - send immediately
+                        if (part.functionCall) {
+                          const functionCalls = [{
+                            name: part.functionCall.name,
+                            args: part.functionCall.args || {}
+                          }];
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                    console.warn('Failed to parse Gemini SSE data:', e);
+                  }
+                }
+              }
+            }
+            
+            // Process any remaining buffer
+            if (buffer.trim()) {
+              const lines = buffer.split('\n');
+              for (const line of lines) {
+                if (line.trim() === '') continue;
+                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.candidates && data.candidates[0]?.content?.parts) {
+                      const parts = data.candidates[0].content.parts;
+                      for (const part of parts) {
+                        if (part.text) {
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                        }
+                        if (part.functionCall) {
+                          const functionCalls = [{
+                            name: part.functionCall.name,
+                            args: part.functionCall.args || {}
+                          }];
+                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                  }
+                }
+              }
+            }
+            
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+
+      return new Response(stream, {
         headers: {
           ...corsHeaders,
           'Content-Type': 'text/event-stream',

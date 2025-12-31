@@ -276,34 +276,34 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
   const s = getPreviewStyles();
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto space-y-6">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto space-y-4 sm:space-y-6">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Deployment & Integration</h1>
-          <p className="text-slate-400 mt-1">Customize your widget and generate the installation code.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Deployment & Integration</h1>
+          <p className="text-slate-400 mt-1 text-sm sm:text-base">Customize your widget and generate the installation code.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
            <button 
              onClick={() => setActiveTab('code')}
-             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'code' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+             className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial ${activeTab === 'code' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
            >
-             <Code className="w-4 h-4" /> Get Code
+             <Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Get Code
            </button>
            <button 
              onClick={() => setActiveTab('preview')}
-             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'preview' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
+             className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2 flex-1 sm:flex-initial ${activeTab === 'preview' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white bg-white/5'}`}
            >
-             <Eye className="w-4 h-4" /> Preview
+             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Preview
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8 flex-1 overflow-hidden">
         
         {/* Left Column: Configuration */}
-        <div className="glass-card p-6 rounded-3xl overflow-y-auto custom-scrollbar space-y-8">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl overflow-y-auto custom-scrollbar space-y-6 sm:space-y-8">
            
            {/* Integration Management */}
            <div className="space-y-4">
@@ -449,12 +449,12 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
               <div className="space-y-3">
                  <div className="space-y-1">
                     <label className="text-xs font-medium text-slate-400">Brand Color</label>
-                    <div className="flex gap-3 mt-1">
+                    <div className="flex gap-2 sm:gap-3 mt-1">
                        {['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#000000'].map(c => (
                          <button 
                            key={c}
                            onClick={() => setBrandColor(c)}
-                           className={`w-8 h-8 rounded-full border-2 transition-all ${brandColor === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                           className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 transition-all ${brandColor === c ? 'border-white scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`}
                            style={{ backgroundColor: c }}
                          />
                        ))}
@@ -462,7 +462,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                          type="color" 
                          value={brandColor} 
                          onChange={(e) => setBrandColor(e.target.value)}
-                         className="w-8 h-8 rounded-full bg-transparent border-none cursor-pointer p-0"
+                         className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-transparent border-none cursor-pointer p-0"
                        />
                     </div>
                  </div>
@@ -548,8 +548,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                      {copied ? 'Copied!' : 'Copy Snippet'}
                    </button>
                 </div>
-                <div className="flex-1 overflow-auto p-4 bg-[#0B1120] custom-scrollbar">
-                   <code className="text-xs md:text-sm font-mono text-indigo-300 leading-relaxed whitespace-pre block">
+                <div className="flex-1 overflow-x-auto overflow-y-auto p-3 sm:p-4 bg-[#0B1120] custom-scrollbar">
+                   <code className="text-xs sm:text-sm font-mono text-indigo-300 leading-relaxed whitespace-pre block">
                       {generateScript()}
                    </code>
                 </div>

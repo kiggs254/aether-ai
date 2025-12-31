@@ -11,6 +11,7 @@ import { supabase } from './lib/supabase';
 import { botService, conversationService } from './services/database';
 import { NotificationProvider, useNotification } from './components/Notification';
 import { Modal } from './components/Modal';
+import { Menu, X } from 'lucide-react';
 
 // Mock data removed - now loading from Supabase
 
@@ -26,6 +27,9 @@ const AppContent: React.FC = () => {
   const [unreadConversations, setUnreadConversations] = useState<Map<string, number>>(new Map());
   // Track which conversation is currently being viewed (to prevent incrementing count when viewing)
   const [viewedConversationId, setViewedConversationId] = useState<string | null>(null);
+  
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Initialize ref with current value
   const viewedConversationIdRef = useRef<string | null>(viewedConversationId);
@@ -774,20 +778,44 @@ const AppContent: React.FC = () => {
         <div className="absolute top-[30%] left-[30%] w-[40%] h-[40%] rounded-full bg-emerald-900/5 blur-[120px]" />
       </div>
 
+      {/* Mobile menu backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       <Sidebar 
         currentView={view} 
-        setView={setView} 
+        setView={(newView) => {
+          setView(newView);
+          setMobileMenuOpen(false); // Close mobile menu when navigating
+        }}
         bots={bots}
         activeBotId={activeBot?.id}
-        onSelectBot={handleSelectBot}
+        onSelectBot={(bot) => {
+          handleSelectBot(bot);
+          setMobileMenuOpen(false); // Close mobile menu when selecting bot
+        }}
         onCreateNew={handleCreateNew}
         unreadCount={Array.from(unreadConversations.values()).reduce((sum, count) => sum + count, 0)}
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
       />
       
       <main className="flex-1 relative z-10 h-screen overflow-y-auto overflow-x-hidden">
         {/* Top bar mostly for mobile or extra actions */}
-        <header className="h-16 flex items-center justify-between px-8 sticky top-0 z-20 bg-[#050505]/80 backdrop-blur-sm border-b border-white/5">
-          <div className="pointer-events-auto">
+        <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-20 bg-[#050505]/80 backdrop-blur-sm border-b border-white/5">
+          <div className="pointer-events-auto flex items-center gap-3">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
             {/* User info */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-semibold">
@@ -799,14 +827,14 @@ const AppContent: React.FC = () => {
           <div className="pointer-events-auto">
             <button
               onClick={handleSignOut}
-              className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+              className="px-3 sm:px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
             >
               Sign Out
             </button>
           </div>
         </header>
         
-        <div className="px-4 lg:px-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
+        <div className="px-4 sm:px-6 lg:px-8 pb-12 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
           {renderContent()}
         </div>
       </main>

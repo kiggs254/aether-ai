@@ -112,25 +112,25 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-5xl mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+        <div className="flex items-center gap-2 sm:gap-4">
           <button 
              onClick={onBack}
              className="p-2 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
              title="Back to Dashboard"
           >
-             <ChevronLeft className="w-6 h-6" />
+             <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">{bot ? 'Edit Bot' : 'New Bot'}</h1>
-            <p className="text-slate-400 text-sm mt-1">Configure persona, intelligence, and behavior.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{bot ? 'Edit Bot' : 'New Bot'}</h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">Configure persona, intelligence, and behavior.</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
            {bot && (
              <button 
                onClick={onCreateNew}
-               className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 rounded-xl font-medium border border-white/5 transition-all"
+               className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 rounded-xl font-medium border border-white/5 transition-all text-sm sm:text-base"
              >
                <Plus className="w-4 h-4" />
                Create New
@@ -138,7 +138,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
            )}
            <button 
             onClick={handleSave}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium shadow-lg transition-all active:scale-95 ${saveStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]'}`}
+            className={`flex items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-medium shadow-lg transition-all active:scale-95 text-sm sm:text-base ${saveStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]'}`}
            >
              {saveStatus === 'saved' ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
              {saveStatus === 'saved' ? 'Saved!' : 'Save Bot'}
@@ -181,7 +181,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
               {/* Identity Section */}
-              <div className="glass-card p-6 rounded-2xl space-y-4">
+              <div className="glass-card p-4 sm:p-6 rounded-2xl space-y-4">
                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     <Info className="w-5 h-5 text-indigo-400" /> Identity
                  </h3>
@@ -223,7 +223,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
               </div>
 
               {/* System Instruction */}
-              <div className="glass-card p-6 rounded-2xl space-y-4">
+              <div className="glass-card p-4 sm:p-6 rounded-2xl space-y-4">
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Brain className="w-5 h-5 text-pink-400" /> Core Instruction
@@ -327,9 +327,9 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
         ) : activeTab === 'actions' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
             <div className="lg:col-span-1 space-y-4">
-               <div className="glass-card p-6 rounded-2xl">
-                 <h3 className="text-white font-semibold mb-2">Add New Action</h3>
-                 <p className="text-xs text-slate-400 mb-6">Create interactive buttons or functions for your bot to use.</p>
+               <div className="glass-card p-4 sm:p-6 rounded-2xl">
+                 <h3 className="text-white font-semibold mb-2 text-sm sm:text-base">Add New Action</h3>
+                 <p className="text-xs text-slate-400 mb-4 sm:mb-6">Create interactive buttons or functions for your bot to use.</p>
                  
                  <div className="space-y-4">
                     <div>

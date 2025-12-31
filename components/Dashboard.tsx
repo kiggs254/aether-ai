@@ -40,86 +40,86 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Dashboard</h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 w-full sm:w-auto">
           <button 
             onClick={onCreateNew}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] active:scale-95"
+            className="flex items-center justify-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] active:scale-95 w-full sm:w-auto text-sm sm:text-base"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
             New Bot
           </button>
         </div>
       </div>
 
       {/* Bento Grid Layout */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-[minmax(140px,auto)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 auto-rows-[minmax(140px,auto)]">
         
         {/* KPI 1 - Total Messages */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform duration-300">
-              <MessageCircle className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform duration-300">
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Total Messages</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.totalMessages.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Total Messages</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.totalMessages.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* KPI 2 - New Conversations Today */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
            <div className="flex justify-between items-start">
-            <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:scale-110 transition-transform duration-300">
-              <Users className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:scale-110 transition-transform duration-300">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">New Conversations Today</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.newConversationsToday}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">New Conversations Today</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.newConversationsToday}</h3>
           </div>
         </div>
 
         {/* KPI 3 - Leads Collected */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:scale-110 transition-transform duration-300">
-              <Mail className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:scale-110 transition-transform duration-300">
+              <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Leads Collected</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.leadsCollected.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Leads Collected</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.leadsCollected.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* KPI 4 - Unread Messages */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-400 group-hover:scale-110 transition-transform duration-300">
-              <MessageCircle className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-orange-500/10 rounded-2xl text-orange-400 group-hover:scale-110 transition-transform duration-300">
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Unread Messages</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.unreadMessages.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Unread Messages</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.unreadMessages.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* Main Chart */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-2 md:row-span-2 relative overflow-hidden">
-          <div className="flex justify-between items-center mb-6 relative z-10">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 md:row-span-2 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-4 sm:mb-6 relative z-10">
             <div>
-              <h3 className="text-lg font-bold text-white">Conversations Over Time</h3>
+              <h3 className="text-base sm:text-lg font-bold text-white">Conversations Over Time</h3>
               <p className="text-slate-500 text-xs">New conversations per day (last 7 days)</p>
             </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none"></div>
-          <div className="h-[250px] w-full relative z-10">
+          <div className="h-[200px] sm:h-[250px] w-full relative z-10 min-h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={stats.conversationsOverTime}>
                 <defs>
@@ -140,102 +140,102 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* KPI 5 - Total Conversations */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
            <div className="flex justify-between items-start">
-            <div className="p-3 bg-pink-500/10 rounded-2xl text-pink-400 group-hover:scale-110 transition-transform duration-300">
-              <MessageCircle className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-pink-500/10 rounded-2xl text-pink-400 group-hover:scale-110 transition-transform duration-300">
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Total Conversations</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.totalConversations.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Total Conversations</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.totalConversations.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* KPI 6 - Active Conversations */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-cyan-500/10 rounded-2xl text-cyan-400 group-hover:scale-110 transition-transform duration-300">
-              <Activity className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-cyan-500/10 rounded-2xl text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Active Conversations</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.activeConversations.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Active Conversations</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.activeConversations.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* KPI 7 - Average Response Time */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-yellow-500/10 rounded-2xl text-yellow-400 group-hover:scale-110 transition-transform duration-300">
-              <Timer className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-yellow-500/10 rounded-2xl text-yellow-400 group-hover:scale-110 transition-transform duration-300">
+              <Timer className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Avg Response Time</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{formatResponseTime(stats.averageResponseTime)}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Avg Response Time</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{formatResponseTime(stats.averageResponseTime)}</h3>
           </div>
         </div>
 
         {/* KPI 8 - Average Messages/Conversation */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:scale-110 transition-transform duration-300">
-              <MessageCircle className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-blue-500/10 rounded-2xl text-blue-400 group-hover:scale-110 transition-transform duration-300">
+              <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Avg Messages/Conv</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.averageMessagesPerConversation.toFixed(1)}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Avg Messages/Conv</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.averageMessagesPerConversation.toFixed(1)}</h3>
           </div>
         </div>
 
         {/* KPI 9 - Archived Conversations */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-slate-500/10 rounded-2xl text-slate-400 group-hover:scale-110 transition-transform duration-300">
-              <Archive className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-slate-500/10 rounded-2xl text-slate-400 group-hover:scale-110 transition-transform duration-300">
+              <Archive className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Archived</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{stats.archivedConversations.toLocaleString()}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Archived</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{stats.archivedConversations.toLocaleString()}</h3>
           </div>
         </div>
 
         {/* KPI 10 - Most Active Bot */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-violet-500/10 rounded-2xl text-violet-400 group-hover:scale-110 transition-transform duration-300">
-              <Bot className="w-6 h-6" />
-            </div>
+            <div className="p-2 sm:p-3 bg-violet-500/10 rounded-2xl text-violet-400 group-hover:scale-110 transition-transform duration-300">
+              <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
+             </div>
              </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Most Active Bot</p>
-            <h3 className="text-2xl font-bold text-white tracking-tight truncate">
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Most Active Bot</p>
+            <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight truncate">
               {stats.mostActiveBot ? `${stats.mostActiveBot.name} (${stats.mostActiveBot.count})` : 'N/A'}
             </h3>
              </div>
              </div>
 
         {/* KPI 11 - Average Conversation Duration */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col justify-between group">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-rose-500/10 rounded-2xl text-rose-400 group-hover:scale-110 transition-transform duration-300">
-              <Clock className="w-6 h-6" />
+            <div className="p-2 sm:p-3 bg-rose-500/10 rounded-2xl text-rose-400 group-hover:scale-110 transition-transform duration-300">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
              </div>
           </div>
           <div>
-            <p className="text-slate-400 text-sm font-medium mb-1">Avg Duration</p>
-            <h3 className="text-3xl font-bold text-white tracking-tight">{formatDuration(stats.averageConversationDuration)}</h3>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium mb-1">Avg Duration</p>
+            <h3 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{formatDuration(stats.averageConversationDuration)}</h3>
           </div>
         </div>
 
         {/* Conversations by Bot */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-1 flex flex-col items-center justify-center relative">
-          <h3 className="absolute top-6 left-6 text-sm font-bold text-white">By Bot</h3>
-          <div className="h-[120px] w-full mt-4">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col items-center justify-center relative">
+          <h3 className="absolute top-4 sm:top-6 left-4 sm:left-6 text-xs sm:text-sm font-bold text-white">By Bot</h3>
+          <div className="h-[100px] sm:h-[120px] w-full mt-4">
              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -266,8 +266,8 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* Recent Conversations */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-2">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2">
+          <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
             <Activity className="w-4 h-4 text-orange-400" /> Recent Conversations
           </h3>
           <div className="space-y-4">
@@ -298,9 +298,9 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* Bot List - Spans 2 cols */}
-        <div className="glass-card p-6 rounded-3xl md:col-span-2 md:row-span-2">
-          <div className="flex justify-between items-center mb-4">
-             <h3 className="text-lg font-bold text-white">Your Bots</h3>
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 md:row-span-2">
+          <div className="flex justify-between items-center mb-3 sm:mb-4">
+             <h3 className="text-base sm:text-lg font-bold text-white">Your Bots</h3>
              <button onClick={onCreateNew} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                 <Plus className="w-4 h-4 text-slate-400" />
              </button>

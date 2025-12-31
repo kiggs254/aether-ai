@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot } from '../types';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft } from 'lucide-react';
 import { useNotification } from './Notification';
 
 interface InboxProps {
@@ -19,6 +19,9 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBotId, setSelectedBotId] = useState<string>('all');
   const [showArchived, setShowArchived] = useState<boolean>(false);
+  
+  // Mobile view state: true = showing detail, false = showing list
+  const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
   
   // Find the selected conversation from the conversations prop (always up-to-date)
   const selectedConversation = selectedConversationId 
@@ -46,6 +49,8 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
   // Mark conversation as read when selected
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversationId(conv.id);
+    // On mobile, show detail view
+    setShowDetailOnMobile(true);
     // Reset unread count when conversation is opened
     if (onConversationRead && unreadConversations.has(conv.id)) {
       onConversationRead(conv.id);
@@ -53,6 +58,15 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
     // Notify parent that this conversation is now being viewed
     if (onConversationViewChange) {
       onConversationViewChange(conv.id);
+    }
+  };
+  
+  // Handle back button on mobile
+  const handleBackToList = () => {
+    setShowDetailOnMobile(false);
+    setSelectedConversationId(null);
+    if (onConversationViewChange) {
+      onConversationViewChange(null);
     }
   };
   
@@ -191,10 +205,10 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
   };
 
   return (
-    <div className="flex h-[calc(100vh-6rem)] gap-6 max-w-[1600px] mx-auto animate-fade-in">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-6rem)] gap-4 sm:gap-6 max-w-[1600px] mx-auto animate-fade-in">
       
       {/* Left List Panel */}
-      <div className="w-full md:w-96 glass-card rounded-3xl flex flex-col overflow-hidden">
+      <div className={`w-full lg:w-96 glass-card rounded-3xl flex flex-col overflow-hidden ${showDetailOnMobile ? 'hidden lg:flex' : 'flex'}`}>
          <div className="p-4 border-b border-white/5">
             <div className="flex justify-between items-center gap-2">
                <div className="flex items-center gap-2 flex-1">
@@ -265,7 +279,7 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                   return (
                      <div
                         key={conv.id}
-                        className={`group w-full p-4 text-left border-b border-white/5 transition-colors hover:bg-white/5 relative ${
+                        className={`group w-full p-3 sm:p-4 text-left border-b border-white/5 transition-colors hover:bg-white/5 relative ${
                            selectedConversation?.id === conv.id 
                               ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' 
                               : isUnread 
@@ -285,7 +299,7 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                   >
                      <div className="flex justify-between items-start mb-2">
                                  <div className="flex-1 min-w-0">
-                                    <span className={`font-semibold text-sm block truncate ${isUnread ? 'text-white' : 'text-slate-200'}`}>
+                                    <span className={`font-semibold text-xs sm:text-sm block truncate ${isUnread ? 'text-white' : 'text-slate-200'}`}>
                                        {conv.userPhone || conv.userEmail || 'Anonymous Visitor'}
                                     </span>
                                     {(conv.userEmail || conv.userPhone) && (
@@ -300,7 +314,7 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                              <span className="flex items-center gap-1.5 text-xs text-slate-400">
                                                 <Phone className="w-3 h-3 flex-shrink-0" />
                                                 <span>{conv.userPhone}</span>
-                                             </span>
+                        </span>
                                           )}
                                        </div>
                                     )}
@@ -343,55 +357,63 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
          {selectedConversation ? (
             <>
                {/* Detail Header */}
-               <div className="min-h-24 border-b border-white/5 bg-black/20 px-6 py-5 flex justify-between items-start">
-                  <div className="flex items-start gap-5 flex-1 min-w-0">
-                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+               <div className="min-h-20 sm:min-h-24 border-b border-white/5 bg-black/20 px-4 sm:px-6 py-4 sm:py-5 flex justify-between items-start">
+                  <div className="flex items-start gap-3 sm:gap-5 flex-1 min-w-0">
+                     {/* Back button for mobile */}
+                     <button
+                        onClick={handleBackToList}
+                        className="lg:hidden p-2 -ml-2 mr-1 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors flex-shrink-0"
+                        aria-label="Back to list"
+                     >
+                        <ArrowLeft className="w-5 h-5" />
+                     </button>
+                     <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-base sm:text-lg flex-shrink-0">
                         {selectedConversation.userPhone 
                            ? selectedConversation.userPhone.slice(-1).toUpperCase() 
                            : selectedConversation.userEmail 
                               ? selectedConversation.userEmail[0].toUpperCase() 
-                              : <User className="w-6 h-6" />}
+                              : <User className="w-5 h-5 sm:w-6 sm:h-6" />}
                      </div>
                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white text-xl mb-2 truncate">{selectedConversation.userPhone || selectedConversation.userEmail || 'Anonymous User'}</h3>
-                        <div className="flex flex-col gap-2 text-sm text-slate-400">
+                        <h3 className="font-bold text-white text-lg sm:text-xl mb-1 sm:mb-2 truncate">{selectedConversation.userPhone || selectedConversation.userEmail || 'Anonymous User'}</h3>
+                        <div className="flex flex-col gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-400">
                            {selectedConversation.userEmail && (
-                              <span className="flex items-center gap-2.5">
-                                 <Mail className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                              <span className="flex items-center gap-2 sm:gap-2.5">
+                                 <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-slate-500" />
                                  <span className="text-slate-300 truncate">{selectedConversation.userEmail}</span>
                               </span>
                            )}
                            {selectedConversation.userPhone && (
-                              <span className="flex items-center gap-2.5">
-                                 <Phone className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                              <span className="flex items-center gap-2 sm:gap-2.5">
+                                 <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-slate-500" />
                                  <span className="text-slate-300">{selectedConversation.userPhone}</span>
                               </span>
                            )}
-                           <span className="flex items-center gap-2.5">
-                              <Clock className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                           <span className="flex items-center gap-2 sm:gap-2.5">
+                              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-slate-500" />
                               <span>{new Date(selectedConversation.startedAt).toLocaleString()}</span>
                            </span>
                         </div>
                      </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-2 sm:ml-4">
                      {onDeleteConversation && (
                         <button 
                            onClick={() => handleDeleteConversation(selectedConversation.id)}
-                           className="p-2.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                           className="p-2 sm:p-2.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                            title="Delete conversation"
                         >
-                           <Trash2 className="w-5 h-5" />
+                           <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                      )}
-                  <button className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
-                     <Download className="w-5 h-5" />
+                  <button className="p-2 sm:p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors">
+                     <Download className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   </div>
                </div>
 
                {/* Chat History */}
-               <div id="messages-container" className="flex-1 overflow-y-auto p-6 space-y-6 bg-black/10">
+               <div id="messages-container" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-black/10">
                   {selectedConversation.messages.map((msg, idx) => {
                      const isUser = msg.role === 'user';
                      const msgDate = new Date(msg.timestamp);

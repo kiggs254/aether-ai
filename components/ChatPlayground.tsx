@@ -185,47 +185,47 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
   };
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-6">
+    <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6">
       <div className="flex-1 flex flex-col glass-card rounded-3xl overflow-hidden shadow-2xl relative">
         {/* Header */}
-        <div className="p-4 px-6 border-b border-white/5 flex justify-between items-center bg-white/5 backdrop-blur-md z-10">
-          <div className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${bot.avatarColor} flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.1)]`}>
-              <BotIcon className="w-5 h-5 text-white" />
+        <div className="p-3 sm:p-4 px-4 sm:px-6 border-b border-white/5 flex justify-between items-center bg-white/5 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${bot.avatarColor} flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.1)]`}>
+              <BotIcon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-lg tracking-tight">{bot.name}</h3>
-              <p className="text-xs text-emerald-400 flex items-center gap-1.5 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h3 className="font-bold text-white text-base sm:text-lg tracking-tight">{bot.name}</h3>
+              <p className="text-[10px] sm:text-xs text-emerald-400 flex items-center gap-1.5 font-medium">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
                 {bot.provider === 'openai' ? 'OpenAI' : 'Gemini'} {bot.model || 'Active'}
               </p>
             </div>
           </div>
           <button 
             onClick={clearChat}
-            className="p-2.5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-all active:scale-95"
+            className="p-2 sm:p-2.5 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-all active:scale-95"
             title="Reset Session"
           >
-            <Eraser className="w-5 h-5" />
+            <Eraser className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-black/20 scroll-smooth">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 bg-black/20 scroll-smooth">
           {messages.map((msg, idx) => {
             const isUser = msg.role === 'user';
             return (
               <div key={idx} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`}>
-                <div className={`flex items-end gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex items-end gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                   
                   {/* Avatar */}
-                  <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-md ${isUser ? 'bg-indigo-600' : 'bg-slate-800 border border-white/10'}`}>
-                    {isUser ? <User className="w-4 h-4 text-white" /> : <BotIcon className="w-4 h-4 text-white" />}
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-md ${isUser ? 'bg-indigo-600' : 'bg-slate-800 border border-white/10'}`}>
+                    {isUser ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" /> : <BotIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />}
                   </div>
 
                   {/* Bubble */}
                   <div 
-                    className={`p-4 rounded-2xl text-[15px] leading-relaxed shadow-lg ${
+                    className={`p-3 sm:p-4 rounded-2xl text-sm sm:text-[15px] leading-relaxed shadow-lg ${
                       isUser 
                         ? 'bg-indigo-600 text-white rounded-br-none bg-gradient-to-br from-indigo-600 to-indigo-700' 
                         : 'bg-[#1a1a20] text-slate-200 rounded-bl-none border border-white/5'

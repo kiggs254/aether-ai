@@ -1692,8 +1692,14 @@ export const generateWidgetJS = (): string => {
           btnClass = 'bg-indigo-600';
         }
         
-        // Action card - no trigger message here, it's already in the message bubble
-        actionCard.innerHTML = '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
+        // Get trigger message to show in action card (replaces "Click below to proceed:")
+        const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+        
+        // Action card with trigger message instead of "Click below to proceed:"
+        actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+          triggerMessage +
+          '</div>' +
+          '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
             iconSvg +
             '<span>' + action.label + '</span>' +
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
@@ -1939,22 +1945,19 @@ export const generateWidgetJS = (): string => {
       if (functionCallFound || actionId) {
         fullText = cleanTriggerActionText(fullText);
         
-        // Get custom trigger message from action if available
-        let defaultMessage = "I've triggered the requested action for you.";
-        if (actionId && bot.actions) {
-          const action = bot.actions.find(a => a.id === actionId);
-          if (action && action.triggerMessage) {
-            defaultMessage = action.triggerMessage;
+        // For actions, don't show message in bubble - it will be shown in the action card
+        // Only show text if there's actual content (not just the trigger)
+        if (fullText && fullText.trim()) {
+          updateMessage(fullText);
+          messageHistory.push({ role: 'model', text: fullText });
+          
+          // Save bot message if we have a conversation
+          if (conversationId) {
+            saveMessage(conversationId, 'model', fullText);
           }
-        }
-        
-        const finalText = fullText || defaultMessage;
-        updateMessage(finalText);
-        messageHistory.push({ role: 'model', text: finalText });
-        
-        // Save bot message if we have a conversation
-        if (conversationId) {
-          saveMessage(conversationId, 'model', finalText);
+        } else {
+          // No text content, just the action - don't show empty message
+          // The action card will show the trigger message
         }
       } else if (fullText) {
         // No function call, just clean and save the text

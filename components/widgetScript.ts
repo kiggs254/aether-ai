@@ -471,6 +471,15 @@ export const generateWidgetJS = (): string => {
         '</div>' +
       '</div>' +
     '</div>' +
+    '<div id="aether-lightbox" class="aether-lightbox" style="display: none;">' +
+      '<div class="aether-lightbox-backdrop"></div>' +
+      '<div class="aether-lightbox-content">' +
+        '<button class="aether-lightbox-close" id="aether-lightbox-close" type="button">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+        '</button>' +
+        '<img id="aether-lightbox-image" src="" alt="Full size image" />' +
+      '</div>' +
+    '</div>' +
   '</div>';
   container.innerHTML = windowHTML;
   document.body.appendChild(container);
@@ -1684,7 +1693,7 @@ export const generateWidgetJS = (): string => {
       
       let content = '';
       if (imageUrl) {
-        content += '<img src="' + imageUrl + '" alt="Uploaded image" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block;" />';
+        content += '<img src="' + imageUrl + '" alt="Uploaded image" class="aether-clickable-image" data-image-src="' + imageUrl + '" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block; cursor: pointer;" />';
       }
       if (text && text.trim()) {
         // Apply markdown parsing for bot messages, plain text for user messages
@@ -1719,7 +1728,7 @@ export const generateWidgetJS = (): string => {
           let mediaHTML = '';
           
           if (mediaType === 'image') {
-            mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
+            mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer;" />';
           } else if (mediaType === 'video') {
             mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
           } else if (mediaType === 'audio') {
@@ -2056,7 +2065,7 @@ export const generateWidgetJS = (): string => {
             let mediaHTML = '';
             
             if (mediaType === 'image') {
-              mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
+              mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer;" />';
             } else if (mediaType === 'video') {
               mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
             } else if (mediaType === 'audio') {
@@ -2134,6 +2143,54 @@ export const generateWidgetJS = (): string => {
   if (sendBtn) {
     sendBtn.addEventListener('click', sendMessage);
   }
+
+  // Lightbox functionality
+  const lightbox = document.getElementById('aether-lightbox');
+  const lightboxImage = document.getElementById('aether-lightbox-image');
+  const lightboxClose = document.getElementById('aether-lightbox-close');
+  const lightboxBackdrop = lightbox ? lightbox.querySelector('.aether-lightbox-backdrop') : null;
+
+  const openLightbox = (imageSrc) => {
+    if (lightbox && lightboxImage) {
+      lightboxImage.src = imageSrc;
+      lightbox.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+  };
+
+  const closeLightbox = () => {
+    if (lightbox) {
+      lightbox.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+  };
+
+  // Add click handlers to all clickable images (delegated event listener)
+  if (messages) {
+    messages.addEventListener('click', (e) => {
+      const img = e.target.closest('.aether-clickable-image');
+      if (img && img.dataset.imageSrc) {
+        e.preventDefault();
+        openLightbox(img.dataset.imageSrc);
+      }
+    });
+  }
+
+  // Close lightbox handlers
+  if (lightboxClose) {
+    lightboxClose.addEventListener('click', closeLightbox);
+  }
+
+  if (lightboxBackdrop) {
+    lightboxBackdrop.addEventListener('click', closeLightbox);
+  }
+
+  // Close lightbox on ESC key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox && lightbox.style.display === 'flex') {
+      closeLightbox();
+    }
+  });
 
   // Quick action button handlers
   const quickActionButtons = document.querySelectorAll('.aether-quick-action-btn');

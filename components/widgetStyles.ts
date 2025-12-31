@@ -1172,6 +1172,87 @@ body.aether-chat-open #aether-launcher {
     transform: translateY(-1px);
   }
 
+  /* Lightbox styles */
+  .aether-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+  }
+
+  .aether-lightbox-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(8px);
+  }
+
+  .aether-lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+  }
+
+  .aether-lightbox-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .aether-lightbox-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: background 0.2s;
+    z-index: 2;
+  }
+
+  .aether-lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .aether-lightbox-close:active {
+    transform: scale(0.95);
+  }
+
+  .aether-lightbox-close svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .aether-clickable-image {
+    transition: opacity 0.2s;
+  }
+
+  .aether-clickable-image:hover {
+    opacity: 0.9;
+  }
+
   .aether-image-btn:hover {
     background: var(--aether-border-color);
     transform: scale(1.05);

@@ -182,28 +182,27 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
       {/* Left List Panel */}
       <div className="w-full md:w-96 glass-card rounded-3xl flex flex-col overflow-hidden">
          <div className="p-4 border-b border-white/5">
-            <div className="flex justify-between items-center mb-4">
-               <h2 className="text-xl font-bold text-white">Inbox & Leads</h2>
-               <div className="flex items-center gap-2">
+            <div className="flex justify-between items-center gap-2">
+               <div className="flex items-center gap-2 flex-1">
                   <button
                      onClick={exportLeadsToCSV}
-                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 transition-colors"
+                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 transition-colors"
                      title="Export leads (email + phone) to CSV"
                   >
-                     <Download className="w-4 h-4" />
-                     Export Leads
+                     <Download className="w-3.5 h-3.5" />
+                     <span className="whitespace-nowrap">Export Leads</span>
                   </button>
                   <button
                      onClick={() => setShowArchived(!showArchived)}
-                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
                         showArchived 
                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' 
-                           : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300'
+                           : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-300 border border-white/10'
                      }`}
                      title={showArchived ? 'Show active conversations' : 'Show archived conversations'}
                   >
-                     <Archive className="w-4 h-4" />
-                     {showArchived ? 'Show Active' : 'Show Archived'}
+                     <Archive className="w-3.5 h-3.5" />
+                     <span className="whitespace-nowrap">{showArchived ? 'Show Active' : 'Show Archived'}</span>
                   </button>
                </div>
             </div>

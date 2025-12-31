@@ -72,14 +72,32 @@ export function validateMediaFile(file: File): { valid: boolean; error?: string 
 
 /**
  * Sanitize filename to prevent path traversal and special characters
+ * Supabase storage requires URL-safe filenames
  */
 function sanitizeFilename(filename: string): string {
-  // Remove path separators and dangerous characters
-  return filename
-    .replace(/[\/\\]/g, '_') // Replace slashes
-    .replace(/[<>:"|?*]/g, '_') // Replace dangerous characters
+  // Extract just the filename (remove any path)
+  const baseName = filename.split(/[\/\\]/).pop() || filename;
+  
+  // Remove extension temporarily
+  const lastDot = baseName.lastIndexOf('.');
+  const nameWithoutExt = lastDot > 0 ? baseName.substring(0, lastDot) : baseName;
+  const extension = lastDot > 0 ? baseName.substring(lastDot) : '';
+  
+  // Sanitize the name part: replace spaces and special characters
+  const sanitized = nameWithoutExt
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .replace(/[\/\\<>:"|?*]/g, '_') // Replace dangerous characters
     .replace(/\.\./g, '_') // Replace parent directory references
+    .replace(/[^\w\-_.]/g, '_') // Replace any non-word characters (except - and _)
+    .replace(/_+/g, '_') // Replace multiple underscores with single
+    .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
     .trim();
+  
+  // Ensure we have a valid name
+  const finalName = sanitized || 'file';
+  
+  // Return sanitized name with extension
+  return finalName + extension;
 }
 
 /**
@@ -98,23 +116,52 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
   // Get media type
   const mediaType = getMediaType(file);
   
-  // Sanitize filename
+  // Sanitize filename - ensure it's URL-safe
   const sanitizedFilename = sanitizeFilename(file.name);
   
-  // Create file path: Assets/media/{botId}/{timestamp}-{filename}
+  // Create file path: media/{botId}/{timestamp}-{filename}
   const timestamp = Date.now();
   const filePath = `media/${botId}/${timestamp}-${sanitizedFilename}`;
+  
+  console.log('Uploading file:', {
+    originalName: file.name,
+    sanitizedName: sanitizedFilename,
+    filePath: filePath,
+    fileSize: file.size,
+    fileType: file.type
+  });
+  
+  // Check if bucket exists first
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+  if (listError) {
+    console.error('Error listing buckets:', listError);
+  } else {
+    const assetsBucket = buckets?.find(b => b.id === 'Assets');
+    if (!assetsBucket) {
+      throw new Error(`Storage bucket 'Assets' not found. Please create it in Supabase Dashboard: Storage > Buckets > New Bucket (Name: Assets, Public: true)`);
+    }
+  }
   
   // Upload file to Supabase storage
   const { data, error } = await supabase.storage
     .from('Assets')
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: false
+      upsert: false,
+      contentType: file.type || 'application/octet-stream'
     });
   
   if (error) {
     console.error('Error uploading file:', error);
+    console.error('File path:', filePath);
+    console.error('Sanitized filename:', sanitizedFilename);
+    console.error('Original filename:', file.name);
+    
+    // Provide more helpful error messages
+    if (error.message?.includes('Invalid key') || error.message?.includes('not found') || error.message?.includes('Bucket')) {
+      throw new Error(`Storage bucket 'Assets' not found. Please create it in Supabase Dashboard: Storage > Buckets > New Bucket (Name: Assets, Public: true)`);
+    }
+    
     throw new Error(`Failed to upload file: ${error.message}`);
   }
   

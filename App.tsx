@@ -662,6 +662,7 @@ const AppContent: React.FC = () => {
           <Dashboard 
             bots={bots} 
             conversations={conversations}
+            unreadConversations={unreadConversations}
             onCreateNew={handleCreateNew}
             onSelectBot={(bot) => {
               setActiveBot(bot);

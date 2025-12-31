@@ -68,11 +68,20 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
             if (call.name === 'trigger_action') {
                 const actionId = (call.args as any).action_id;
                 
+                // Get custom trigger message from action if available
+                let triggerMessage = "I've triggered the requested action for you.";
+                if (actionId && bot.actions) {
+                    const action = bot.actions.find(a => a.id === actionId);
+                    if (action && action.triggerMessage) {
+                        triggerMessage = action.triggerMessage;
+                    }
+                }
+                
                 // Update the placeholder with action data
                 setMessages(prev => {
                     const newMessages = [...prev];
                     const lastMsg = newMessages[newMessages.length - 1];
-                    lastMsg.text = "I've triggered the requested action for you."; // Fallback text
+                    lastMsg.text = triggerMessage;
                     lastMsg.actionInvoked = actionId;
                     return newMessages;
                 });
@@ -158,11 +167,16 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
           bgColor = 'bg-orange-600';
       }
 
+      // Use custom trigger message if available, otherwise use default
+      const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+
       return (
           <div className="mt-3 p-4 bg-white/5 rounded-xl border border-white/10 flex flex-col items-start gap-3 w-fit animate-fade-in">
-              <div className="text-sm text-slate-300">
-                  {action.type === 'handoff' ? 'Transferring you to an agent...' : 'Click below to proceed:'}
-              </div>
+              {triggerMessage && (
+                  <div className="text-sm text-slate-300">
+                      {triggerMessage}
+                  </div>
+              )}
               <a 
                 href={action.payload} 
                 target="_blank" 

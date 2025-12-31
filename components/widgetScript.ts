@@ -1692,9 +1692,10 @@ export const generateWidgetJS = (): string => {
           btnClass = 'bg-indigo-600';
         }
         
-        actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-          (action.type === 'handoff' ? 'Transferring you to an agent...' : 'Click below to proceed:') +
-          '</div>' +
+        // Use custom trigger message if available, otherwise use default
+        const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+        
+        actionCard.innerHTML = (triggerMessage ? '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' + triggerMessage + '</div>' : '') +
           '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
             iconSvg +
             '<span>' + action.label + '</span>' +

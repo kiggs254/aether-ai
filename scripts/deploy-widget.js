@@ -44,11 +44,11 @@ try {
 try {
   // Upload widget.js
   console.log('  📤 Uploading widget.js...');
-  execSync('supabase storage upload Assets/public/widget.js public/widget.js --no-verify-jwt', { stdio: 'inherit' });
+  execSync('supabase storage cp public/widget.js Assets/public/widget.js --experimental --linked', { stdio: 'inherit' });
   
   // Upload widget.css
   console.log('  📤 Uploading widget.css...');
-  execSync('supabase storage upload Assets/public/widget.css public/widget.css --no-verify-jwt', { stdio: 'inherit' });
+  execSync('supabase storage cp public/widget.css Assets/public/widget.css --experimental --linked', { stdio: 'inherit' });
   
   console.log('✅ Files uploaded to Supabase storage\n');
 } catch (error) {

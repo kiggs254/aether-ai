@@ -1173,53 +1173,75 @@ body.aether-chat-open #aether-launcher {
   }
 
   /* Lightbox styles - Full screen on all devices */
-  .aether-lightbox {
+  #aether-lightbox {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
     width: 100vw !important;
+    width: 100dvw !important;
     height: 100vh !important;
-    z-index: 100000 !important;
-    display: flex;
+    height: 100dvh !important;
+    min-width: 100vw !important;
+    min-height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    z-index: 999999 !important;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     pointer-events: auto;
     margin: 0 !important;
     padding: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   .aether-lightbox-backdrop {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    background: #000000;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    background: #000000 !important;
     backdrop-filter: blur(8px);
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .aether-lightbox-content {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
     align-items: center;
     justify-content: center;
     z-index: 1;
-    padding: 0;
-    margin: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .aether-lightbox-content img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 0;
-    box-shadow: none;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    object-fit: contain !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
   }
 
   .aether-lightbox-close {
@@ -1267,36 +1289,48 @@ body.aether-chat-open #aether-launcher {
 
   /* Mobile-specific lightbox adjustments */
   @media (max-width: 640px) {
-    .aether-lightbox {
+    #aether-lightbox {
       width: 100vw !important;
+      width: 100dvw !important;
       height: 100vh !important;
-      height: 100dvh !important; /* Use dynamic viewport height for mobile */
+      height: 100dvh !important;
+      min-width: 100vw !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      max-height: 100dvh !important;
     }
 
     .aether-lightbox-content {
-      width: 100%;
-      height: 100%;
-      padding: 0;
+      width: 100% !important;
+      height: 100% !important;
+      min-width: 100% !important;
+      min-height: 100% !important;
+      padding: 0 !important;
     }
 
     .aether-lightbox-content img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100vw !important;
+      max-height: 100vh !important;
+      max-height: 100dvh !important;
+      object-fit: contain !important;
     }
 
     .aether-lightbox-close {
-      top: 16px;
-      right: 16px;
-      width: 44px;
-      height: 44px;
-      background: rgba(255, 255, 255, 0.2);
-      border: 2px solid rgba(255, 255, 255, 0.4);
+      top: 16px !important;
+      right: 16px !important;
+      width: 44px !important;
+      height: 44px !important;
+      background: rgba(255, 255, 255, 0.2) !important;
+      border: 2px solid rgba(255, 255, 255, 0.4) !important;
     }
 
     .aether-lightbox-close svg {
-      width: 22px;
-      height: 22px;
+      width: 22px !important;
+      height: 22px !important;
     }
   }
 

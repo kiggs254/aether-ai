@@ -1254,8 +1254,8 @@ body.aether-chat-open #aether-launcher {
     position: fixed !important;
     top: 20px !important;
     right: 20px !important;
-    background: rgba(255, 255, 255, 0.2) !important;
-    border: 2px solid rgba(255, 255, 255, 0.4) !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
     border-radius: 50% !important;
     width: 48px !important;
     height: 48px !important;
@@ -1270,16 +1270,18 @@ body.aether-chat-open #aether-launcher {
     pointer-events: auto !important;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.1) inset !important;
   }
 
   .aether-lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.3) !important;
-    border-color: rgba(255, 255, 255, 0.6) !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
     transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.2) inset !important;
   }
 
   .aether-lightbox-close:active {
-    background: rgba(255, 255, 255, 0.4) !important;
+    background: rgba(0, 0, 0, 0.9) !important;
     transform: scale(0.95);
   }
 
@@ -1336,9 +1338,10 @@ body.aether-chat-open #aether-launcher {
       right: 16px !important;
       width: 44px !important;
       height: 44px !important;
-      background: rgba(255, 255, 255, 0.25) !important;
-      border: 2px solid rgba(255, 255, 255, 0.5) !important;
+      background: rgba(0, 0, 0, 0.7) !important;
+      border: 2px solid rgba(255, 255, 255, 0.4) !important;
       z-index: 1000000 !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.1) inset !important;
     }
 
     .aether-lightbox-close svg {

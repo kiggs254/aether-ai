@@ -2157,16 +2157,16 @@ export const generateWidgetJS = (): string => {
   const lightboxBackdrop = lightbox ? lightbox.querySelector('.aether-lightbox-backdrop') : null;
 
   const openLightbox = (imageSrc) => {
-    if (lightbox && lightboxImage) {
+    if (lightbox && lightboxImage && imageSrc) {
       lightboxImage.src = imageSrc;
-      lightbox.style.display = 'flex';
+      lightbox.style.setProperty('display', 'flex', 'important');
       document.body.style.overflow = 'hidden';
     }
   };
 
   const closeLightbox = () => {
     if (lightbox) {
-      lightbox.style.display = 'none';
+      lightbox.style.setProperty('display', 'none', 'important');
       document.body.style.overflow = '';
     }
   };
@@ -2193,10 +2193,15 @@ export const generateWidgetJS = (): string => {
 
   // Close lightbox on ESC key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && lightbox && lightbox.style.display === 'flex') {
+    if (e.key === 'Escape' && lightbox && lightbox.style.display !== 'none') {
       closeLightbox();
     }
   });
+
+  // Ensure lightbox is hidden on initialization
+  if (lightbox) {
+    lightbox.style.setProperty('display', 'none', 'important');
+  }
 
   // Quick action button handlers
   const quickActionButtons = document.querySelectorAll('.aether-quick-action-btn');

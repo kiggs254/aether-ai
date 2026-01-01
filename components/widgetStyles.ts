@@ -1188,7 +1188,7 @@ body.aether-chat-open #aether-launcher {
     max-width: 100vw !important;
     max-height: 100vh !important;
     z-index: 999999 !important;
-    display: flex !important;
+    display: none !important; /* Hidden by default */
     align-items: center;
     justify-content: center;
     pointer-events: auto;
@@ -1197,6 +1197,12 @@ body.aether-chat-open #aether-launcher {
     border: none !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+  }
+
+  /* Lightbox visible state */
+  #aether-lightbox[style*="display: flex"],
+  #aether-lightbox[style*="display:flex"] {
+    display: flex !important;
   }
 
   .aether-lightbox-backdrop {

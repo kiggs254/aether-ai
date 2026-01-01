@@ -2172,23 +2172,53 @@ export const generateWidgetJS = (): string => {
   };
 
   // Add click handlers to all clickable images (delegated event listener)
+  // Support both click and touch events for mobile
   if (messages) {
-    messages.addEventListener('click', (e) => {
+    const handleImageClick = (e) => {
       const img = e.target.closest('.aether-clickable-image');
       if (img && img.dataset.imageSrc) {
         e.preventDefault();
+        e.stopPropagation();
         openLightbox(img.dataset.imageSrc);
       }
-    });
+    };
+    
+    messages.addEventListener('click', handleImageClick);
+    messages.addEventListener('touchend', function(e) {
+      // Only handle touch if it's a tap (not a scroll)
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const img = target ? target.closest('.aether-clickable-image') : null;
+      if (img && img.dataset.imageSrc) {
+        e.preventDefault();
+        e.stopPropagation();
+        openLightbox(img.dataset.imageSrc);
+      }
+    }, { passive: false });
   }
 
-  // Close lightbox handlers
+  // Close lightbox handlers - support both click and touch
   if (lightboxClose) {
-    lightboxClose.addEventListener('click', closeLightbox);
+    const handleClose = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeLightbox();
+    };
+    lightboxClose.addEventListener('click', handleClose);
+    lightboxClose.addEventListener('touchend', handleClose, { passive: false });
   }
 
   if (lightboxBackdrop) {
-    lightboxBackdrop.addEventListener('click', closeLightbox);
+    const handleBackdropClose = (e) => {
+      // Only close if clicking directly on backdrop, not on content
+      if (e.target === lightboxBackdrop) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeLightbox();
+      }
+    };
+    lightboxBackdrop.addEventListener('click', handleBackdropClose);
+    lightboxBackdrop.addEventListener('touchend', handleBackdropClose, { passive: false });
   }
 
   // Close lightbox on ESC key

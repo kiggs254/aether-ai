@@ -1251,38 +1251,44 @@ body.aether-chat-open #aether-launcher {
   }
 
   .aether-lightbox-close {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 255, 255, 0.15);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: white;
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    border: 2px solid rgba(255, 255, 255, 0.4) !important;
+    border-radius: 50% !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    color: white !important;
     transition: all 0.2s;
-    z-index: 2;
+    z-index: 1000000 !important;
     backdrop-filter: blur(10px);
+    pointer-events: auto !important;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   .aether-lightbox-close:hover {
-    background: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
     transform: scale(1.1);
   }
 
   .aether-lightbox-close:active {
+    background: rgba(255, 255, 255, 0.4) !important;
     transform: scale(0.95);
   }
 
   .aether-lightbox-close svg {
-    width: 24px;
-    height: 24px;
-    stroke-width: 2.5;
+    width: 24px !important;
+    height: 24px !important;
+    stroke-width: 2.5 !important;
+    stroke: white !important;
+    pointer-events: none !important;
   }
 
   .aether-clickable-image {
@@ -1330,13 +1336,16 @@ body.aether-chat-open #aether-launcher {
       right: 16px !important;
       width: 44px !important;
       height: 44px !important;
-      background: rgba(255, 255, 255, 0.2) !important;
-      border: 2px solid rgba(255, 255, 255, 0.4) !important;
+      background: rgba(255, 255, 255, 0.25) !important;
+      border: 2px solid rgba(255, 255, 255, 0.5) !important;
+      z-index: 1000000 !important;
     }
 
     .aether-lightbox-close svg {
       width: 22px !important;
       height: 22px !important;
+      stroke: white !important;
+      pointer-events: none !important;
     }
   }
 

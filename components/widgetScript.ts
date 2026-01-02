@@ -531,6 +531,17 @@ export const generateWidgetJS = (): string => {
     }
   }
   
+  // If no departments, show phone and submit button immediately
+  if (showForm) {
+    const departmentBots = config.departmentBots;
+    if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
+      const phoneGroupEl = container.querySelector('#aether-phone-group');
+      const submitLeadEl = container.querySelector('#aether-submit-lead');
+      if (phoneGroupEl) phoneGroupEl.style.display = 'block';
+      if (submitLeadEl) submitLeadEl.style.display = 'block';
+    }
+  }
+  
   // Create lightbox separately and append directly to body (outside container for full-screen)
   const lightboxContainer = document.createElement('div');
   lightboxContainer.id = 'aether-lightbox';
@@ -1398,15 +1409,17 @@ export const generateWidgetJS = (): string => {
   const emailInput = document.getElementById('aether-email');
   const phoneInput = document.getElementById('aether-phone');
   
-  // Function to show department selection
+  // Function to show department selection or phone input
   const showDepartmentSelection = async () => {
     const departmentBots = config.departmentBots;
     if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
-      // No departments, show phone input directly
+      // No departments, show phone input and submit button directly
       if (phoneGroup) phoneGroup.style.display = 'block';
       if (submitLead) submitLead.style.display = 'block';
       return;
     }
+
+    // Has departments - department selection will show phone/submit after selection
 
     // Show department selection
     if (departmentGroup && departmentOptions) {

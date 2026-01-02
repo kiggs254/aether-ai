@@ -61,9 +61,24 @@ exports.handler = async (event, context) => {
     // Parse request body
     let body;
     try {
-      body = JSON.parse(event.body || '{}');
+      if (!event.body) {
+        throw new Error('Request body is empty');
+      }
+      body = JSON.parse(event.body);
+      
+      // Validate required fields
+      if (!body.action) {
+        throw new Error('Missing required field: action');
+      }
+      if (!body.bot) {
+        throw new Error('Missing required field: bot');
+      }
+      if (!body.bot.id) {
+        throw new Error('Missing required field: bot.id');
+      }
     } catch (parseError) {
-      console.error('Failed to parse request body:', parseError);
+      console.error('Failed to parse or validate request body:', parseError);
+      console.error('Request body:', event.body?.substring(0, 500));
       return {
         statusCode: 400,
         headers: {
@@ -72,7 +87,8 @@ exports.handler = async (event, context) => {
         },
         body: JSON.stringify({ 
           error: 'Invalid request body',
-          message: parseError.message 
+          message: parseError.message,
+          details: 'Check server logs for more information'
         }),
       };
     }
@@ -80,11 +96,21 @@ exports.handler = async (event, context) => {
     // Forward request to Supabase
     let response;
     try {
+      console.log('Forwarding request to Supabase:', {
+        url: supabaseFunctionUrl,
+        action: body.action,
+        botId: body.bot?.id,
+        provider: body.bot?.provider,
+        hasHistory: !!body.history,
+        hasMessage: !!body.message
+      });
+      
       response = await fetch(supabaseFunctionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify(body),
       });
@@ -106,7 +132,12 @@ exports.handler = async (event, context) => {
     // Check if response is OK
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unknown error');
-      console.error('Supabase returned error:', response.status, errorText);
+      console.error('Supabase returned error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        url: supabaseFunctionUrl
+      });
       return {
         statusCode: response.status,
         headers: {

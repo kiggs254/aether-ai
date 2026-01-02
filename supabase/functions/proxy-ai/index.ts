@@ -37,11 +37,37 @@ serve(async (req) => {
     console.log('Processing request, userId:', userId);
 
     // Parse request body
-    const body = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body', message: parseError.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     const { action, bot, history, message, stream } = body;
 
+    // Validate required fields
+    if (!action || !bot) {
+      console.error('Missing required fields:', { action: !!action, bot: !!bot });
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: action and bot are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate provider
     const provider = bot.provider || 'gemini';
+    if (provider !== 'gemini' && provider !== 'openai' && provider !== 'deepseek') {
+      console.error('Invalid provider:', provider);
+      return new Response(
+        JSON.stringify({ error: `Invalid provider: ${provider}. Must be 'gemini', 'openai', or 'deepseek'` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const systemInstruction = buildSystemInstruction(bot);
 
     // Handle different AI actions

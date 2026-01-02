@@ -118,7 +118,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         brandColor,
         welcomeMessage,
         collectLeads,
-        departmentBots: departmentBots.length > 0 ? departmentBots : undefined,
+        departmentBots: departmentBots, // Always pass the array, even if empty
       });
       await loadIntegrations();
       setSelectedIntegration(newIntegration);
@@ -140,7 +140,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         brandColor,
         welcomeMessage,
         collectLeads,
-        departmentBots: departmentBots.length > 0 ? departmentBots : undefined,
+        departmentBots: departmentBots, // Always pass the array, even if empty, to allow clearing
       });
       await loadIntegrations();
       setSelectedIntegration(updated);

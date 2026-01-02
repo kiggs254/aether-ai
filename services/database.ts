@@ -841,7 +841,8 @@ export const integrationService = {
     if (settings.welcomeMessage !== undefined) updateData.welcome_message = settings.welcomeMessage;
     if (settings.collectLeads !== undefined) updateData.collect_leads = settings.collectLeads;
     if (settings.departmentBots !== undefined) {
-      updateData.department_bots = settings.departmentBots && settings.departmentBots.length > 0
+      // Always update the field - if array is empty, set to null to clear departments
+      updateData.department_bots = Array.isArray(settings.departmentBots) && settings.departmentBots.length > 0
         ? JSON.stringify(settings.departmentBots)
         : null;
     }

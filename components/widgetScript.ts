@@ -481,12 +481,12 @@ export const generateWidgetJS = (): string => {
           '<div id="aether-department-options" class="aether-department-options"></div>' +
           '<div class="aether-form-error" id="aether-department-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
         '</div>' +
-        '<div class="aether-form-group" id="aether-phone-group" style="display:none;">' +
+        '<div class="aether-form-group" id="aether-phone-group">' +
           '<label>Phone Number</label>' +
           '<input type="tel" class="aether-input" id="aether-phone" placeholder="+1 (555) 000-0000" required />' +
           '<div class="aether-form-error" id="aether-phone-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
         '</div>' +
-        '<button class="aether-btn" id="aether-submit-lead" style="display:none;">Start Chatting</button>' +
+        '<button class="aether-btn" id="aether-submit-lead">Start Chatting</button>' +
       '</div>' : '') +
       '<div class="aether-messages" id="aether-messages" style="' + (showForm ? 'display:none' : '') + '">' +
         '<div class="aether-welcome-container" id="aether-welcome-container">' +
@@ -535,14 +535,14 @@ export const generateWidgetJS = (): string => {
     }
   }
   
-  // If no departments, show phone and submit button immediately
+  // Hide phone and submit button if departments exist (they'll be shown after department selection)
   if (showForm) {
     const departmentBots = config.departmentBots;
-    if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
+    if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
       const phoneGroupEl = container.querySelector('#aether-phone-group');
       const submitLeadEl = container.querySelector('#aether-submit-lead');
-      if (phoneGroupEl) phoneGroupEl.style.display = 'block';
-      if (submitLeadEl) submitLeadEl.style.display = 'block';
+      if (phoneGroupEl) phoneGroupEl.style.display = 'none';
+      if (submitLeadEl) submitLeadEl.style.display = 'none';
     }
   }
   

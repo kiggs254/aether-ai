@@ -1692,6 +1692,11 @@ body.aether-chat-open #aether-launcher {
     object-fit: cover;
     display: block;
     background: var(--aether-secondary-bg);
+    border-radius: 0;
+  }
+  
+  .aether-product-image[src=""] {
+    display: none;
   }
 
   .aether-product-image-placeholder {

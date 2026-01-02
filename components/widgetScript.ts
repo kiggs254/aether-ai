@@ -2094,8 +2094,13 @@ export const generateWidgetJS = (): string => {
       }
       
       // Get image URL - handle both snake_case and camelCase
-      const imageUrl = p.image_url || p.imageUrl;
+      const imageUrl = p.image_url || p.imageUrl || null;
       const productUrl = p.product_url || p.productUrl || '#';
+      
+      // Debug logging
+      if (!imageUrl) {
+        console.log('Product missing image URL:', p.name, p);
+      }
       
       const productCard = document.createElement('div');
       productCard.className = 'aether-product-card';
@@ -2106,22 +2111,29 @@ export const generateWidgetJS = (): string => {
       productLink.rel = 'noopener noreferrer';
       productLink.className = 'aether-product-link';
       
-      if (imageUrl) {
+      if (imageUrl && imageUrl.trim() !== '') {
         const img = document.createElement('img');
-        img.src = imageUrl;
+        img.src = imageUrl.trim();
         img.alt = p.name || 'Product';
         img.className = 'aether-product-image';
+        img.loading = 'lazy';
         img.onerror = function() {
+          console.error('Failed to load product image:', imageUrl, 'for product:', p.name);
           // Fallback to placeholder if image fails to load
           this.style.display = 'none';
           const placeholder = document.createElement('div');
           placeholder.className = 'aether-product-image-placeholder';
+          placeholder.textContent = 'No Image';
           this.parentNode.insertBefore(placeholder, this);
+        };
+        img.onload = function() {
+          console.log('Successfully loaded product image:', imageUrl, 'for product:', p.name);
         };
         productLink.appendChild(img);
       } else {
         const placeholder = document.createElement('div');
         placeholder.className = 'aether-product-image-placeholder';
+        placeholder.textContent = 'No Image';
         productLink.appendChild(placeholder);
       }
       
@@ -2369,7 +2381,12 @@ export const generateWidgetJS = (): string => {
               const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
               if (loadingEl) loadingEl.remove();
               
+              // Debug: Log products to see what data we're getting
+              console.log('Products fetched for carousel:', products);
               if (products && products.length > 0) {
+                products.forEach(function(p) {
+                  console.log('Product:', p.name, 'Image URL:', p.image_url || p.imageUrl || 'MISSING');
+                });
                 renderProductCarousel(products, actionCard);
               } else {
                 actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
@@ -2841,7 +2858,12 @@ export const generateWidgetJS = (): string => {
                 const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
                 if (loadingEl) loadingEl.remove();
                 
+                // Debug: Log products to see what data we're getting
+                console.log('Products fetched for carousel:', products);
                 if (products && products.length > 0) {
+                  products.forEach(function(p) {
+                    console.log('Product:', p.name, 'Image URL:', p.image_url || p.imageUrl || 'MISSING');
+                  });
                   renderProductCarousel(products, actionCard);
                 } else {
                   actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +

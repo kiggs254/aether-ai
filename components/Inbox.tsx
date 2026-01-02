@@ -680,32 +680,35 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
          {/* Product Recommendations Modal */}
          {showProductModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowProductModal(false)}>
-               <div className="bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/10" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-between p-6 border-b border-white/10">
-                     <div className="flex items-center gap-3">
-                        <ShoppingBag className="w-5 h-5 text-indigo-400" />
-                        <h2 className="text-white font-semibold text-lg">Recommended Products</h2>
+               <div className="bg-slate-900 rounded-xl max-w-2xl w-full max-h-[70vh] overflow-hidden flex flex-col border border-white/10 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                     <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-indigo-400" />
+                        <h2 className="text-white font-semibold text-sm">Recommended Products</h2>
+                        {modalProducts.length > 0 && (
+                           <span className="text-xs text-slate-400">({modalProducts.length})</span>
+                        )}
                      </div>
                      <button
                         onClick={() => setShowProductModal(false)}
-                        className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                      >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                      </button>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto custom-scrollbar">
                      {isLoadingProducts ? (
-                        <div className="flex items-center justify-center py-12">
-                           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        <div className="flex items-center justify-center py-8">
+                           <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                         </div>
                      ) : modalProducts.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                           <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                           <p>No products found</p>
+                        <div className="text-center py-8 text-slate-400">
+                           <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                           <p className="text-sm">No products found</p>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="divide-y divide-white/5">
                            {modalProducts.map((product) => {
                               const priceDisplay = product.price
                                  ? `${product.currency || 'USD'} ${product.price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
@@ -717,14 +720,14 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                     href={product.productUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="bg-white/5 rounded-xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
+                                    className="flex items-center gap-3 p-3 hover:bg-white/5 transition-colors group"
                                  >
-                                    <div className="aspect-square bg-slate-800 flex items-center justify-center overflow-hidden">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
                                        {product.imageUrl ? (
                                           <img
                                              src={product.imageUrl}
                                              alt={product.name}
-                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                             className="w-full h-full object-cover"
                                              onError={(e) => {
                                                 e.currentTarget.style.display = 'none';
                                                 const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
@@ -732,15 +735,16 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                              }}
                                           />
                                        ) : null}
-                                       <div className={`${product.imageUrl ? 'hidden' : ''} text-slate-500 text-sm`}>No Image</div>
+                                       <div className={`${product.imageUrl ? 'hidden' : ''} text-slate-500 text-xs`}>No Image</div>
                                     </div>
-                                    <div className="p-4">
-                                       <h3 className="text-white font-medium text-sm mb-2 line-clamp-2">{product.name}</h3>
+                                    <div className="flex-1 min-w-0">
+                                       <h3 className="text-white font-medium text-sm mb-1 truncate group-hover:text-indigo-400 transition-colors">{product.name}</h3>
                                        {product.category && (
-                                          <p className="text-xs text-slate-400 mb-2">{product.category}</p>
+                                          <p className="text-xs text-slate-400 mb-1">{product.category}</p>
                                        )}
                                        <p className="text-indigo-400 font-semibold text-sm">{priceDisplay}</p>
                                     </div>
+                                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-400 transition-colors flex-shrink-0" />
                                  </a>
                               );
                            })}

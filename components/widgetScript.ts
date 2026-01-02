@@ -310,6 +310,10 @@ export const generateWidgetJS = (): string => {
     brandColor = integrationConfig.brandColor;
     welcomeMessage = integrationConfig.welcomeMessage || 'Hello! How can I help you?';
     collectLeads = integrationConfig.collectLeads;
+    const departmentBots = integrationConfig.departmentBots || null;
+    
+    // Store department bots in config for later use
+    config.departmentBots = departmentBots;
     
     // Fetch bot config using botId from integration
     console.log('Fetching bot config from Supabase for botId:', integrationConfig.botId);
@@ -588,6 +592,10 @@ export const generateWidgetJS = (): string => {
   const submitLead = document.getElementById('aether-submit-lead');
   const launcherIcon = document.getElementById('aether-launcher-icon');
   const closeWindowBtn = document.getElementById('aether-close-window-btn');
+  const emailGroup = document.getElementById('aether-email-group');
+  const departmentGroup = document.getElementById('aether-department-group');
+  const phoneGroup = document.getElementById('aether-phone-group');
+  const departmentOptions = document.getElementById('aether-department-options');
   
   let isOpen = false;
   let messageHistory = [];
@@ -595,6 +603,8 @@ export const generateWidgetJS = (): string => {
   let selectedImage = null;
   let conversationId = null;
   let leadData = { email: null, phone: null };
+  let selectedDepartmentBot = null;
+  let currentBot = bot; // Track current bot (may change when department is selected)
   
   // Session management functions
   const SESSION_EXPIRY_DAYS = 7;

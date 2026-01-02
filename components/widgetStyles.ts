@@ -553,8 +553,8 @@ body.aether-chat-open #aether-launcher {
 .aether-input-wrapper {
   position: relative;
   display: flex;
-  align-items: flex-end;
-  gap: var(--aether-spacing-xs);
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 0;
   border: none;
@@ -564,14 +564,14 @@ body.aether-chat-open #aether-launcher {
 }
 
 .aether-image-btn {
-  width: var(--aether-touch-target);
-  height: var(--aether-touch-target);
-  min-width: var(--aether-touch-target);
-  min-height: var(--aether-touch-target);
-  border-radius: 50%;
-  border: none;
-  background: var(--aether-secondary-bg);
-  color: var(--aether-text-color);
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+  background: hsl(var(--background, 0 0% 100%));
+  color: hsl(var(--foreground, 222.2 84% 4.9%));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -581,6 +581,11 @@ body.aether-chat-open #aether-launcher {
   position: relative;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+.aether-image-btn:hover {
+  background: hsl(var(--accent, 210 40% 96.1%));
+  border-color: hsl(var(--border, 214.3 31.8% 91.4%));
 }
 
 .aether-image-btn:active {
@@ -657,6 +662,7 @@ body.aether-chat-open #aether-launcher {
   box-sizing: border-box;
   width: auto;
   height: auto;
+  vertical-align: middle;
 }
 
 /* Hide scrollbar on mobile until needed (4+ lines) */
@@ -706,13 +712,13 @@ body.aether-chat-open #aether-launcher {
   background: var(--aether-bg-color);
 }
 
-/* Send Button - Mobile First (Fixed Icon Size) */
+/* Send Button - Modern Design */
 .aether-send-btn {
-  width: var(--aether-touch-target);
-  height: var(--aether-touch-target);
-  min-width: var(--aether-touch-target);
-  min-height: var(--aether-touch-target);
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 12px;
   background: var(--aether-brand-color);
   color: white;
   border: none;
@@ -720,7 +726,7 @@ body.aether-chat-open #aether-launcher {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   position: relative;

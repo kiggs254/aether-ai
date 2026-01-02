@@ -469,47 +469,62 @@ function buildSystemInstruction(bot: any): string {
     ---
     
     You have access to interactive UI tools/actions. 
+    PRIORITY ORDER: Always check if a custom action is appropriate FIRST before recommending products.
     If a user's request is best served by triggering a UI action (like showing a button, opening a link, or handing off to a human), invoke the "trigger_action" function with the appropriate action_id.
     Do not mention the internal action_id to the user, just trigger it naturally.
+    
+    ACTION PRIORITY: Custom actions take precedence over product recommendations. Only recommend products if no custom action matches the user's intent.
   `;
 
   // Add e-commerce instructions if enabled
   if (bot.ecommerceEnabled) {
     instruction += `
     
-    E-COMMERCE MODE ENABLED:
-    You have access to a REAL product catalog. You MUST use the recommend_products function to show actual products from the catalog.
+    ⚠️ E-COMMERCE MODE ENABLED - CRITICAL INSTRUCTIONS ⚠️
     
-    CRITICAL RULES:
-    - NEVER make up or invent product names, prices, or details
-    - ALWAYS call the recommend_products function when users ask about products, mention products, or need recommendations
-    - DO NOT describe products that you haven't retrieved from the catalog
-    - If a user asks "do you have X?" or "what products do you have?", you MUST call recommend_products immediately
+    YOU HAVE ACCESS TO A REAL PRODUCT CATALOG. YOU CANNOT KNOW WHAT PRODUCTS EXIST WITHOUT CALLING THE recommend_products FUNCTION.
     
-    WHEN TO USE recommend_products:
-    - User asks "do you have [product]?" → Call recommend_products with keywords/category
-    - User mentions a product type → Call recommend_products with that category
-    - User asks "what do you have?" → Call recommend_products (no filters or with category if mentioned)
-    - User asks about prices or availability → Call recommend_products with price filters
-    - User expresses interest in something → Call recommend_products with relevant filters
-    - Any product-related question → Call recommend_products first, then respond based on results
+    IMPORTANT: Custom actions (trigger_action) take PRIORITY over product recommendations. Only use recommend_products if no custom action matches the user's intent.
     
-    HOW TO USE recommend_products:
-    1. Extract information from user's message:
-       - category: Product type (e.g., "milk", "yogurt", "electronics")
-       - keywords: Relevant words (e.g., ["whole", "milk"] for "whole milk")
-       - price_min/price_max: If budget mentioned
-    2. Call recommend_products function with these filters
-    3. Wait for the function to return actual products from the catalog
-    4. Present the REAL products that were returned
-    5. If no products found, say so honestly - don't make up products
+    ABSOLUTE RULES - DO NOT VIOLATE:
+    1. NEVER describe, list, or mention ANY products by name, price, or details UNLESS you have called recommend_products first
+    2. NEVER make up product names, brands, prices, or features
+    3. NEVER say "we have X" or "here are some options" without calling recommend_products first
+    4. If a user asks about ANY product, you MUST call recommend_products BEFORE responding (but only if no custom action is appropriate)
+    5. DO NOT generate a text response about products until AFTER you have called recommend_products and received results
     
-    EXAMPLE FLOW:
-    User: "Do you have milk?"
-    You: [Call recommend_products with keywords: ["milk"]]
-    You: [After receiving products] "Yes! Here are our milk products: [list actual products from catalog]"
+    MANDATORY WORKFLOW FOR PRODUCT QUESTIONS:
+    Step 1: User asks about a product (e.g., "do you have yogurt?", "yogurt", "what yogurt do you have?")
+    Step 2: FIRST check if any custom action (trigger_action) matches the user's intent - if yes, use that action instead
+    Step 3: If no custom action matches, IMMEDIATELY call recommend_products function - DO NOT generate any text response yet
+    Step 4: Wait for the function to return actual products
+    Step 5: ONLY THEN respond with the real products from the catalog
+    Step 6: If no products found, say "I don't see any [product] in our catalog right now" - DO NOT make up products
     
-    REMEMBER: You cannot know what products exist until you call recommend_products. Always call the function first, then respond based on the actual results.
+    WHEN TO CALL recommend_products (CALL IT IMMEDIATELY - NO TEXT FIRST):
+    - ONLY if no custom action matches the user's intent
+    - User asks "do you have [anything]?" → Check for custom actions first, then call function with keywords (DO NOT say "yes" first)
+    - User mentions a product name → Check for custom actions first, then call function with keywords (DO NOT describe products first)
+    - User asks "what [products] do you have?" → Check for custom actions first, then call function (DO NOT list products first)
+    - User says just a product name (e.g., "yogurt") → Check for custom actions first, then call function (DO NOT respond with text first)
+    - ANY product-related question → Check for custom actions FIRST, then call function if no action matches, respond SECOND
+    
+    HOW TO CALL recommend_products:
+    - Extract keywords from user message (e.g., "yogurt" → keywords: ["yogurt"])
+    - Extract category if clear (e.g., "milk" → category: "milk")
+    - Call function with these filters
+    - DO NOT respond with text until you have the results
+    
+    FORBIDDEN RESPONSES (DO NOT DO THIS):
+    ❌ "Yes, we have yogurt. Here are some options: Brand X, Brand Y..." (making up products)
+    ❌ "We have Greek yogurt, traditional yogurt..." (inventing products)
+    ❌ "Yes, we do have yogurt in stock. We have several varieties..." (hallucinating)
+    
+    CORRECT RESPONSES (DO THIS):
+    ✅ [Call recommend_products with keywords: ["yogurt"]] → Wait for results → "Here's what we have: [real products from catalog]"
+    ✅ [Call recommend_products] → If no results → "I don't see any yogurt in our catalog right now"
+    
+    REMEMBER: You are a shopping assistant with a real catalog. You must query the catalog to know what exists. You cannot know products exist without calling the function. NEVER describe products you haven't retrieved. ALWAYS call the function first, then respond.
     `;
   }
 
@@ -555,7 +570,7 @@ function buildOpenAITools(bot: any): any[] | undefined {
       type: 'function',
       function: {
         name: 'recommend_products',
-        description: 'MANDATORY: Use this function to get REAL products from the catalog. You MUST call this function whenever users ask about products, mention products, ask "do you have X?", ask "what do you have?", or need product recommendations. NEVER make up products - always call this function first to get actual products from the catalog. Extract category, keywords, and price range from the conversation.',
+        description: '⚠️ MANDATORY FUNCTION ⚠️ You MUST call this function to get REAL products from the catalog. DO NOT describe or list products without calling this function first. Call this immediately when: users ask "do you have X?", mention product names, ask "what do you have?", or ask about any products. NEVER make up products - you can only know what products exist by calling this function. Extract category, keywords, and price range from the conversation to filter products.',
         parameters: {
           type: 'object',
           properties: {
@@ -618,7 +633,7 @@ function buildGeminiTools(bot: any): any[] | undefined {
 
     functionDeclarations.push({
       name: 'recommend_products',
-      description: 'MANDATORY: Use this function to get REAL products from the catalog. You MUST call this function whenever users ask about products, mention products, ask "do you have X?", ask "what do you have?", or need product recommendations. NEVER make up products - always call this function first to get actual products from the catalog. Extract category, keywords, and price range from the conversation.',
+      description: '⚠️ MANDATORY FUNCTION ⚠️ You MUST call this function to get REAL products from the catalog. DO NOT describe or list products without calling this function first. Call this immediately when: users ask "do you have X?", mention product names, ask "what do you have?", or ask about any products. NEVER make up products - you can only know what products exist by calling this function. Extract category, keywords, and price range from the conversation to filter products.',
       parameters: {
         type: 'OBJECT',
         properties: {

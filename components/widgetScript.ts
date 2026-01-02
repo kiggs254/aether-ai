@@ -3253,13 +3253,21 @@ export const generateWidgetJS = (): string => {
           var recommendationPattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:([^\\\\]]+)\\\\]');
           var recommendationMatch = messageText.match(recommendationPattern);
           if (recommendationMatch) {
+            console.log('Found product recommendation marker in message:', messageText.substring(0, 100));
             try {
               productRecommendationArgs = JSON.parse(recommendationMatch[1]);
+              console.log('Parsed product recommendation args:', productRecommendationArgs);
               // Remove the marker from display text (escape both brackets)
               var replacePattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:[^\\\\]]+\\\\]');
               messageText = messageText.replace(replacePattern, '').trim();
+              console.log('Message text after removing marker:', messageText);
             } catch (e) {
-              console.error('Failed to parse product recommendation args:', e);
+              console.error('Failed to parse product recommendation args:', e, 'Match:', recommendationMatch[1]);
+            }
+          } else {
+            // Debug: check if marker exists but regex didn't match
+            if (messageText.includes('PRODUCT_RECOMMENDATION')) {
+              console.warn('Message contains PRODUCT_RECOMMENDATION but regex did not match:', messageText.substring(0, 200));
             }
           }
           
@@ -3269,17 +3277,32 @@ export const generateWidgetJS = (): string => {
             addMessage('', role, actionId);
           } else {
             // Regular message - show both text and any action
+            // Store reference to the message element we're about to add
+            var messageElementBefore = messages ? messages.children.length : 0;
             addMessage(messageText, role, actionId);
             
             // If this message has a product recommendation, restore the carousel
             if (productRecommendationArgs && role === 'bot') {
               // Use setTimeout to ensure the message is added to DOM first
               setTimeout(function() {
-                // Find the bot message element we just added
+                // Find the bot message element we just added by checking the count
                 var botMessages = messages.querySelectorAll('.aether-msg.bot');
+                // Get the last bot message (should be the one we just added)
                 var lastBotMsg = botMessages[botMessages.length - 1];
                 
+                // Double-check: verify this is the right message by checking if it contains our text
+                if (lastBotMsg && messageText && lastBotMsg.textContent && !lastBotMsg.textContent.includes(messageText.trim())) {
+                  // If the last message doesn't match, try to find the one that does
+                  for (var j = botMessages.length - 1; j >= 0; j--) {
+                    if (botMessages[j].textContent && botMessages[j].textContent.includes(messageText.trim())) {
+                      lastBotMsg = botMessages[j];
+                      break;
+                    }
+                  }
+                }
+                
                 if (lastBotMsg && bot && bot.id) {
+                  console.log('Restoring product recommendation for message:', messageText);
                   // Fetch and render products
                   queryProducts(bot.id, {
                     category: productRecommendationArgs.category,
@@ -3288,6 +3311,7 @@ export const generateWidgetJS = (): string => {
                     keywords: productRecommendationArgs.keywords,
                     max_results: productRecommendationArgs.max_results || (bot.ecommerceSettings?.maxProductsToRecommend || 10),
                   }).then(function(products) {
+                    console.log('Products fetched for restoration:', products.length);
                     if (products && products.length > 0) {
                       var carouselContainer = document.createElement('div');
                       carouselContainer.className = 'aether-product-carousel-container';
@@ -3295,18 +3319,28 @@ export const generateWidgetJS = (): string => {
                       
                       if (lastBotMsg && lastBotMsg.parentNode) {
                         lastBotMsg.parentNode.insertBefore(carouselContainer, lastBotMsg.nextSibling);
+                        console.log('Product carousel restored after message');
                       } else if (messages) {
                         messages.appendChild(carouselContainer);
+                        console.log('Product carousel appended to messages');
                       }
                       
                       // Scroll to show the carousel
                       if (messages) messages.scrollTop = messages.scrollHeight;
+                    } else {
+                      console.warn('No products found for restoration');
                     }
                   }).catch(function(error) {
                     console.error('Error restoring product recommendation:', error);
                   });
+                } else {
+                  console.warn('Could not find bot message element for product recommendation restoration', {
+                    lastBotMsg: !!lastBotMsg,
+                    botId: bot ? bot.id : null,
+                    messageText: messageText
+                  });
                 }
-              }, 50);
+              }, 100); // Increased timeout to ensure DOM is ready
             }
           }
           

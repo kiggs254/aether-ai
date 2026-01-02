@@ -210,63 +210,111 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
     // Trim whitespace and normalize
     priceText = priceText.trim().replace(/\s+/g, ' ');
     
-    // Try to match currency code at the start (e.g., "KES 13995.0" or "KES 13995")
-    // Pattern: 3 uppercase letters at the start, followed by space(s), then number (with optional decimal and commas)
-    // This is the most common format: "KES 13995.0"
-    const currencyMatch = priceText.match(/^([A-Z]{3})\s+([\d,]+(?:\.\d+)?)/);
-    if (currencyMatch && currencyMatch.length >= 3) {
-      currency = currencyMatch[1];
-      // Extract numeric value (remove commas, keep decimal point)
-      const numericValue = currencyMatch[2].replace(/,/g, '');
+    // Try multiple patterns to handle different formats:
+    // Format 1: "KES 13995.0" (currency first, then price)
+    // Format 2: "5979 KES" (price first, then currency)
+    // Format 3: "13995.0 KES" (price with decimal, then currency)
+    
+    const allMatches: Array<{currency: string, price: number, index: number, confidence: number}> = [];
+    
+    // Pattern 1: Currency at start, then price (e.g., "KES 13995.0")
+    const pattern1 = /^([A-Z]{3})\s+([\d,]+(?:\.\d+)?)/;
+    let match1 = priceText.match(pattern1);
+    if (match1 && match1.length >= 3) {
+      const numericValue = match1[2].replace(/,/g, '');
       const parsedPrice = parseFloat(numericValue);
       if (!isNaN(parsedPrice) && parsedPrice > 0) {
-        price = parsedPrice;
+        allMatches.push({
+          currency: match1[1],
+          price: parsedPrice,
+          index: 0,
+          confidence: 10 // Highest confidence for start-of-string match
+        });
       }
-    } else {
-      // Fallback: Find ALL currency matches and pick the one with the largest price
-      // This handles cases where there might be multiple currency mentions
-      // We want the MAIN price, not a small number like "USD 2"
-      const allMatches: Array<{currency: string, price: number, index: number}> = [];
-      const regex = /\b([A-Z]{3})\s+([\d,]+(?:\.\d+)?)/g;
-      let match;
+    }
+    
+    // Pattern 2: Price first, then currency (e.g., "5979 KES", "13995.0 KES")
+    // Match price at start, then currency (can be at end or followed by space/end)
+    const pattern2 = /^([\d,]+(?:\.\d+)?)\s+([A-Z]{3})(?:\s|$)/;
+    let match2 = priceText.match(pattern2);
+    if (match2 && match2.length >= 3) {
+      const numericValue = match2[1].replace(/,/g, '');
+      const parsedPrice = parseFloat(numericValue);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) {
+        allMatches.push({
+          currency: match2[2],
+          price: parsedPrice,
+          index: 0,
+          confidence: 9 // High confidence for start-of-string match with price first
+        });
+      }
+    }
+    
+    // Pattern 3: Currency anywhere, then price (fallback for other formats)
+    const pattern3 = /\b([A-Z]{3})\s+([\d,]+(?:\.\d+)?)/g;
+    let match3;
+    while ((match3 = pattern3.exec(priceText)) !== null) {
+      // Skip if we already matched this at the start
+      if (match3.index === 0 && allMatches.some(m => m.index === 0 && m.confidence >= 9)) {
+        continue;
+      }
+      const numericValue = match3[2].replace(/,/g, '');
+      const parsedPrice = parseFloat(numericValue);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) {
+        allMatches.push({
+          currency: match3[1],
+          price: parsedPrice,
+          index: match3.index,
+          confidence: 5 // Lower confidence for mid-string matches
+        });
+      }
+    }
+    
+    // Pattern 4: Price anywhere, then currency (fallback)
+    const pattern4 = /([\d,]+(?:\.\d+)?)\s+([A-Z]{3})\b/g;
+    let match4;
+    while ((match4 = pattern4.exec(priceText)) !== null) {
+      // Skip if we already matched this at the end
+      if (match4.index + match4[0].length === priceText.length && allMatches.some(m => m.index === 0 && m.confidence >= 9)) {
+        continue;
+      }
+      const numericValue = match4[1].replace(/,/g, '');
+      const parsedPrice = parseFloat(numericValue);
+      if (!isNaN(parsedPrice) && parsedPrice > 0) {
+        allMatches.push({
+          currency: match4[2],
+          price: parsedPrice,
+          index: match4.index,
+          confidence: 4 // Lower confidence for mid-string matches
+        });
+      }
+    }
+    
+    // If we found matches, pick the best one
+    if (allMatches.length > 0) {
+      // Sort by confidence (descending), then by price (descending), then by index (ascending)
+      allMatches.sort((a, b) => {
+        if (b.confidence !== a.confidence) {
+          return b.confidence - a.confidence; // Higher confidence first
+        }
+        if (Math.abs(b.price - a.price) > 1) {
+          return b.price - a.price; // Larger price first (if significantly different)
+        }
+        return a.index - b.index; // Earlier in string first
+      });
       
-      while ((match = regex.exec(priceText)) !== null) {
-        const currencyCode = match[1];
-        const numericValue = match[2].replace(/,/g, '');
+      const bestMatch = allMatches[0];
+      currency = bestMatch.currency;
+      price = bestMatch.price;
+    } else {
+      // Last resort: extract just the number, use default currency
+      // Only do this if we can't find any currency code
+      const numericValue = priceText.replace(/[^\d.]/g, '');
+      if (numericValue) {
         const parsedPrice = parseFloat(numericValue);
         if (!isNaN(parsedPrice) && parsedPrice > 0) {
-          allMatches.push({
-            currency: currencyCode,
-            price: parsedPrice,
-            index: match.index
-          });
-        }
-      }
-      
-      // If we found multiple matches, prefer the one with the largest price (likely the main price)
-      // Also prefer matches closer to the start of the string if prices are similar
-      if (allMatches.length > 0) {
-        // Sort by price (descending), then by index (ascending)
-        allMatches.sort((a, b) => {
-          if (Math.abs(b.price - a.price) > 1) {
-            return b.price - a.price; // Larger price first (if significantly different)
-          }
-          return a.index - b.index; // Earlier in string first (if prices are similar)
-        });
-        
-        const bestMatch = allMatches[0];
-        currency = bestMatch.currency;
-        price = bestMatch.price;
-      } else {
-        // Last resort: extract just the number, use default currency
-        // Only do this if we can't find any currency code
-        const numericValue = priceText.replace(/[^\d.]/g, '');
-        if (numericValue) {
-          const parsedPrice = parseFloat(numericValue);
-          if (!isNaN(parsedPrice) && parsedPrice > 0) {
-            price = parsedPrice;
-            // Keep defaultCurrency, don't change it
-          }
+          price = parsedPrice;
+          // Keep defaultCurrency, don't change it
         }
       }
     }
@@ -275,21 +323,22 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
   const imageUrl = getText('g\\:image_link') || getText('g\\:image');
   const category = getText('g\\:google_product_category') || getText('g\\:product_type') || getText('g\\:category');
   const availability = getText('g\\:availability')?.toLowerCase();
-  const inStock = !availability || availability.includes('in stock');
+  const inStock = !availability || availability.includes('in stock') || availability === 'in_stock';
 
+  // Create product even if price is missing (price is optional)
   return {
-    id: '',
-    botId: '',
+    id: '', // Will be set when saving
+    botId: '', // Will be set when saving
     productId: id,
     name: title,
     description,
-    price,
-    currency,
+    price, // Can be undefined if not found
+    currency, // Will use defaultCurrency if not found
     imageUrl,
     productUrl: link,
     category,
     keywords: extractKeywords(title, description, category),
-    inStock,
+    inStock: inStock,
   };
 }
 

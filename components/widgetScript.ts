@@ -503,8 +503,12 @@ export const generateWidgetJS = (): string => {
   if (headerImageUrl) {
     const headerImageEl = container.querySelector('.aether-header-image[data-header-image-url]');
     if (headerImageEl) {
-      // Escape the URL properly
-      const escapedUrl = String(headerImageUrl).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      // Use split/join to avoid regex escaping issues in template strings
+      let escapedUrl = String(headerImageUrl);
+      // Replace backslashes (using split/join to avoid regex)
+      escapedUrl = escapedUrl.split(String.fromCharCode(92)).join(String.fromCharCode(92, 92));
+      // Replace double quotes
+      escapedUrl = escapedUrl.split('"').join('\\"');
       headerImageEl.style.backgroundImage = 'url("' + escapedUrl + '")';
     }
   }

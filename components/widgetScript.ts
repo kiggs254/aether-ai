@@ -2745,7 +2745,6 @@ export const generateWidgetJS = (): string => {
   } else {
     console.log('No existing session found, starting fresh');
   }
-  };
   
   // Start initialization
   initWidget();

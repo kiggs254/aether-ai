@@ -1042,22 +1042,26 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             ...ecommerceSettings,
                             maxProductsToRecommend: parseInt(e.target.value) || 10
                           })}
-                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50"
+                          disabled={!ecommerceEnabled}
+                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
+                        <p className="text-xs text-slate-500 mt-1">Maximum products the AI can recommend in a single response</p>
                       </div>
                       <div>
-                        <label className="text-sm text-slate-400 mb-2 block">Products Visible in Carousel</label>
+                        <label className="text-sm text-slate-400 mb-2 block">Default Products per Action</label>
                         <input
                           type="number"
                           min="1"
-                          max="10"
+                          max="20"
                           value={ecommerceSettings.productsVisibleInCarousel || 5}
                           onChange={(e) => setEcommerceSettings({
                             ...ecommerceSettings,
                             productsVisibleInCarousel: parseInt(e.target.value) || 5
                           })}
-                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50"
+                          disabled={!ecommerceEnabled}
+                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
+                        <p className="text-xs text-slate-500 mt-1">Number of products shown when a product action is triggered</p>
                       </div>
                     </div>
                   </div>

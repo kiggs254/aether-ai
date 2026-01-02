@@ -1184,9 +1184,13 @@ body.aether-chat-open #aether-launcher {
     height: 100vh !important;
     height: 100dvh !important;
     min-width: 100vw !important;
+    min-width: 100dvw !important;
     min-height: 100vh !important;
+    min-height: 100dvh !important;
     max-width: 100vw !important;
+    max-width: 100dvw !important;
     max-height: 100vh !important;
+    max-height: 100dvh !important;
     z-index: 999999 !important;
     display: none !important; /* Hidden by default */
     align-items: center;
@@ -1197,6 +1201,9 @@ body.aether-chat-open #aether-launcher {
     border: none !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+    transform: translateZ(0) !important; /* Force hardware acceleration */
+    -webkit-transform: translateZ(0) !important;
+    will-change: transform !important;
   }
 
   /* Lightbox visible state */
@@ -1295,25 +1302,52 @@ body.aether-chat-open #aether-launcher {
 
   .aether-clickable-image {
     transition: opacity 0.2s;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
   }
 
   .aether-clickable-image:hover {
     opacity: 0.9;
   }
 
+  .aether-clickable-image:active {
+    opacity: 0.8;
+  }
+
   /* Mobile-specific lightbox adjustments */
   @media (max-width: 640px) {
     #aether-lightbox {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
       width: 100vw !important;
       width: 100dvw !important;
+      width: -webkit-fill-available !important;
       height: 100vh !important;
       height: 100dvh !important;
+      height: -webkit-fill-available !important;
       min-width: 100vw !important;
+      min-width: 100dvw !important;
+      min-width: -webkit-fill-available !important;
       min-height: 100vh !important;
       min-height: 100dvh !important;
+      min-height: -webkit-fill-available !important;
       max-width: 100vw !important;
+      max-width: 100dvw !important;
+      max-width: -webkit-fill-available !important;
       max-height: 100vh !important;
       max-height: 100dvh !important;
+      max-height: -webkit-fill-available !important;
+      z-index: 999999 !important;
+      transform: translateZ(0) !important;
+      -webkit-transform: translateZ(0) !important;
     }
 
     .aether-lightbox-content {

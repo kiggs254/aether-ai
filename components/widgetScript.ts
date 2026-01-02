@@ -1699,7 +1699,7 @@ export const generateWidgetJS = (): string => {
       
       let content = '';
       if (imageUrl) {
-        content += '<img src="' + imageUrl + '" alt="Uploaded image" class="aether-clickable-image" data-image-src="' + imageUrl + '" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block; cursor: pointer;" />';
+        content += '<img src="' + imageUrl + '" alt="Uploaded image" class="aether-clickable-image" data-image-src="' + imageUrl + '" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
       }
       if (text && text.trim()) {
         // Apply markdown parsing for bot messages, plain text for user messages
@@ -1717,6 +1717,25 @@ export const generateWidgetJS = (): string => {
       }
       msg.innerHTML = content;
       messages.appendChild(msg);
+      
+      // Add direct event listeners to images for better mobile support
+      const images = msg.querySelectorAll('.aether-clickable-image');
+      images.forEach(function(img) {
+        const imageSrc = img.getAttribute('data-image-src');
+        if (imageSrc) {
+          const handleImageOpen = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openLightbox(imageSrc);
+          };
+          img.addEventListener('click', handleImageOpen);
+          img.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openLightbox(imageSrc);
+          }, { passive: false });
+        }
+      });
     }
     
     if (actionId && bot.actions) {
@@ -1734,7 +1753,7 @@ export const generateWidgetJS = (): string => {
           let mediaHTML = '';
           
           if (mediaType === 'image') {
-            mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer;" />';
+            mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
           } else if (mediaType === 'video') {
             mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
           } else if (mediaType === 'audio') {
@@ -1786,6 +1805,25 @@ export const generateWidgetJS = (): string => {
         } else if (messages) {
           messages.appendChild(actionCard);
         }
+        
+        // Add direct event listeners to images in action cards for better mobile support
+        const actionImages = actionCard.querySelectorAll('.aether-clickable-image');
+        actionImages.forEach(function(img) {
+          const imageSrc = img.getAttribute('data-image-src');
+          if (imageSrc) {
+            const handleImageOpen = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              openLightbox(imageSrc);
+            };
+            img.addEventListener('click', handleImageOpen);
+            img.addEventListener('touchend', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              openLightbox(imageSrc);
+            }, { passive: false });
+          }
+        });
       }
     }
     
@@ -2071,7 +2109,7 @@ export const generateWidgetJS = (): string => {
             let mediaHTML = '';
             
             if (mediaType === 'image') {
-              mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer;" />';
+              mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
             } else if (mediaType === 'video') {
               mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
             } else if (mediaType === 'audio') {
@@ -2160,41 +2198,103 @@ export const generateWidgetJS = (): string => {
     if (lightbox && lightboxImage && imageSrc) {
       lightboxImage.src = imageSrc;
       lightbox.style.setProperty('display', 'flex', 'important');
+      // Force full screen positioning
+      lightbox.style.setProperty('position', 'fixed', 'important');
+      lightbox.style.setProperty('top', '0', 'important');
+      lightbox.style.setProperty('left', '0', 'important');
+      lightbox.style.setProperty('right', '0', 'important');
+      lightbox.style.setProperty('bottom', '0', 'important');
+      lightbox.style.setProperty('width', '100vw', 'important');
+      lightbox.style.setProperty('height', '100vh', 'important');
+      lightbox.style.setProperty('z-index', '999999', 'important');
+      
+      // Prevent body scroll on mobile
       document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      
+      // Also prevent scrolling on html element
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.position = 'fixed';
+      document.documentElement.style.width = '100%';
+      document.documentElement.style.height = '100%';
     }
   };
 
   const closeLightbox = () => {
     if (lightbox) {
       lightbox.style.setProperty('display', 'none', 'important');
+      // Restore body scroll
       document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      // Restore html scroll
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.position = '';
+      document.documentElement.style.width = '';
+      document.documentElement.style.height = '';
     }
   };
 
   // Add click handlers to all clickable images (delegated event listener)
   // Support both click and touch events for mobile
   if (messages) {
-    const handleImageClick = (e) => {
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchTarget = null;
+    
+    // Track touch start for tap detection
+    messages.addEventListener('touchstart', function(e) {
       const img = e.target.closest('.aether-clickable-image');
       if (img && img.dataset.imageSrc) {
-        e.preventDefault();
-        e.stopPropagation();
-        openLightbox(img.dataset.imageSrc);
+        touchStartTime = Date.now();
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchTarget = img;
+      } else {
+        touchTarget = null;
       }
-    };
+    }, { passive: true });
     
-    messages.addEventListener('click', handleImageClick);
+    // Handle touch end - only if it was a tap (not a scroll)
     messages.addEventListener('touchend', function(e) {
-      // Only handle touch if it's a tap (not a scroll)
+      if (!touchTarget || !touchTarget.dataset.imageSrc) return;
+      
+      const touchEndTime = Date.now();
+      const touchDuration = touchEndTime - touchStartTime;
       const touch = e.changedTouches[0];
-      const target = document.elementFromPoint(touch.clientX, touch.clientY);
-      const img = target ? target.closest('.aether-clickable-image') : null;
-      if (img && img.dataset.imageSrc) {
+      const deltaX = Math.abs(touch.clientX - touchStartX);
+      const deltaY = Math.abs(touch.clientY - touchStartY);
+      const delta = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // Consider it a tap if:
+      // - Duration is short (< 300ms)
+      // - Movement is small (< 10px)
+      if (touchDuration < 300 && delta < 10) {
         e.preventDefault();
         e.stopPropagation();
-        openLightbox(img.dataset.imageSrc);
+        openLightbox(touchTarget.dataset.imageSrc);
       }
+      
+      touchTarget = null;
     }, { passive: false });
+    
+    // Also handle regular click events (for desktop and mobile fallback)
+    messages.addEventListener('click', function(e) {
+      const img = e.target.closest('.aether-clickable-image');
+      if (img && img.dataset.imageSrc) {
+        // Only prevent default if it's actually an image click
+        // This allows other elements to work normally
+        if (e.target.tagName === 'IMG' || e.target.closest('.aether-clickable-image') === img) {
+          e.preventDefault();
+          e.stopPropagation();
+          openLightbox(img.dataset.imageSrc);
+        }
+      }
+    });
   }
 
   // Close lightbox handlers - support both click and touch

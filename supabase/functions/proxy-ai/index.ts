@@ -519,73 +519,277 @@ serve(async (req) => {
         async start(controller) {
           try {
             let buffer = '';
+            let hasExtractedData = false;
+            let totalBytes = 0;
+            let lineCount = 0;
+            let firstDataLine = true;
+            
+            console.log('Starting to read Gemini stream...');
             
             while (true) {
               const { done, value } = await reader.read();
-              if (done) break;
+              if (done) {
+                console.log(`Stream ended. Total bytes: ${totalBytes}, Lines processed: ${lineCount}, Data extracted: ${hasExtractedData}`);
+                break;
+              }
 
-              buffer += decoder.decode(value, { stream: true });
+              const chunk = decoder.decode(value, { stream: true });
+              totalBytes += chunk.length;
+              buffer += chunk;
+              
+              // Log first chunk for debugging
+              if (totalBytes === chunk.length) {
+                console.log('First chunk from Gemini:', chunk.substring(0, 500));
+              }
+              
+              // Check if buffer is a JSON array (not SSE format)
+              // Gemini 2.5/3.0 may return JSON array directly instead of SSE
+              const trimmedBuffer = buffer.trim();
+              if (trimmedBuffer.startsWith('[')) {
+                // Check if it's a complete JSON array (ends with ])
+                const isComplete = trimmedBuffer.endsWith(']');
+                console.log('Buffer starts with [, attempting JSON array parse. Complete:', isComplete, 'Buffer length:', trimmedBuffer.length);
+                
+                if (isComplete) {
+                  try {
+                    // Try to parse as JSON array (complete)
+                    const jsonArray = JSON.parse(trimmedBuffer);
+                    console.log('✓ Successfully parsed complete JSON array format (not SSE), processing...', jsonArray.length, 'items');
+                  
+                  // Process each item in the array
+                  for (const item of jsonArray) {
+                    if (item.candidates && item.candidates[0]) {
+                      const candidate = item.candidates[0];
+                      if (candidate.content?.parts) {
+                        for (const part of candidate.content.parts) {
+                          if (part.text) {
+                            console.log(`Extracting text from JSON array (${part.text.length} chars):`, part.text.substring(0, 100));
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                            hasExtractedData = true;
+                          }
+                          if (part.functionCall) {
+                            const functionCalls = [{
+                              name: part.functionCall.name,
+                              args: part.functionCall.args || {}
+                            }];
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                            hasExtractedData = true;
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                    buffer = ''; // Clear buffer after processing
+                    continue; // Move to next chunk
+                  } catch (e) {
+                    // JSON parse failed even though it ends with ]
+                    console.warn('Failed to parse complete JSON array (ends with ]), trying SSE format:', e.message);
+                    console.log('Buffer preview:', trimmedBuffer.substring(0, 500));
+                  }
+                } else {
+                  // Incomplete JSON array, continue accumulating
+                  console.log('JSON array incomplete, continuing to accumulate. Current length:', trimmedBuffer.length);
+                  continue; // Don't process yet, wait for more data
+                }
+              } else {
+                // Log if buffer doesn't start with [ (for debugging)
+                if (totalBytes === chunk.length && trimmedBuffer.length > 0) {
+                  console.log('Buffer does NOT start with [, first 100 chars:', trimmedBuffer.substring(0, 100));
+                }
+              }
+              
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
 
               for (const line of lines) {
                 if (line.trim() === '') continue;
+                lineCount++;
+                
+                // Log first few data lines for debugging
+                if (firstDataLine && line.startsWith('data: ')) {
+                  console.log('First data line:', line.substring(0, 500));
+                  firstDataLine = false;
+                }
                 
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                   try {
-                    const data = JSON.parse(line.slice(6));
+                    const jsonStr = line.slice(6);
+                    const data = JSON.parse(jsonStr);
                     
                     // Handle Gemini streaming response format
-                    if (data.candidates && data.candidates[0]?.content?.parts) {
-                      const parts = data.candidates[0].content.parts;
-                      for (const part of parts) {
-                        // Handle text content
-                        if (part.text) {
-                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
-                        }
-                        // Handle function calls - send immediately
-                        if (part.functionCall) {
-                          const functionCalls = [{
-                            name: part.functionCall.name,
-                            args: part.functionCall.args || {}
-                          }];
-                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                    // Check multiple possible response structures
+                    let textContent = null;
+                    let functionCall = null;
+                    
+                    // Log structure for first response (for debugging)
+                    if (!hasExtractedData) {
+                      console.log('First Gemini response structure:', JSON.stringify(data).substring(0, 1000));
+                    }
+                    
+                    // Try standard format: candidates[0].content.parts
+                    if (data.candidates && data.candidates[0]) {
+                      const candidate = data.candidates[0];
+                      
+                      // Check for content.parts
+                      if (candidate.content?.parts) {
+                        const parts = candidate.content.parts;
+                        for (const part of parts) {
+                          if (part.text) {
+                            textContent = (textContent || '') + part.text;
+                          }
+                          if (part.functionCall) {
+                            functionCall = part.functionCall;
+                          }
                         }
                       }
+                      
+                      // Check for delta (incremental updates in streaming)
+                      if (candidate.delta?.text) {
+                        textContent = (textContent || '') + candidate.delta.text;
+                      }
+                      
+                      if (candidate.delta?.functionCall) {
+                        functionCall = candidate.delta.functionCall;
+                      }
+                      
+                      // Check for content.text (direct)
+                      if (!textContent && candidate.content?.text) {
+                        textContent = candidate.content.text;
+                      }
+                      
+                      // Check for finishReason and empty content
+                      if (candidate.finishReason && !textContent && !functionCall) {
+                        console.log('Candidate finished with reason:', candidate.finishReason);
+                      }
+                    }
+                    
+                    // Try alternative format: direct text field
+                    if (!textContent && data.text) {
+                      textContent = data.text;
+                    }
+                    
+                    // Try functionCall at top level
+                    if (!functionCall && data.functionCall) {
+                      functionCall = data.functionCall;
+                    }
+                    
+                    // Send text content if found
+                    if (textContent) {
+                      console.log(`Extracting text (${textContent.length} chars):`, textContent.substring(0, 100));
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: textContent })}\n\n`));
+                      hasExtractedData = true;
+                    }
+                    
+                    // Send function calls if found
+                    if (functionCall) {
+                      console.log('Extracting function call:', functionCall.name || functionCall.function?.name);
+                      const functionCalls = [{
+                        name: functionCall.name || functionCall.function?.name,
+                        args: functionCall.args || functionCall.function?.arguments || {}
+                      }];
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                      hasExtractedData = true;
+                    }
+                    
+                    // Log if we couldn't parse anything (for debugging)
+                    if (!textContent && !functionCall) {
+                      console.log('Could not extract text/functionCall from:', JSON.stringify(data).substring(0, 500));
                     }
                   } catch (e) {
                     // Skip invalid JSON
-                    console.warn('Failed to parse Gemini SSE data:', e);
+                    console.warn('Failed to parse Gemini SSE data:', e, 'Line:', line.substring(0, 200));
                   }
                 }
               }
             }
             
             // Process any remaining buffer
-            if (buffer.trim()) {
-              const lines = buffer.split('\n');
-              for (const line of lines) {
-                if (line.trim() === '') continue;
-                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                  try {
-                    const data = JSON.parse(line.slice(6));
-                    if (data.candidates && data.candidates[0]?.content?.parts) {
-                      const parts = data.candidates[0].content.parts;
-                      for (const part of parts) {
-                        if (part.text) {
-                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
-                        }
-                        if (part.functionCall) {
-                          const functionCalls = [{
-                            name: part.functionCall.name,
-                            args: part.functionCall.args || {}
-                          }];
-                          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+            const finalBuffer = buffer.trim();
+            if (finalBuffer) {
+              // Check if remaining buffer is a JSON array
+              if (finalBuffer.startsWith('[')) {
+                try {
+                  const jsonArray = JSON.parse(finalBuffer);
+                  console.log('Processing final buffer as JSON array:', jsonArray.length, 'items');
+                  for (const item of jsonArray) {
+                    if (item.candidates && item.candidates[0]) {
+                      const candidate = item.candidates[0];
+                      if (candidate.content?.parts) {
+                        for (const part of candidate.content.parts) {
+                          if (part.text) {
+                            console.log(`Extracting text from final buffer (${part.text.length} chars):`, part.text.substring(0, 100));
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                            hasExtractedData = true;
+                          }
+                          if (part.functionCall) {
+                            const functionCalls = [{
+                              name: part.functionCall.name,
+                              args: part.functionCall.args || {}
+                            }];
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                            hasExtractedData = true;
+                          }
                         }
                       }
                     }
-                  } catch (e) {
-                    // Skip invalid JSON
+                  }
+                } catch (e) {
+                  console.warn('Failed to parse final buffer as JSON array:', e.message);
+                  // Try SSE format
+                  const lines = finalBuffer.split('\n');
+                  for (const line of lines) {
+                    if (line.trim() === '') continue;
+                    if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                      try {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.candidates && data.candidates[0]?.content?.parts) {
+                          const parts = data.candidates[0].content.parts;
+                          for (const part of parts) {
+                            if (part.text) {
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                            }
+                            if (part.functionCall) {
+                              const functionCalls = [{
+                                name: part.functionCall.name,
+                                args: part.functionCall.args || {}
+                              }];
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                            }
+                          }
+                        }
+                      } catch (e) {
+                        // Skip invalid JSON
+                      }
+                    }
+                  }
+                }
+              } else {
+                // Try SSE format
+                const lines = finalBuffer.split('\n');
+                for (const line of lines) {
+                  if (line.trim() === '') continue;
+                  if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+                      if (data.candidates && data.candidates[0]?.content?.parts) {
+                        const parts = data.candidates[0].content.parts;
+                        for (const part of parts) {
+                          if (part.text) {
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                          }
+                          if (part.functionCall) {
+                            const functionCalls = [{
+                              name: part.functionCall.name,
+                              args: part.functionCall.args || {}
+                            }];
+                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
                   }
                 }
               }

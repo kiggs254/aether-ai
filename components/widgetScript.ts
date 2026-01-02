@@ -2683,14 +2683,24 @@ export const generateWidgetJS = (): string => {
                   actionId = call.args?.action_id || null;
                   // Clean any accumulated text that contains triggeraction patterns
                   fullText = cleanTriggerActionText(fullText);
-                  if (fullText) {
+                  // If no text from AI, show trigger message immediately
+                  if (!fullText || !fullText.trim()) {
+                    const action = bot.actions.find(a => a.id === actionId);
+                    if (action) {
+                      const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+                      updateMessage(triggerMessage);
+                    }
+                  } else {
                     updateMessage(fullText);
                   }
                 } else if (call.name === 'recommend_products') {
                   productRecommendationCall = call.args || {};
                   // Clean any accumulated text that contains triggeraction patterns
                   fullText = cleanTriggerActionText(fullText);
-                  if (fullText) {
+                  // If no text from AI, show default message immediately
+                  if (!fullText || !fullText.trim()) {
+                    updateMessage('Here are some products I found for you:');
+                  } else {
                     updateMessage(fullText);
                   }
                 }
@@ -2711,14 +2721,24 @@ export const generateWidgetJS = (): string => {
                       actionId = part.functionCall.args?.action_id || null;
                       // Clean any accumulated text that contains triggeraction patterns
                       fullText = cleanTriggerActionText(fullText);
-                      if (fullText) {
+                      // If no text from AI, show trigger message immediately
+                      if (!fullText || !fullText.trim()) {
+                        const action = bot.actions.find(a => a.id === actionId);
+                        if (action) {
+                          const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+                          updateMessage(triggerMessage);
+                        }
+                      } else {
                         updateMessage(fullText);
                       }
                     } else if (part.functionCall.name === 'recommend_products') {
                       productRecommendationCall = part.functionCall.args || {};
                       // Clean any accumulated text that contains triggeraction patterns
                       fullText = cleanTriggerActionText(fullText);
-                      if (fullText) {
+                      // If no text from AI, show default message immediately
+                      if (!fullText || !fullText.trim()) {
+                        updateMessage('Here are some products I found for you:');
+                      } else {
                         updateMessage(fullText);
                       }
                     }

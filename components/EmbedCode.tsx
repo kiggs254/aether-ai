@@ -10,6 +10,7 @@ interface EmbedCodeProps {
 }
 
 const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
+  const { showSuccess, showError } = useNotification();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   

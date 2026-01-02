@@ -429,7 +429,8 @@ export const generateWidgetJS = (): string => {
   // Build header icon/image section
   let headerIconSection = '';
   if (headerImageUrl) {
-    headerIconSection = '<div class="aether-header-image" style="background-image: url(\'' + headerImageUrl + '\'); background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;"></div>';
+    // Use data attribute to avoid string escaping issues, will set style after element creation
+    headerIconSection = '<div class="aether-header-image" data-header-image-url style="background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;"></div>';
   } else {
     headerIconSection = '<div class="aether-header-icon">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>' +
@@ -440,8 +441,8 @@ export const generateWidgetJS = (): string => {
     '<div class="aether-header">' +
       headerIconSection +
       '<div class="aether-header-content">' +
-        '<div class="aether-title">' + (config.name || bot.name || 'Chat Assistant') + '</div>' +
-        '<div class="aether-subtitle">' + brandingText + '</div>' +
+        '<div class="aether-title">' + (config.name || bot.name || 'Chat Assistant').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') + '</div>' +
+        '<div class="aether-subtitle" data-branding-text></div>' +
       '</div>' +
       '<button class="aether-close-window-btn" id="aether-close-window-btn" type="button">' +
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>' +
@@ -491,6 +492,22 @@ export const generateWidgetJS = (): string => {
   '</div>';
   container.innerHTML = windowHTML;
   document.body.appendChild(container);
+  
+  // Set branding text safely (avoid string escaping issues)
+  const brandingTextEl = container.querySelector('.aether-subtitle[data-branding-text]');
+  if (brandingTextEl) {
+    brandingTextEl.textContent = brandingText;
+  }
+  
+  // Set header image background if header image URL exists
+  if (headerImageUrl) {
+    const headerImageEl = container.querySelector('.aether-header-image[data-header-image-url]');
+    if (headerImageEl) {
+      // Escape the URL properly
+      const escapedUrl = String(headerImageUrl).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+      headerImageEl.style.backgroundImage = 'url("' + escapedUrl + '")';
+    }
+  }
   
   // Create lightbox separately and append directly to body (outside container for full-screen)
   const lightboxContainer = document.createElement('div');

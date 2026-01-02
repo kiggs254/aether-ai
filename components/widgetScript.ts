@@ -3248,26 +3248,45 @@ export const generateWidgetJS = (): string => {
           var productRecommendationArgs = null;
           
           // Extract product recommendation marker from text
-          // Escape both opening and closing brackets in the regex pattern
-          // Use RegExp constructor to avoid escaping issues in generated code
-          var recommendationPattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:([^\\\\]]+)\\\\]');
-          var recommendationMatch = messageText.match(recommendationPattern);
-          if (recommendationMatch) {
-            console.log('Found product recommendation marker in message:', messageText.substring(0, 100));
-            try {
-              productRecommendationArgs = JSON.parse(recommendationMatch[1]);
-              console.log('Parsed product recommendation args:', productRecommendationArgs);
-              // Remove the marker from display text (escape both brackets)
-              var replacePattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:[^\\\\]]+\\\\]');
-              messageText = messageText.replace(replacePattern, '').trim();
-              console.log('Message text after removing marker:', messageText);
-            } catch (e) {
-              console.error('Failed to parse product recommendation args:', e, 'Match:', recommendationMatch[1]);
+          // Find the marker position manually to handle nested JSON brackets
+          var markerStart = messageText.indexOf('[PRODUCT_RECOMMENDATION:');
+          if (markerStart !== -1) {
+            console.log('Found PRODUCT_RECOMMENDATION marker at position:', markerStart);
+            // Find the matching closing bracket by counting brackets
+            var bracketCount = 0;
+            var jsonStart = markerStart + '[PRODUCT_RECOMMENDATION:'.length;
+            var jsonEnd = -1;
+            
+            for (var k = jsonStart; k < messageText.length; k++) {
+              if (messageText[k] === '[') bracketCount++;
+              else if (messageText[k] === ']') {
+                if (bracketCount === 0) {
+                  jsonEnd = k;
+                  break;
+                }
+                bracketCount--;
+              }
+            }
+            
+            if (jsonEnd !== -1) {
+              try {
+                var jsonStr = messageText.substring(jsonStart, jsonEnd);
+                console.log('Extracted JSON string:', jsonStr);
+                productRecommendationArgs = JSON.parse(jsonStr);
+                console.log('Parsed product recommendation args:', productRecommendationArgs);
+                // Remove the entire marker from display text
+                messageText = (messageText.substring(0, markerStart) + messageText.substring(jsonEnd + 1)).trim();
+                console.log('Message text after removing marker:', messageText);
+              } catch (e) {
+                console.error('Failed to parse product recommendation args:', e, 'JSON string:', messageText.substring(jsonStart, Math.min(jsonEnd + 50, messageText.length)));
+              }
+            } else {
+              console.warn('Could not find closing bracket for PRODUCT_RECOMMENDATION marker');
             }
           } else {
-            // Debug: check if marker exists but regex didn't match
+            // Debug: check if marker exists but wasn't found
             if (messageText.includes('PRODUCT_RECOMMENDATION')) {
-              console.warn('Message contains PRODUCT_RECOMMENDATION but regex did not match:', messageText.substring(0, 200));
+              console.warn('Message contains PRODUCT_RECOMMENDATION but marker not found at expected position:', messageText.substring(0, 200));
             }
           }
           

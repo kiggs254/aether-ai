@@ -691,6 +691,7 @@ export const integrationService = {
     brandColor?: string;
     welcomeMessage?: string;
     collectLeads?: boolean;
+    departmentBots?: Array<{ botId: string; departmentName: string; departmentLabel: string }>;
   }): Promise<Integration> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
@@ -706,11 +707,24 @@ export const integrationService = {
         brand_color: settings.brandColor || '#6366f1',
         welcome_message: settings.welcomeMessage || null,
         collect_leads: settings.collectLeads || false,
+        department_bots: settings.departmentBots ? JSON.stringify(settings.departmentBots) : null,
       })
       .select()
       .single();
 
     if (error) throw error;
+
+    // Parse department_bots JSON
+    let departmentBots = undefined;
+    if (data.department_bots) {
+      try {
+        departmentBots = typeof data.department_bots === 'string' 
+          ? JSON.parse(data.department_bots) 
+          : data.department_bots;
+      } catch (e) {
+        console.warn('Failed to parse department_bots:', e);
+      }
+    }
 
     return {
       id: data.id,
@@ -722,6 +736,7 @@ export const integrationService = {
       brandColor: data.brand_color,
       welcomeMessage: data.welcome_message || undefined,
       collectLeads: data.collect_leads,
+      departmentBots,
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime(),
     };
@@ -740,6 +755,18 @@ export const integrationService = {
       throw error;
     }
 
+    // Parse department_bots JSON
+    let departmentBots = undefined;
+    if (data.department_bots) {
+      try {
+        departmentBots = typeof data.department_bots === 'string' 
+          ? JSON.parse(data.department_bots) 
+          : data.department_bots;
+      } catch (e) {
+        console.warn('Failed to parse department_bots:', e);
+      }
+    }
+
     return {
       id: data.id,
       botId: data.bot_id,
@@ -750,6 +777,7 @@ export const integrationService = {
       brandColor: data.brand_color,
       welcomeMessage: data.welcome_message || undefined,
       collectLeads: data.collect_leads,
+      departmentBots,
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime(),
     };
@@ -765,19 +793,34 @@ export const integrationService = {
 
     if (error) throw error;
 
-    return (data || []).map((integration: any) => ({
-      id: integration.id,
-      botId: integration.bot_id,
-      userId: integration.user_id,
-      name: integration.name || undefined,
-      theme: integration.theme,
-      position: integration.position,
-      brandColor: integration.brand_color,
-      welcomeMessage: integration.welcome_message || undefined,
-      collectLeads: integration.collect_leads,
-      createdAt: new Date(integration.created_at).getTime(),
-      updatedAt: new Date(integration.updated_at).getTime(),
-    }));
+    return (data || []).map((integration: any) => {
+      // Parse department_bots JSON
+      let departmentBots = undefined;
+      if (integration.department_bots) {
+        try {
+          departmentBots = typeof integration.department_bots === 'string' 
+            ? JSON.parse(integration.department_bots) 
+            : integration.department_bots;
+        } catch (e) {
+          console.warn('Failed to parse department_bots:', e);
+        }
+      }
+
+      return {
+        id: integration.id,
+        botId: integration.bot_id,
+        userId: integration.user_id,
+        name: integration.name || undefined,
+        theme: integration.theme,
+        position: integration.position,
+        brandColor: integration.brand_color,
+        welcomeMessage: integration.welcome_message || undefined,
+        collectLeads: integration.collect_leads,
+        departmentBots,
+        createdAt: new Date(integration.created_at).getTime(),
+        updatedAt: new Date(integration.updated_at).getTime(),
+      };
+    });
   },
 
   // Update an integration
@@ -788,6 +831,7 @@ export const integrationService = {
     brandColor?: string;
     welcomeMessage?: string;
     collectLeads?: boolean;
+    departmentBots?: Array<{ botId: string; departmentName: string; departmentLabel: string }>;
   }): Promise<Integration> {
     const updateData: any = {};
     if (settings.name !== undefined) updateData.name = settings.name || null;
@@ -796,6 +840,11 @@ export const integrationService = {
     if (settings.brandColor !== undefined) updateData.brand_color = settings.brandColor;
     if (settings.welcomeMessage !== undefined) updateData.welcome_message = settings.welcomeMessage;
     if (settings.collectLeads !== undefined) updateData.collect_leads = settings.collectLeads;
+    if (settings.departmentBots !== undefined) {
+      updateData.department_bots = settings.departmentBots && settings.departmentBots.length > 0
+        ? JSON.stringify(settings.departmentBots)
+        : null;
+    }
 
     const { data, error } = await supabase
       .from('integrations')
@@ -805,6 +854,18 @@ export const integrationService = {
       .single();
 
     if (error) throw error;
+
+    // Parse department_bots JSON
+    let departmentBots = undefined;
+    if (data.department_bots) {
+      try {
+        departmentBots = typeof data.department_bots === 'string' 
+          ? JSON.parse(data.department_bots) 
+          : data.department_bots;
+      } catch (e) {
+        console.warn('Failed to parse department_bots:', e);
+      }
+    }
 
     return {
       id: data.id,
@@ -816,6 +877,7 @@ export const integrationService = {
       brandColor: data.brand_color,
       welcomeMessage: data.welcome_message || undefined,
       collectLeads: data.collect_leads,
+      departmentBots,
       createdAt: new Date(data.created_at).getTime(),
       updatedAt: new Date(data.updated_at).getTime(),
     };

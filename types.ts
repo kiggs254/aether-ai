@@ -72,9 +72,15 @@ export interface DashboardStats {
   growthRate: number;
 }
 
+export interface DepartmentBot {
+  botId: string;
+  departmentName: string;
+  departmentLabel: string; // Display label (e.g., "Sales", "Support", "Billing")
+}
+
 export interface Integration {
   id: string;
-  botId: string;
+  botId: string; // Primary/default bot ID (for backward compatibility)
   userId: string;
   name?: string;
   theme: 'dark' | 'light';
@@ -82,6 +88,7 @@ export interface Integration {
   brandColor: string;
   welcomeMessage?: string;
   collectLeads: boolean;
+  departmentBots?: DepartmentBot[]; // Array of department bots for premium users
   createdAt: number;
   updatedAt: number;
 }

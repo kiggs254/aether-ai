@@ -37,13 +37,26 @@ export const generateWidgetJS = (): string => {
         if (data && data.length > 0) {
           const integration = data[0];
           console.log('Fetched integration config for:', integrationId);
+          // Parse department_bots JSON
+          let departmentBots = null;
+          if (integration.department_bots) {
+            try {
+              departmentBots = typeof integration.department_bots === 'string' 
+                ? JSON.parse(integration.department_bots) 
+                : integration.department_bots;
+            } catch (e) {
+              console.warn('Failed to parse department_bots:', e);
+            }
+          }
+
           return {
             botId: integration.bot_id,
             theme: integration.theme || 'dark',
             position: integration.position || 'right',
             brandColor: integration.brand_color || '#6366f1',
             welcomeMessage: integration.welcome_message || null,
-            collectLeads: integration.collect_leads || false
+            collectLeads: integration.collect_leads || false,
+            departmentBots: departmentBots || null
           };
         } else {
           console.error('Integration not found:', integrationId);

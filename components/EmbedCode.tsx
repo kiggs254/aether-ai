@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNotification } from './Notification';
 import { Modal } from './Modal';
-import { Bot, Integration } from '../types';
+import { Bot, Integration, DepartmentBot } from '../types';
 import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2, Bot as BotIcon } from 'lucide-react';
-import { integrationService } from '../services/database';
+import { integrationService, botService } from '../services/database';
 
 interface EmbedCodeProps {
   bot: Bot;
@@ -26,6 +26,9 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
   const [position, setPosition] = useState<'right' | 'left'>('right');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [collectLeads, setCollectLeads] = useState(bot.collectLeads || false);
+  const [departmentBots, setDepartmentBots] = useState<DepartmentBot[]>([]);
+  const [availableBots, setAvailableBots] = useState<Bot[]>([]);
+  const [isLoadingBots, setIsLoadingBots] = useState(false);
 
   // Preview State
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
@@ -50,7 +53,20 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
   // Load integrations for this bot
   useEffect(() => {
     loadIntegrations();
+    loadAvailableBots();
   }, [bot.id]);
+
+  const loadAvailableBots = async () => {
+    try {
+      setIsLoadingBots(true);
+      const bots = await botService.getAllBots();
+      setAvailableBots(bots);
+    } catch (error) {
+      console.error('Failed to load bots:', error);
+    } finally {
+      setIsLoadingBots(false);
+    }
+  };
 
   // Update selected integration when integrations change
   useEffect(() => {
@@ -88,6 +104,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
     setPosition(integration.position);
     setTheme(integration.theme);
     setCollectLeads(integration.collectLeads);
+    setDepartmentBots(integration.departmentBots || []);
     setHasSubmittedLead(!integration.collectLeads);
   };
 
@@ -100,6 +117,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         brandColor,
         welcomeMessage,
         collectLeads,
+        departmentBots: departmentBots.length > 0 ? departmentBots : undefined,
       });
       await loadIntegrations();
       setSelectedIntegration(newIntegration);
@@ -121,6 +139,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         brandColor,
         welcomeMessage,
         collectLeads,
+        departmentBots: departmentBots.length > 0 ? departmentBots : undefined,
       });
       await loadIntegrations();
       setSelectedIntegration(updated);
@@ -431,6 +450,72 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                              />
                              Collect Leads
                           </label>
+                       </div>
+                       <div className="space-y-2 pt-2 border-t border-white/5">
+                          <label className="text-xs font-medium text-slate-400 flex items-center gap-2">
+                             <BotIcon className="w-4 h-4" />
+                             Department Bots (Premium)
+                          </label>
+                          <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
+                          <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                             {departmentBots.map((deptBot, index) => (
+                                <div key={index} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
+                                   <select
+                                      value={deptBot.botId}
+                                      onChange={(e) => {
+                                         const updated = [...departmentBots];
+                                         updated[index].botId = e.target.value;
+                                         setDepartmentBots(updated);
+                                      }}
+                                      className="flex-1 p-2 rounded-lg glass-input text-sm text-white"
+                                   >
+                                      <option value="">Select Bot</option>
+                                      {availableBots.map((b) => (
+                                         <option key={b.id} value={b.id}>{b.name}</option>
+                                      ))}
+                                   </select>
+                                   <input
+                                      type="text"
+                                      value={deptBot.departmentName}
+                                      onChange={(e) => {
+                                         const updated = [...departmentBots];
+                                         updated[index].departmentName = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                                         setDepartmentBots(updated);
+                                      }}
+                                      placeholder="sales"
+                                      className="w-24 p-2 rounded-lg glass-input text-sm text-white placeholder-slate-500"
+                                   />
+                                   <input
+                                      type="text"
+                                      value={deptBot.departmentLabel}
+                                      onChange={(e) => {
+                                         const updated = [...departmentBots];
+                                         updated[index].departmentLabel = e.target.value;
+                                         setDepartmentBots(updated);
+                                      }}
+                                      placeholder="Sales"
+                                      className="flex-1 p-2 rounded-lg glass-input text-sm text-white placeholder-slate-500"
+                                   />
+                                   <button
+                                      onClick={() => {
+                                         setDepartmentBots(departmentBots.filter((_, i) => i !== index));
+                                      }}
+                                      className="p-2 text-red-400 hover:text-red-300 transition-colors"
+                                   >
+                                      <X className="w-4 h-4" />
+                                   </button>
+                                </div>
+                             ))}
+                             <button
+                                onClick={() => {
+                                   setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
+                                }}
+                                className="w-full p-2 border border-dashed border-white/20 rounded-lg text-slate-400 hover:text-white hover:border-white/40 transition-colors text-sm flex items-center justify-center gap-2"
+                             >
+                                <Plus className="w-4 h-4" />
+                                Add Department
+                             </button>
+                          </div>
                        </div>
                     </div>
                  </div>

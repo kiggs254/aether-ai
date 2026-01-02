@@ -329,7 +329,35 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                         <span>{conv.messageCount} msgs</span>
                      </div>
                               <p className={`text-xs line-clamp-1 italic opacity-70 ${isUnread ? 'text-slate-300' : 'text-slate-400'}`}>
-                        {conv.messages[conv.messages.length - 1]?.text || 'No messages'}
+                        {(() => {
+                           const lastMsg = conv.messages[conv.messages.length - 1];
+                           if (!lastMsg) return 'No messages';
+                           let previewText = lastMsg.text || '';
+                           // Remove product recommendation marker from preview
+                           const markerStart = previewText.indexOf('[PRODUCT_RECOMMENDATION:');
+                           if (markerStart !== -1) {
+                              let bracketCount = 0;
+                              const jsonStart = markerStart + '[PRODUCT_RECOMMENDATION:'.length;
+                              let jsonEnd = -1;
+                              for (let k = jsonStart; k < previewText.length; k++) {
+                                 if (previewText[k] === '[') bracketCount++;
+                                 else if (previewText[k] === ']') {
+                                    if (bracketCount === 0) {
+                                       jsonEnd = k;
+                                       break;
+                                    }
+                                    bracketCount--;
+                                 }
+                              }
+                              if (jsonEnd !== -1) {
+                                 previewText = (previewText.substring(0, markerStart) + previewText.substring(jsonEnd + 1)).trim();
+                                 if (!previewText || !previewText.trim()) {
+                                    previewText = 'Product recommendations';
+                                 }
+                              }
+                           }
+                           return previewText;
+                        })()}
                      </p>
                   </button>
                      {onDeleteConversation && (
@@ -460,7 +488,54 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                     ? 'bg-indigo-600 text-white rounded-br-none' 
                                     : 'bg-[#1e1e24] text-slate-200 rounded-bl-none border border-white/5'
                               }`}>
-                                 {msg.text}
+                                 {(() => {
+                                    // Extract and remove product recommendation marker from text
+                                    let displayText = msg.text || '';
+                                    const markerStart = displayText.indexOf('[PRODUCT_RECOMMENDATION:');
+                                    if (markerStart !== -1) {
+                                       // Find the matching closing bracket
+                                       let bracketCount = 0;
+                                       const jsonStart = markerStart + '[PRODUCT_RECOMMENDATION:'.length;
+                                       let jsonEnd = -1;
+                                       
+                                       for (let k = jsonStart; k < displayText.length; k++) {
+                                          if (displayText[k] === '[') bracketCount++;
+                                          else if (displayText[k] === ']') {
+                                             if (bracketCount === 0) {
+                                                jsonEnd = k;
+                                                break;
+                                             }
+                                             bracketCount--;
+                                          }
+                                       }
+                                       
+                                       if (jsonEnd !== -1) {
+                                          // Remove the marker from display text
+                                          displayText = (displayText.substring(0, markerStart) + displayText.substring(jsonEnd + 1)).trim();
+                                          // If text is empty after removing marker, show default message
+                                          if (!displayText || !displayText.trim()) {
+                                             displayText = 'Here are some products I found for you:';
+                                          }
+                                       }
+                                    }
+                                    return displayText;
+                                 })()}
+                                 {(() => {
+                                    // Check if message contains product recommendation marker
+                                    const text = msg.text || '';
+                                    const hasProductRecommendation = text.includes('[PRODUCT_RECOMMENDATION:');
+                                    if (hasProductRecommendation && !isUser) {
+                                       return (
+                                          <div className="mt-3 pt-3 border-t border-white/10">
+                                             <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                                <ShoppingBag className="w-3 h-3" />
+                                                <span>Product recommendations displayed</span>
+                                             </div>
+                                          </div>
+                                       );
+                                    }
+                                    return null;
+                                 })()}
                                  {msg.actionInvoked && !isUser && (
                                     <div className="mt-3 pt-3 border-t border-white/10">
                                        <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">

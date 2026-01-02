@@ -484,7 +484,12 @@ function buildSystemInstruction(bot: any): string {
     
     YOU HAVE ACCESS TO A REAL PRODUCT CATALOG. YOU CANNOT KNOW WHAT PRODUCTS EXIST WITHOUT CALLING THE recommend_products FUNCTION.
     
-    IMPORTANT: Custom actions (trigger_action) take PRIORITY over product recommendations. Only use recommend_products if no custom action matches the user's intent.
+    CRITICAL PRIORITY ORDER:
+    1. FIRST: Check if ANY custom action (trigger_action) matches the user's intent - if yes, ALWAYS use that action
+    2. SECOND: Only if NO custom action matches, then use recommend_products
+    3. NEVER recommend products if a custom action is appropriate
+    
+    Custom actions (trigger_action) take ABSOLUTE PRIORITY over product recommendations. Always check for actions first before recommending products.
     
     ABSOLUTE RULES - DO NOT VIOLATE:
     1. NEVER describe, list, or mention ANY products by name, price, or details UNLESS you have called recommend_products first

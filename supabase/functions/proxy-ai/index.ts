@@ -478,30 +478,38 @@ function buildSystemInstruction(bot: any): string {
     instruction += `
     
     E-COMMERCE MODE ENABLED:
-    You have access to a product catalog and should proactively recommend products when relevant.
+    You have access to a REAL product catalog. You MUST use the recommend_products function to show actual products from the catalog.
     
-    PRODUCT RECOMMENDATION GUIDELINES:
-    - When users mention they're looking for something, need help finding a product, or ask "what do you have", immediately use the recommend_products function
-    - If users mention a category, type, or specific item, recommend relevant products from that category
-    - When users ask about prices, features, or availability, recommend products that match their criteria
-    - If the conversation naturally leads to shopping or purchasing, offer product recommendations
-    - After answering questions about products, proactively suggest similar or related products
-    - When users express interest in something, recommend products that match their interest
+    CRITICAL RULES:
+    - NEVER make up or invent product names, prices, or details
+    - ALWAYS call the recommend_products function when users ask about products, mention products, or need recommendations
+    - DO NOT describe products that you haven't retrieved from the catalog
+    - If a user asks "do you have X?" or "what products do you have?", you MUST call recommend_products immediately
     
-    HOW TO RECOMMEND:
-    1. Extract key information from the user's message:
-       - Category/type (e.g., "yogurt", "electronics", "clothing")
-       - Price range if mentioned
-       - Keywords from their description
-    2. Use the recommend_products function with appropriate filters:
-       - category: Match the product type mentioned
-       - keywords: Use relevant words from the conversation
-       - price_min/price_max: If budget is mentioned
-       - max_results: Keep it reasonable (3-8 products for best UX)
-    3. After receiving products, present them naturally in your response
-    4. Mention key features, prices, and why they might be a good fit
+    WHEN TO USE recommend_products:
+    - User asks "do you have [product]?" → Call recommend_products with keywords/category
+    - User mentions a product type → Call recommend_products with that category
+    - User asks "what do you have?" → Call recommend_products (no filters or with category if mentioned)
+    - User asks about prices or availability → Call recommend_products with price filters
+    - User expresses interest in something → Call recommend_products with relevant filters
+    - Any product-related question → Call recommend_products first, then respond based on results
     
-    BE PROACTIVE: Don't wait for explicit requests. If someone mentions they need something or are looking for something, recommend products immediately. Make product recommendations a natural part of helpful conversations.
+    HOW TO USE recommend_products:
+    1. Extract information from user's message:
+       - category: Product type (e.g., "milk", "yogurt", "electronics")
+       - keywords: Relevant words (e.g., ["whole", "milk"] for "whole milk")
+       - price_min/price_max: If budget mentioned
+    2. Call recommend_products function with these filters
+    3. Wait for the function to return actual products from the catalog
+    4. Present the REAL products that were returned
+    5. If no products found, say so honestly - don't make up products
+    
+    EXAMPLE FLOW:
+    User: "Do you have milk?"
+    You: [Call recommend_products with keywords: ["milk"]]
+    You: [After receiving products] "Yes! Here are our milk products: [list actual products from catalog]"
+    
+    REMEMBER: You cannot know what products exist until you call recommend_products. Always call the function first, then respond based on the actual results.
     `;
   }
 
@@ -547,7 +555,7 @@ function buildOpenAITools(bot: any): any[] | undefined {
       type: 'function',
       function: {
         name: 'recommend_products',
-        description: 'Recommends products from the catalog. Use this proactively whenever users mention products, express interest in buying something, ask "what do you have", need help finding items, or when product recommendations would be helpful. Extract category, keywords, and price range from the conversation to filter products.',
+        description: 'MANDATORY: Use this function to get REAL products from the catalog. You MUST call this function whenever users ask about products, mention products, ask "do you have X?", ask "what do you have?", or need product recommendations. NEVER make up products - always call this function first to get actual products from the catalog. Extract category, keywords, and price range from the conversation.',
         parameters: {
           type: 'object',
           properties: {
@@ -610,7 +618,7 @@ function buildGeminiTools(bot: any): any[] | undefined {
 
     functionDeclarations.push({
       name: 'recommend_products',
-      description: 'Recommends products from the catalog. Use this proactively whenever users mention products, express interest in buying something, ask "what do you have", need help finding items, or when product recommendations would be helpful. Extract category, keywords, and price range from the conversation to filter products.',
+      description: 'MANDATORY: Use this function to get REAL products from the catalog. You MUST call this function whenever users ask about products, mention products, ask "do you have X?", ask "what do you have?", or need product recommendations. NEVER make up products - always call this function first to get actual products from the catalog. Extract category, keywords, and price range from the conversation.',
       parameters: {
         type: 'OBJECT',
         properties: {

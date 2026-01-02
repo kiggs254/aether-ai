@@ -1434,7 +1434,7 @@ export const generateWidgetJS = (): string => {
         });
         btn.addEventListener('click', async () => {
           // Mark as selected
-          Array.from(departmentOptions.children).forEach((child: any) => {
+          Array.from(departmentOptions.children).forEach(function(child) {
             child.dataset.selected = 'false';
             child.style.background = 'rgba(255,255,255,0.05)';
             child.style.borderColor = 'rgba(255,255,255,0.1)';

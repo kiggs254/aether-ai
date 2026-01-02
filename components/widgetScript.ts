@@ -1263,8 +1263,13 @@ export const generateWidgetJS = (): string => {
   
   // Function to save message to conversation
   const saveMessage = async (convId, role, text, actionId = null) => {
-    if (!convId || !text) {
-      console.warn('Cannot save message: missing convId or text', { convId, text: text?.substring(0, 50) });
+    if (!convId) {
+      console.warn('Cannot save message: missing convId');
+      return;
+    }
+    // Allow empty text if it contains a product recommendation marker (for restoration)
+    if (!text && !text?.includes('[PRODUCT_RECOMMENDATION:')) {
+      console.warn('Cannot save message: missing text', { convId, text: text?.substring(0, 50) });
       return;
     }
     
@@ -2766,22 +2771,37 @@ export const generateWidgetJS = (): string => {
       if (functionCallFound || actionId || productRecommendationCall) {
         fullText = cleanTriggerActionText(fullText);
         
-        // For actions, don't show message in bubble - it will be shown in the action card
-        // Only show text if there's actual content (not just the trigger)
-        if (fullText && fullText.trim()) {
+        // For product recommendations, we ALWAYS need to save the message (even if text is empty)
+        // so it can be restored on page reload
+        if (productRecommendationCall) {
           // Append product recommendation marker to text for persistence
-          let textToSave = fullText;
-          if (productRecommendationCall) {
-            const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(productRecommendationCall) + ']';
-            textToSave = fullText + recommendationMarker;
-          }
+          // Use at least a space so saveMessage doesn't reject it
+          let textToSave = (fullText && fullText.trim()) ? fullText : ' ';
+          const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(productRecommendationCall) + ']';
+          textToSave = textToSave + recommendationMarker;
           
+          // Display message (use a space if empty so the element is created)
+          const displayText = (fullText && fullText.trim()) ? fullText : ' ';
+          updateMessage(displayText);
+          messageHistory.push({ role: 'model', text: fullText || '' }); // Context without marker
+          
+          // Save bot message with marker for restoration (CRITICAL: always save for product recommendations)
+          if (conversationId) {
+            console.log('Saving product recommendation message with marker:', textToSave.substring(0, 150));
+            saveMessage(conversationId, 'model', textToSave).catch(function(err) {
+              console.error('Failed to save product recommendation message:', err);
+            });
+          }
+        }
+        // For other actions, don't show message in bubble - it will be shown in the action card
+        // Only show text if there's actual content (not just the trigger)
+        else if (fullText && fullText.trim()) {
           updateMessage(fullText); // Display without marker
           messageHistory.push({ role: 'model', text: fullText }); // Context without marker
           
-          // Save bot message if we have a conversation (with marker for restoration)
+          // Save bot message if we have a conversation
           if (conversationId) {
-            saveMessage(conversationId, 'model', textToSave);
+            saveMessage(conversationId, 'model', fullText);
           }
         } else {
           // No text content, just the action - remove the empty message bubble
@@ -3247,11 +3267,18 @@ export const generateWidgetJS = (): string => {
           var messageText = msg.text || '';
           var productRecommendationArgs = null;
           
+          console.log('Loading message:', {
+            role: msg.role,
+            textLength: messageText.length,
+            textPreview: messageText.substring(0, 100),
+            hasMarker: messageText.includes('PRODUCT_RECOMMENDATION')
+          });
+          
           // Extract product recommendation marker from text
           // Find the marker position manually to handle nested JSON brackets
           var markerStart = messageText.indexOf('[PRODUCT_RECOMMENDATION:');
           if (markerStart !== -1) {
-            console.log('Found PRODUCT_RECOMMENDATION marker at position:', markerStart);
+            console.log('Found PRODUCT_RECOMMENDATION marker at position:', markerStart, 'in message of length:', messageText.length);
             // Find the matching closing bracket by counting brackets
             var bracketCount = 0;
             var jsonStart = markerStart + '[PRODUCT_RECOMMENDATION:'.length;

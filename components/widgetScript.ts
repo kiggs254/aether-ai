@@ -2186,9 +2186,11 @@ export const generateWidgetJS = (): string => {
       carouselWrapper.appendChild(nextBtn);
     } else {
       // Single product: still use wrapper for consistent styling, just without navigation buttons
-      // Ensure carousel is visible for single product by setting explicit styles
+      // Ensure carousel is visible for single product by setting explicit styles and adding class
       carousel.style.overflowX = 'visible';
       carousel.style.overflowY = 'visible';
+      carouselInner.classList.add('aether-single-product');
+      carouselWrapper.classList.add('aether-single-product-wrapper');
       carouselWrapper.appendChild(carousel);
     }
     

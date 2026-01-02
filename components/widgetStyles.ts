@@ -1614,8 +1614,21 @@ body.aether-chat-open #aether-launcher {
   
   /* Ensure single product carousel is visible */
   .aether-product-carousel-wrapper:has(.aether-product-carousel-inner:only-child) .aether-product-carousel,
-  .aether-product-carousel-wrapper:has(.aether-product-card:only-child) .aether-product-carousel {
-    overflow-x: visible;
+  .aether-product-carousel-wrapper:has(.aether-product-card:only-child) .aether-product-carousel,
+  .aether-single-product-wrapper .aether-product-carousel {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+  
+  /* Single product specific styles */
+  .aether-single-product-wrapper .aether-product-carousel-inner {
+    width: 100%;
+  }
+  
+  .aether-single-product-wrapper .aether-product-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: auto !important;
   }
   
   .aether-carousel-btn {

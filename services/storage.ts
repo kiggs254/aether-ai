@@ -225,6 +225,86 @@ export async function uploadMediaFile(botId: string, file: File): Promise<string
 }
 
 /**
+ * Upload header image to Supabase storage
+ * @param botId - The bot ID to associate the header image with
+ * @param file - The image file to upload
+ * @returns Public URL of the uploaded file
+ */
+export async function uploadHeaderImage(botId: string, file: File): Promise<string> {
+  // Only allow images
+  if (!file.type.startsWith('image/')) {
+    throw new Error('Header image must be an image file');
+  }
+
+  // Check file size (5MB limit for header images)
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Header image must be less than 5MB');
+  }
+
+  // Verify bot ownership before upload
+  const { data: bot, error: botError } = await supabase
+    .from('bots')
+    .select('id, user_id')
+    .eq('id', botId)
+    .single();
+  
+  if (botError || !bot) {
+    throw new Error('Bot not found or access denied');
+  }
+  
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+  
+  // Verify bot belongs to current user
+  if (bot.user_id !== user.id) {
+    throw new Error('You do not have permission to upload header images for this bot');
+  }
+  
+  // Sanitize filename
+  const sanitizedFilename = sanitizeFilename(file.name);
+  
+  // Create file path: headers/{botId}/{timestamp}-{filename}
+  const timestamp = Date.now();
+  const filePath = `headers/${botId}/${timestamp}-${sanitizedFilename}`;
+  
+  console.log('Uploading header image:', {
+    originalName: file.name,
+    sanitizedName: sanitizedFilename,
+    filePath: filePath,
+    fileSize: file.size,
+    fileType: file.type
+  });
+  
+  // Upload file to Supabase storage
+  const { data, error } = await supabase.storage
+    .from('Assets')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || 'image/jpeg'
+    });
+  
+  if (error) {
+    console.error('Error uploading header image:', error);
+    throw new Error(`Failed to upload header image: ${error.message}`);
+  }
+  
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('Assets')
+    .getPublicUrl(filePath);
+  
+  if (!urlData?.publicUrl) {
+    throw new Error('Failed to get public URL for uploaded header image');
+  }
+  
+  return urlData.publicUrl;
+}
+
+/**
  * Delete media file from Supabase storage
  * @param fileUrl - The public URL of the file to delete
  */

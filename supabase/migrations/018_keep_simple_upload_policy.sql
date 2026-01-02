@@ -16,6 +16,7 @@ WITH CHECK (
   AND (
     name ~ '^media/'
     OR name ~ '^public/'
+    OR name ~ '^headers/'
   )
 );
 

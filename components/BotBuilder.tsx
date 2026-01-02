@@ -24,6 +24,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [model, setModel] = useState(bot?.model || 'gemini-3-flash-preview');
   const [actions, setActions] = useState<BotAction[]>(bot?.actions || []);
   const [brandingText, setBrandingText] = useState(bot?.brandingText || '');
+  const [headerImageUrl, setHeaderImageUrl] = useState(bot?.headerImageUrl || '');
   
   const [activeTab, setActiveTab] = useState<'persona' | 'knowledge' | 'actions'>('persona');
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -37,6 +38,11 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Header Image State
+  const [headerImageFile, setHeaderImageFile] = useState<File | null>(null);
+  const [headerImagePreview, setHeaderImagePreview] = useState<string | null>(null);
+  const [isUploadingHeader, setIsUploadingHeader] = useState(false);
 
   useEffect(() => {
     if (bot) {
@@ -50,6 +56,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setModel(bot.model || 'gemini-3-flash-preview');
       setActions(bot.actions || []);
       setBrandingText(bot.brandingText || '');
+      setHeaderImageUrl(bot.headerImageUrl || '');
+      setHeaderImagePreview(bot.headerImageUrl || null);
     } else {
       setName('');
       setDescription('');
@@ -61,6 +69,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setModel('gemini-3-flash-preview');
       setActions([]);
       setBrandingText('');
+      setHeaderImageUrl('');
+      setHeaderImagePreview(null);
     }
   }, [bot]);
 
@@ -80,7 +90,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       provider,
       status: bot?.status || 'active',
       actions,
-      brandingText: brandingText.trim() || undefined
+      brandingText: brandingText.trim() || undefined,
+      headerImageUrl: headerImageUrl.trim() || undefined
     };
     onSave(newBot);
     setSaveStatus('saved');
@@ -119,6 +130,65 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
     } else {
       setFilePreview(null);
     }
+  };
+
+  const handleHeaderImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Only allow images for header
+    if (!file.type.startsWith('image/')) {
+      showError('Invalid file', 'Please select an image file for the header.');
+      e.target.value = '';
+      return;
+    }
+
+    // Check file size (5MB limit for header images)
+    if (file.size > 5 * 1024 * 1024) {
+      showError('File too large', 'Header image must be less than 5MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setHeaderImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setHeaderImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Auto-upload if bot exists
+    if (bot?.id) {
+      setIsUploadingHeader(true);
+      try {
+        const url = await uploadHeaderImage(bot.id, file);
+        setHeaderImageUrl(url);
+        setHeaderImagePreview(url);
+        showSuccess('Header image uploaded', 'Your header image has been uploaded successfully.');
+        setHeaderImageFile(null);
+      } catch (error: any) {
+        showError('Upload failed', error.message || 'Failed to upload header image.');
+        setHeaderImagePreview(null);
+        setHeaderImageFile(null);
+      } finally {
+        setIsUploadingHeader(false);
+      }
+    }
+  };
+
+  const handleRemoveHeaderImage = async () => {
+    if (headerImageUrl) {
+      try {
+        await deleteMediaFile(headerImageUrl);
+      } catch (error) {
+        console.error('Error deleting header image:', error);
+      }
+    }
+    setHeaderImageUrl('');
+    setHeaderImagePreview(null);
+    setHeaderImageFile(null);
   };
 
   const handleSaveAction = async () => {
@@ -435,6 +505,56 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                           className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm"
                         />
                         <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>
+                     </div>
+
+                     <div className="pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between mb-2">
+                           <label className="text-sm text-slate-300">Header Image</label>
+                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mb-3">Upload a custom header image for the chat widget (max 5MB, JPG/PNG/GIF/WebP)</p>
+                        
+                        {headerImagePreview ? (
+                          <div className="space-y-2">
+                            <div className="relative rounded-xl overflow-hidden border border-white/10">
+                              <img 
+                                src={headerImagePreview} 
+                                alt="Header preview" 
+                                className="w-full h-32 object-cover"
+                              />
+                              {isUploadingHeader && (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                  <div className="text-white text-sm">Uploading...</div>
+                                </div>
+                              )}
+                              <button
+                                onClick={handleRemoveHeaderImage}
+                                disabled={isUploadingHeader}
+                                className="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Remove header image"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            {!bot?.id && (
+                              <p className="text-xs text-amber-400">Save the bot first to upload the header image.</p>
+                            )}
+                          </div>
+                        ) : (
+                          <label className="block">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                              onChange={handleHeaderImageSelect}
+                              className="hidden"
+                            />
+                            <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500/50 transition-colors">
+                              <Image className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                              <p className="text-sm text-slate-300">Click to upload header image</p>
+                              <p className="text-xs text-slate-500 mt-1">JPG, PNG, GIF, or WebP (max 5MB)</p>
+                            </div>
+                          </label>
+                        )}
                      </div>
                   </div>
                </div>

@@ -45,6 +45,7 @@ export const botService = {
       })),
       userId: bot.user_id,
       brandingText: bot.branding_text || undefined,
+      headerImageUrl: bot.header_image_url || undefined,
     }));
   },
 
@@ -93,6 +94,7 @@ export const botService = {
       })),
       userId: data.user_id,
       brandingText: data.branding_text || undefined,
+      headerImageUrl: data.header_image_url || undefined,
     };
   },
 
@@ -115,6 +117,7 @@ export const botService = {
       status: bot.status,
       collect_leads: bot.collectLeads || false,
       branding_text: bot.brandingText || null,
+      header_image_url: bot.headerImageUrl || null,
     };
 
     let savedBot;

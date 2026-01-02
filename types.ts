@@ -32,6 +32,7 @@ export interface Bot {
   actions?: BotAction[]; // New field for actions
   userId?: string; // Supabase user ID
   brandingText?: string; // Custom "Powered by" text for premium users
+  headerImageUrl?: string; // Header image URL for chat widget
 }
 
 export interface ChatMessage {

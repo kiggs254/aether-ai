@@ -193,6 +193,19 @@ body.aether-chat-open #aether-launcher {
   display: block;
 }
 
+.aether-header-image {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
 .aether-header-content {
   flex: 1;
   min-width: 0;

@@ -265,6 +265,10 @@ export const generateWidgetJS = (): string => {
     if (!bot.brandingText) {
       bot.brandingText = undefined;
     }
+    // Ensure headerImageUrl exists (for old format)
+    if (!bot.headerImageUrl) {
+      bot.headerImageUrl = undefined;
+    }
     theme = config.theme || 'dark';
     position = config.position || 'right';
     brandColor = config.brandColor || '#6366f1';
@@ -338,7 +342,8 @@ export const generateWidgetJS = (): string => {
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
       collectLeads: collectLeads, // Use collectLeads from integration config
-      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined
+      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined,
+      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined
     };
     
     console.log('Integration and bot configs loaded successfully');
@@ -394,7 +399,8 @@ export const generateWidgetJS = (): string => {
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
       collectLeads: collectLeads,
-      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined
+      brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined,
+      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined
     };
     
     console.log('Bot config loaded and merged with UI overrides');
@@ -406,6 +412,9 @@ export const generateWidgetJS = (): string => {
 
   // Determine branding text - use custom if provided, otherwise default to "Powered by Aether AI"
   const brandingText = bot.brandingText || 'Powered by Aether AI';
+  
+  // Get header image URL if available
+  const headerImageUrl = bot.headerImageUrl || null;
 
   // Inject HTML
   const container = document.createElement('div');
@@ -417,11 +426,19 @@ export const generateWidgetJS = (): string => {
   // Determine initial view (Chat or Form)
   const showForm = collectLeads;
 
+  // Build header icon/image section
+  let headerIconSection = '';
+  if (headerImageUrl) {
+    headerIconSection = '<div class="aether-header-image" style="background-image: url(\'' + headerImageUrl + '\'); background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;"></div>';
+  } else {
+    headerIconSection = '<div class="aether-header-icon">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>' +
+    '</div>';
+  }
+
   const windowHTML = '<div id="aether-window">' +
     '<div class="aether-header">' +
-      '<div class="aether-header-icon">' +
-        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>' +
-      '</div>' +
+      headerIconSection +
       '<div class="aether-header-content">' +
         '<div class="aether-title">' + (config.name || bot.name || 'Chat Assistant') + '</div>' +
         '<div class="aether-subtitle">' + brandingText + '</div>' +

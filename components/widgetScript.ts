@@ -2258,13 +2258,42 @@ export const generateWidgetJS = (): string => {
           
           // Fetch and render products
           if (bot && bot.id) {
-            queryProducts(bot.id, {
-              category: filters.category,
-              price_min: filters.price_min,
-              price_max: filters.price_max,
-              keywords: filters.keywords,
-              max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
-            }).then(function(products) {
+            // If product_ids are specified, fetch those specific products
+            // Otherwise, use filters to query products
+            let productsPromise;
+            if (filters.product_ids && Array.isArray(filters.product_ids) && filters.product_ids.length > 0) {
+              // Fetch specific products by ID
+              productsPromise = Promise.all(filters.product_ids.map(function(productId) {
+                return fetch(config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + bot.id + '&product_id=eq.' + encodeURIComponent(productId) + '&select=*', {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': config.supabaseAnonKey,
+                    'Authorization': 'Bearer ' + config.supabaseAnonKey,
+                  },
+                }).then(function(response) {
+                  if (!response.ok) return null;
+                  return response.json().then(function(data) {
+                    return data && data.length > 0 ? data[0] : null;
+                  });
+                }).catch(function() {
+                  return null;
+                });
+              })).then(function(results) {
+                return results.filter(function(p) { return p !== null; });
+              });
+            } else {
+              // Use filters to query products
+              productsPromise = queryProducts(bot.id, {
+                category: filters.category,
+                price_min: filters.price_min,
+                price_max: filters.price_max,
+                keywords: filters.keywords,
+                max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
+              });
+            }
+            
+            productsPromise.then(function(products) {
               // Remove loading message
               const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
               if (loadingEl) loadingEl.remove();
@@ -2701,13 +2730,42 @@ export const generateWidgetJS = (): string => {
             
             // Fetch and render products
             if (bot && bot.id) {
-              queryProducts(bot.id, {
-                category: filters.category,
-                price_min: filters.price_min,
-                price_max: filters.price_max,
-                keywords: filters.keywords,
-                max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
-              }).then(function(products) {
+              // If product_ids are specified, fetch those specific products
+              // Otherwise, use filters to query products
+              let productsPromise;
+              if (filters.product_ids && Array.isArray(filters.product_ids) && filters.product_ids.length > 0) {
+                // Fetch specific products by ID
+                productsPromise = Promise.all(filters.product_ids.map(function(productId) {
+                  return fetch(config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + bot.id + '&product_id=eq.' + encodeURIComponent(productId) + '&select=*', {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'apikey': config.supabaseAnonKey,
+                      'Authorization': 'Bearer ' + config.supabaseAnonKey,
+                    },
+                  }).then(function(response) {
+                    if (!response.ok) return null;
+                    return response.json().then(function(data) {
+                      return data && data.length > 0 ? data[0] : null;
+                    });
+                  }).catch(function() {
+                    return null;
+                  });
+                })).then(function(results) {
+                  return results.filter(function(p) { return p !== null; });
+                });
+              } else {
+                // Use filters to query products
+                productsPromise = queryProducts(bot.id, {
+                  category: filters.category,
+                  price_min: filters.price_min,
+                  price_max: filters.price_max,
+                  keywords: filters.keywords,
+                  max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
+                });
+              }
+              
+              productsPromise.then(function(products) {
                 // Remove loading message
                 const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
                 if (loadingEl) loadingEl.remove();

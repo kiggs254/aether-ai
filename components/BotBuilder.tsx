@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
-import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader } from 'lucide-react';
+import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
 import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
 import { useNotification } from './Notification';
@@ -59,6 +59,11 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [isRefreshingCatalog, setIsRefreshingCatalog] = useState(false);
   const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
   const [testProducts, setTestProducts] = useState<Product[]>([]);
+  
+  // Product Selection Modal State
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   // Load catalog when bot is loaded and e-commerce is enabled
   useEffect(() => {
@@ -284,16 +289,25 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
         return;
       }
     } else if (currentAction.type === 'products') {
-      // For products actions, payload is optional (can use filters from payload JSON)
-      // If no payload, use empty object (will show all products)
+      // For products actions, payload should contain product_ids and max_results
+      // If no payload, use default structure
       if (!currentAction.payload) {
-        currentAction.payload = '{}'; // Default: show all products
+        currentAction.payload = JSON.stringify({ product_ids: [], max_results: 5 });
       }
       // Validate payload is valid JSON
       try {
-        JSON.parse(currentAction.payload);
+        const payload = JSON.parse(currentAction.payload);
+        // Ensure product_ids is an array
+        if (!Array.isArray(payload.product_ids)) {
+          payload.product_ids = [];
+        }
+        // Ensure max_results is a number
+        if (typeof payload.max_results !== 'number') {
+          payload.max_results = 5;
+        }
+        currentAction.payload = JSON.stringify(payload);
       } catch (e) {
-        showError('Invalid JSON', 'Payload must be valid JSON with product filters (e.g., {"category": "electronics", "max_results": 5})');
+        showError('Invalid JSON', 'Payload must be valid JSON. Please select products using the product selector.');
         return;
       }
     } else {
@@ -702,72 +716,82 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     ) : currentAction.type === 'products' ? (
                        <div className="space-y-3">
                           <div>
-                            <label className="text-xs font-medium text-slate-300 mb-1 block">Product Filters (JSON)</label>
-                            <textarea 
-                              value={currentAction.payload || '{}'}
-                              onChange={(e) => {
+                            <label className="text-xs font-medium text-slate-300 mb-1 block">Select Products</label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Load selected product IDs from payload if exists
                                 try {
-                                  // Validate JSON
-                                  JSON.parse(e.target.value);
-                                  setCurrentAction(prev => ({ ...prev, payload: e.target.value }));
-                                } catch (err) {
-                                  // Still allow typing, but show error
-                                  setCurrentAction(prev => ({ ...prev, payload: e.target.value }));
+                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                  setSelectedProductIds(payload.product_ids || []);
+                                } catch (e) {
+                                  setSelectedProductIds([]);
                                 }
+                                setIsProductModalOpen(true);
                               }}
-                              placeholder='{"category": "electronics", "max_results": 5, "price_min": 10, "price_max": 1000}'
-                              className="w-full p-2.5 rounded-xl glass-input text-sm placeholder-slate-600 font-mono"
-                              rows={4}
-                            />
-                            <p className="text-xs text-slate-500 mt-1">
-                              Optional filters: category, max_results, price_min, price_max, keywords (array)
-                            </p>
-                            {currentAction.payload && (() => {
+                              className="w-full p-3 rounded-xl glass-input text-sm text-left flex items-center justify-between hover:bg-white/5 transition-colors"
+                            >
+                              <span className="text-slate-300">
+                                {(() => {
+                                  try {
+                                    const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                    const count = payload.product_ids?.length || 0;
+                                    return count > 0 ? `${count} product${count !== 1 ? 's' : ''} selected` : 'Click to select products';
+                                  } catch (e) {
+                                    return 'Click to select products';
+                                  }
+                                })()}
+                              </span>
+                              <ShoppingBag className="w-4 h-4 text-indigo-400" />
+                            </button>
+                            {(() => {
                               try {
-                                JSON.parse(currentAction.payload);
-                                return null;
-                              } catch (e) {
-                                return <p className="text-xs text-red-400 mt-1">Invalid JSON format</p>;
-                              }
+                                const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                const ids = payload.product_ids || [];
+                                if (ids.length > 0) {
+                                  const selectedProducts = catalogProducts.filter(p => ids.includes(p.productId));
+                                  return (
+                                    <div className="mt-2 space-y-1">
+                                      {selectedProducts.map(p => (
+                                        <div key={p.productId} className="text-xs text-slate-400 flex items-center gap-2">
+                                          <Check className="w-3 h-3 text-indigo-400" />
+                                          {p.name}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                              } catch (e) {}
+                              return null;
                             })()}
                           </div>
-                          {ecommerceEnabled && catalogProducts.length > 0 && (
-                            <div>
-                              <label className="text-xs font-medium text-slate-300 mb-1 block">Quick Filters</label>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  onClick={() => {
-                                    const categories = [...new Set(catalogProducts.map(p => p.category).filter(Boolean))];
-                                    if (categories.length > 0) {
-                                      const payload = JSON.stringify({ category: categories[0], max_results: 5 });
-                                      setCurrentAction(prev => ({ ...prev, payload }));
-                                    }
-                                  }}
-                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
-                                >
-                                  By Category
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const payload = JSON.stringify({ max_results: 5 });
-                                    setCurrentAction(prev => ({ ...prev, payload }));
-                                  }}
-                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
-                                >
-                                  All Products (5)
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const payload = JSON.stringify({ max_results: 10 });
-                                    setCurrentAction(prev => ({ ...prev, payload }));
-                                  }}
-                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
-                                >
-                                  All Products (10)
-                                </button>
-                              </div>
-                            </div>
-                          )}
+                          <div>
+                            <label className="text-xs font-medium text-slate-300 mb-1 block">Max Products to Show</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={(() => {
+                                try {
+                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                  return payload.max_results || 5;
+                                } catch (e) {
+                                  return 5;
+                                }
+                              })()}
+                              onChange={(e) => {
+                                const maxResults = parseInt(e.target.value) || 5;
+                                try {
+                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                  const newPayload = { ...payload, max_results: maxResults };
+                                  setCurrentAction(prev => ({ ...prev, payload: JSON.stringify(newPayload) }));
+                                } catch (err) {
+                                  setCurrentAction(prev => ({ ...prev, payload: JSON.stringify({ max_results: maxResults }) }));
+                                }
+                              }}
+                              className="w-full p-2.5 rounded-xl glass-input text-sm"
+                            />
+                          </div>
                        </div>
                     ) : currentAction.type !== 'handoff' && (
                        <div>
@@ -1120,6 +1144,171 @@ Aether AI is a..."
           </div>
         )}
       </div>
+      
+      {/* Product Selection Modal */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-900 rounded-2xl border border-white/10 w-full max-w-4xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <div>
+                <h3 className="text-xl font-bold text-white">Select Products</h3>
+                <p className="text-sm text-slate-400 mt-1">Choose products to display in the carousel</p>
+              </div>
+              <button
+                onClick={() => setIsProductModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="p-4 border-b border-white/10">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={productSearchQuery}
+                  onChange={(e) => setProductSearchQuery(e.target.value)}
+                  placeholder="Search products by name, category, or keywords..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl glass-input text-sm"
+                />
+              </div>
+            </div>
+            
+            {/* Product List */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+              {!ecommerceEnabled ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+                  <p className="text-slate-400">Please enable E-commerce mode and load a product catalog first.</p>
+                </div>
+              ) : catalogProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+                  <p className="text-slate-400">No products in catalog. Please refresh the product catalog.</p>
+                </div>
+              ) : (() => {
+                const filteredProducts = catalogProducts.filter(p => {
+                  if (!productSearchQuery) return true;
+                  const query = productSearchQuery.toLowerCase();
+                  return (
+                    p.name?.toLowerCase().includes(query) ||
+                    p.category?.toLowerCase().includes(query) ||
+                    p.keywords?.some(k => k.toLowerCase().includes(query))
+                  );
+                });
+                
+                if (filteredProducts.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <Search className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+                      <p className="text-slate-400">No products found matching your search.</p>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {filteredProducts.map((product) => {
+                      const isSelected = selectedProductIds.includes(product.productId);
+                      return (
+                        <div
+                          key={product.productId}
+                          onClick={() => {
+                            setSelectedProductIds(prev => {
+                              if (isSelected) {
+                                return prev.filter(id => id !== product.productId);
+                              } else {
+                                return [...prev, product.productId];
+                              }
+                            });
+                          }}
+                          className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-indigo-600/20 border-indigo-500/50'
+                              : 'bg-white/5 border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              isSelected ? 'bg-indigo-600' : 'bg-white/10'
+                            }`}>
+                              {isSelected ? (
+                                <Check className="w-5 h-5 text-white" />
+                              ) : (
+                                <ShoppingBag className="w-5 h-5 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium text-white truncate">{product.name}</h4>
+                              {product.category && (
+                                <p className="text-xs text-slate-400 mt-1">{product.category}</p>
+                              )}
+                              {product.price && (
+                                <p className="text-xs text-indigo-400 mt-1 font-medium">
+                                  {product.currency || 'USD'} {parseFloat(product.price).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                            {product.imageUrl && (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between p-4 border-t border-white/10">
+              <div className="text-sm text-slate-400">
+                {selectedProductIds.length} product{selectedProductIds.length !== 1 ? 's' : ''} selected
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedProductIds([]);
+                    setIsProductModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    // Update payload with selected product IDs
+                    try {
+                      const currentPayload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                      const newPayload = {
+                        ...currentPayload,
+                        product_ids: selectedProductIds,
+                      };
+                      setCurrentAction(prev => ({ ...prev, payload: JSON.stringify(newPayload) }));
+                      setIsProductModalOpen(false);
+                    } catch (e) {
+                      const newPayload = { product_ids: selectedProductIds };
+                      setCurrentAction(prev => ({ ...prev, payload: JSON.stringify(newPayload) }));
+                      setIsProductModalOpen(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors"
+                >
+                  Apply Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

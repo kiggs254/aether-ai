@@ -448,7 +448,7 @@ body.aether-chat-open #aether-launcher {
   animation: fadeIn 0.3s ease;
 }
 
-/* Product action cards should be full width */
+/* Product action cards should be full width and have no border */
 .aether-product-action-card {
   padding-left: 0 !important;
   padding-right: 0 !important;
@@ -457,6 +457,9 @@ body.aether-chat-open #aether-launcher {
   margin-right: var(--aether-spacing-md) !important;
   width: calc(100% - var(--aether-spacing-md) * 2) !important;
   box-sizing: border-box;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
 }
 
 .aether-product-action-card .aether-product-carousel-container,

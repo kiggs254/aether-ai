@@ -88,8 +88,20 @@ function parseRSSItem(item: Element): Product | null {
   const category = getText('category');
   
   // Try to extract price from description or other fields
-  const priceMatch = description.match(/\$?([\d,]+\.?\d*)/);
-  const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, '')) : undefined;
+  // Look for currency codes followed by price
+  const priceMatch = description.match(/(?:USD|EUR|GBP|KES|JPY|CNY|INR|AUD|CAD|CHF|NZD|ZAR|BRL|MXN|RUB|SEK|NOK|DKK|PLN|CZK|HUF|RON|BGN|HRK|TRY|ILS|AED|SAR|THB|SGD|HKD|KRW)\s*\$?([\d,]+\.?\d*)/i) || 
+                     description.match(/\$?([\d,]+\.?\d*)/);
+  let price: number | undefined = undefined;
+  let currency = 'USD';
+  
+  if (priceMatch) {
+    // Check if currency code was found
+    const currencyMatch = priceMatch[0].match(/([A-Z]{3})/i);
+    if (currencyMatch) {
+      currency = currencyMatch[1].toUpperCase();
+    }
+    price = parseFloat(priceMatch[priceMatch.length - 1].replace(/,/g, ''));
+  }
 
   // Try to find image
   const imageUrl = getText('enclosure[type^="image"]') || 

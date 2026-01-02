@@ -362,7 +362,7 @@ export const generateWidgetJS = (): string => {
       systemInstruction: fetchedBot.system_instruction || fetchedBot.systemInstruction || 'You are a helpful AI assistant.',
       knowledgeBase: fetchedBot.knowledge_base || fetchedBot.knowledgeBase || '',
       provider: fetchedBot.provider || 'gemini',
-      model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : fetchedBot.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-1.5-flash'),
+      model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : fetchedBot.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-2.5-flash'),
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
       collectLeads: collectLeads, // Use collectLeads from integration config
@@ -421,7 +421,7 @@ export const generateWidgetJS = (): string => {
       systemInstruction: fetchedBot.system_instruction || fetchedBot.systemInstruction || 'You are a helpful AI assistant.',
       knowledgeBase: fetchedBot.knowledge_base || fetchedBot.knowledgeBase || '',
       provider: fetchedBot.provider || 'gemini',
-      model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : fetchedBot.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-1.5-flash'),
+      model: fetchedBot.model || (fetchedBot.provider === 'openai' ? 'gpt-4' : fetchedBot.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-2.5-flash'),
       temperature: fetchedBot.temperature ?? 0.7,
       actions: actions,
       collectLeads: collectLeads,

@@ -24,7 +24,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [knowledge, setKnowledge] = useState(bot?.knowledgeBase || '');
   const [temperature, setTemperature] = useState(bot?.temperature ?? 0.7);
   const [provider, setProvider] = useState<'gemini' | 'openai' | 'deepseek'>(bot?.provider || 'gemini');
-  const [model, setModel] = useState(bot?.model || 'gemini-1.5-flash');
+  const [model, setModel] = useState(bot?.model || 'gemini-2.5-flash');
   const [actions, setActions] = useState<BotAction[]>(bot?.actions || []);
   const [brandingText, setBrandingText] = useState(bot?.brandingText || '');
   const [headerImageUrl, setHeaderImageUrl] = useState(bot?.headerImageUrl || '');
@@ -81,7 +81,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setKnowledge(bot.knowledgeBase);
       setTemperature(bot.temperature ?? 0.7);
       setProvider(bot.provider || 'gemini');
-      setModel(bot.model || 'gemini-1.5-flash');
+      setModel(bot.model || 'gemini-2.5-flash');
       setActions(bot.actions || []);
       setBrandingText(bot.brandingText || '');
       setHeaderImageUrl(bot.headerImageUrl || '');
@@ -101,7 +101,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setKnowledge('');
       setTemperature(0.7);
       setProvider('gemini');
-      setModel('gemini-1.5-flash');
+      setModel('gemini-2.5-flash');
       setActions([]);
       setBrandingText('');
       setHeaderImageUrl('');
@@ -539,7 +539,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             } else if (newProvider === 'deepseek') {
                               setModel('deepseek-chat');
                             } else {
-                              setModel('gemini-1.5-flash');
+                              setModel('gemini-2.5-flash');
                             }
                           }}
                           className="w-full p-3 rounded-xl glass-input text-white"
@@ -559,9 +559,12 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                         >
                           {provider === 'gemini' ? (
                             <>
-                              <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-                              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                              <option value="gemini-3-flash">Gemini 3 Flash</option>
+                              <option value="gemini-3-pro">Gemini 3 Pro</option>
+                              <option value="gemini-3-deep-think">Gemini 3 Deep Think</option>
                               <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
                             </>
                           ) : provider === 'deepseek' ? (

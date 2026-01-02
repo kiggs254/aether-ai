@@ -345,32 +345,68 @@ serve(async (req) => {
         }
 
         const tools = buildGeminiTools(bot);
+        const systemInstructionText = buildSystemInstruction(bot);
+        
+        // Validate inputs
+        if (!message || typeof message !== 'string' || message.trim() === '') {
+          return new Response(
+            JSON.stringify({ error: 'Message is required and cannot be empty' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Build request body - some models may not support systemInstruction/tools at top level
+        // Try putting system instruction in contents first, then add tools if supported
+        const contents: any[] = [];
+        
+        // Add system instruction as first content if model supports it, otherwise include in first user message
+        // For now, include it in the first user message to ensure compatibility
+        const systemMessage = systemInstructionText ? `System: ${systemInstructionText}\n\n` : '';
+        
+        contents.push(
+          ...(history || []).map((h: any) => ({
+            role: h.role === 'model' ? 'model' : 'user',
+            parts: [{ text: String(h.text || '') }],
+          })),
+          {
+            role: 'user',
+            parts: [{ text: systemMessage + message }],
+          }
+        );
+        
         const requestBody: any = {
-          contents: [
-            ...history.map((h: any) => ({
-              role: h.role === 'model' ? 'model' : 'user',
-              parts: [{ text: h.text }],
-            })),
-            {
-              role: 'user',
-              parts: [{ text: message }],
-            },
-          ],
-          systemInstruction: {
-            parts: [{ text: buildSystemInstruction(bot) }],
-          },
+          contents: contents,
           generationConfig: {
             temperature: bot.temperature ?? 0.7,
           },
         };
-        if (tools) {
+        
+        // Only add tools if we have them - some models may not support tools
+        // Try adding tools, but if it fails, we'll handle it in error response
+        if (tools && tools.length > 0) {
           requestBody.tools = tools;
         }
+        
+        console.log('Gemini request body:', JSON.stringify(requestBody).substring(0, 1000));
 
-        // Try v1 first, fallback to v1beta if needed
-        const modelName = bot.model || 'gemini-1.5-flash';
+        // Use v1 API only (v1beta is deprecated and doesn't support newer models)
+        // Default to gemini-2.5-flash (fast and cost-effective)
+        const modelName = bot.model || 'gemini-2.5-flash';
+        
+        // Map old model names to Gemini 2.5/3.0 models
+        let currentModelName = modelName;
+        if (modelName.includes('1.5') || modelName.includes('1.0') || modelName.includes('2.0')) {
+          // Map old models to 2.5/3.0 equivalents
+          if (modelName.includes('flash')) {
+            currentModelName = 'gemini-2.5-flash';
+          } else if (modelName.includes('pro')) {
+            currentModelName = 'gemini-2.5-pro';
+          } else {
+            currentModelName = 'gemini-2.5-flash';
+          }
+        }
         let response = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/${modelName}:streamGenerateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:streamGenerateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {
@@ -380,27 +416,92 @@ serve(async (req) => {
           }
         );
 
-        // If v1 fails, try v1beta
+        // If model not found, try alternative Gemini 2.5/3.0 models only
         if (!response.ok && response.status === 404) {
-          response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?key=${geminiApiKey}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(requestBody),
+          // Only use Gemini 2.5 and 3.0 series models
+          const fallbackModels = [
+            'gemini-2.5-flash',      // Fast, cost-effective
+            'gemini-2.5-flash-lite', // Fastest, most cost-effective
+            'gemini-2.5-pro',      // More capable
+            'gemini-3-flash',       // Latest fast model
+            'gemini-3-pro',         // Latest powerful model
+            'gemini-3-deep-think',  // Best reasoning
+          ];
+          
+          for (const fallbackModel of fallbackModels) {
+            if (currentModelName === fallbackModel) continue; // Skip if already tried
+            
+            console.log(`Trying fallback model: ${fallbackModel}`);
+            currentModelName = fallbackModel;
+            response = await fetch(
+              `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:streamGenerateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+            
+            if (response.ok) {
+              console.log(`Successfully using model: ${fallbackModel}`);
+              break;
             }
-          );
+          }
         }
 
-      if (!response.ok) {
-        const error = await response.text();
-        return new Response(
-          JSON.stringify({ error: `Gemini API error: ${error}` }),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+        // Check for errors BEFORE trying to process the response
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          
+          // If tools/systemInstruction caused the error, try without them
+          if (response.status === 400 && errorText.includes('systemInstruction') || errorText.includes('tools')) {
+            console.log('Retrying without tools/systemInstruction fields');
+            const fallbackRequestBody: any = {
+              contents: requestBody.contents,
+              generationConfig: requestBody.generationConfig,
+            };
+            
+            const fallbackResponse = await fetch(
+              `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:streamGenerateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(fallbackRequestBody),
+              }
+            );
+            
+            if (fallbackResponse.ok) {
+              response = fallbackResponse;
+            } else {
+              console.error('Gemini API error (with fallback):', {
+                status: fallbackResponse.status,
+                statusText: fallbackResponse.statusText,
+                error: await fallbackResponse.text().catch(() => 'Unknown error'),
+                model: currentModelName,
+              });
+              return new Response(
+                JSON.stringify({ error: `Gemini API error: Model may not support tools/systemInstruction. ${errorText}` }),
+                { status: fallbackResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } else {
+            console.error('Gemini API error:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorText,
+              model: currentModelName,
+              requestBody: JSON.stringify(requestBody).substring(0, 500)
+            });
+            return new Response(
+              JSON.stringify({ error: `Gemini API error: ${errorText}` }),
+              { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
 
       // Transform Gemini SSE to match expected format (similar to OpenAI transformation)
       if (!response.body) {
@@ -578,32 +679,60 @@ serve(async (req) => {
         }
 
         const tools = buildGeminiTools(bot);
-        const requestBody: any = {
-          contents: [
-            ...history.map((h: any) => ({
-              role: h.role === 'model' ? 'model' : 'user',
-              parts: [{ text: h.text }],
-            })),
-            {
-              role: 'user',
-              parts: [{ text: message }],
-            },
-          ],
-          systemInstruction: {
-            parts: [{ text: systemInstruction }],
+        
+        // Validate inputs
+        if (!message || typeof message !== 'string' || message.trim() === '') {
+          return new Response(
+            JSON.stringify({ error: 'Message is required and cannot be empty' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Build request body - include system instruction in message content for compatibility
+        // Some models may not support systemInstruction/tools as top-level fields
+        const systemMessage = systemInstruction ? `System: ${systemInstruction}\n\n` : '';
+        
+        const contents: any[] = [
+          ...(history || []).map((h: any) => ({
+            role: h.role === 'model' ? 'model' : 'user',
+            parts: [{ text: String(h.text || '') }],
+          })),
+          {
+            role: 'user',
+            parts: [{ text: systemMessage + message }],
           },
+        ];
+        
+        const requestBody: any = {
+          contents: contents,
           generationConfig: {
             temperature: bot.temperature ?? 0.7,
           },
         };
-        if (tools) {
+        
+        // Only add tools if we have them - some models may not support tools
+        if (tools && tools.length > 0) {
           requestBody.tools = tools;
         }
 
-        // Try v1 first, fallback to v1beta if needed
-        const modelName = bot.model || 'gemini-1.5-flash';
+        // Use v1 API only (v1beta is deprecated and doesn't support newer models)
+        // Default to gemini-2.5-flash (fast and cost-effective)
+        const modelName = bot.model || 'gemini-2.5-flash';
+        
+        // Map old model names to Gemini 2.5/3.0 models
+        let currentModelName = modelName;
+        if (modelName.includes('1.5') || modelName.includes('1.0') || modelName.includes('2.0')) {
+          // Map old models to 2.5/3.0 equivalents
+          if (modelName.includes('flash')) {
+            currentModelName = 'gemini-2.5-flash';
+          } else if (modelName.includes('pro')) {
+            currentModelName = 'gemini-2.5-pro';
+          } else {
+            currentModelName = 'gemini-2.5-flash';
+          }
+        }
         let response = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {
@@ -613,18 +742,92 @@ serve(async (req) => {
           }
         );
 
-        // If v1 fails, try v1beta
+        // If model not found, try alternative Gemini 2.5/3.0 models only
         if (!response.ok && response.status === 404) {
-          response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(requestBody),
+          // Only use Gemini 2.5 and 3.0 series models
+          const fallbackModels = [
+            'gemini-2.5-flash',      // Fast, cost-effective
+            'gemini-2.5-flash-lite', // Fastest, most cost-effective
+            'gemini-2.5-pro',       // More capable
+            'gemini-3-flash',       // Latest fast model
+            'gemini-3-pro',         // Latest powerful model
+            'gemini-3-deep-think',  // Best reasoning
+          ];
+          
+          for (const fallbackModel of fallbackModels) {
+            if (currentModelName === fallbackModel) continue; // Skip if already tried
+            
+            console.log(`Trying fallback model: ${fallbackModel}`);
+            currentModelName = fallbackModel;
+            response = await fetch(
+              `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:generateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+              }
+            );
+            
+            if (response.ok) {
+              console.log(`Successfully using model: ${fallbackModel}`);
+              break;
             }
-          );
+          }
+        }
+
+        // Check for errors BEFORE trying to parse JSON
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          
+          // If tools/systemInstruction caused the error, try without them
+          if (response.status === 400 && (errorText.includes('systemInstruction') || errorText.includes('tools'))) {
+            console.log('Retrying without tools/systemInstruction fields');
+            const fallbackRequestBody: any = {
+              contents: requestBody.contents,
+              generationConfig: requestBody.generationConfig,
+            };
+            
+            const fallbackResponse = await fetch(
+              `https://generativelanguage.googleapis.com/v1/models/${currentModelName}:generateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(fallbackRequestBody),
+              }
+            );
+            
+            if (fallbackResponse.ok) {
+              response = fallbackResponse;
+            } else {
+              const fallbackError = await fallbackResponse.text().catch(() => 'Unknown error');
+              console.error('Gemini API error (non-streaming, with fallback):', {
+                status: fallbackResponse.status,
+                statusText: fallbackResponse.statusText,
+                error: fallbackError,
+                model: currentModelName,
+              });
+              return new Response(
+                JSON.stringify({ error: `Gemini API error: Model may not support tools/systemInstruction. ${errorText}` }),
+                { status: fallbackResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } else {
+            console.error('Gemini API error (non-streaming):', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorText,
+              model: currentModelName,
+              requestBody: JSON.stringify(requestBody).substring(0, 500)
+            });
+            return new Response(
+              JSON.stringify({ error: `Gemini API error: ${errorText}` }),
+              { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
 
         const data = await response.json();

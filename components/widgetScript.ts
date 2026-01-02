@@ -467,17 +467,22 @@ export const generateWidgetJS = (): string => {
           '<div class="aether-form-title">Start Conversation</div>' +
           '<div class="aether-form-desc">Please share your details to connect with us.</div>' +
         '</div>' +
-        '<div class="aether-form-group">' +
+        '<div class="aether-form-group" id="aether-email-group">' +
           '<label>Email Address</label>' +
           '<input type="text" class="aether-input" id="aether-email" placeholder="you@company.com" autocomplete="email" />' +
           '<div class="aether-form-error" id="aether-email-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
         '</div>' +
-        '<div class="aether-form-group">' +
+        '<div class="aether-form-group" id="aether-department-group" style="display:none;">' +
+          '<label>Select Department</label>' +
+          '<div id="aether-department-options" class="aether-department-options"></div>' +
+          '<div class="aether-form-error" id="aether-department-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
+        '</div>' +
+        '<div class="aether-form-group" id="aether-phone-group" style="display:none;">' +
           '<label>Phone Number</label>' +
           '<input type="tel" class="aether-input" id="aether-phone" placeholder="+1 (555) 000-0000" required />' +
           '<div class="aether-form-error" id="aether-phone-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
         '</div>' +
-        '<button class="aether-btn" id="aether-submit-lead">Start Chatting</button>' +
+        '<button class="aether-btn" id="aether-submit-lead" style="display:none;">Start Chatting</button>' +
       '</div>' : '') +
       '<div class="aether-messages" id="aether-messages" style="' + (showForm ? 'display:none' : '') + '">' +
         '<div class="aether-welcome-container" id="aether-welcome-container">' +
@@ -956,7 +961,7 @@ export const generateWidgetJS = (): string => {
   });
 
   // Function to create a conversation (with or without lead data)
-  const createConversation = async (email = null, phone = null) => {
+  const createConversation = async (email = null, phone = null, botToUse = bot) => {
     try {
       // Get Supabase URL from config or functionUrl
       const supabaseUrl = config.supabaseUrl || functionUrl.replace('/functions/v1/proxy-ai', '').replace('/.netlify/functions/chat', '');
@@ -981,7 +986,7 @@ export const generateWidgetJS = (): string => {
       
       // Build conversation payload
       const payload = {
-        bot_id: bot.id,
+        bot_id: botToUse.id,
         // Note: user_id is NOT set, so it will be null (identifying it as a widget conversation)
       };
       
@@ -1004,7 +1009,7 @@ export const generateWidgetJS = (): string => {
         console.log('Conversation created successfully:', conv.id);
         
         // Save session
-        saveSession(bot.id, conv.id, email || phone ? { email: email || null, phone: phone || null } : null);
+        saveSession(botToUse.id, conv.id, email || phone ? { email: email || null, phone: phone || null } : null);
         
         return conv.id;
       } else {
@@ -1019,7 +1024,7 @@ export const generateWidgetJS = (): string => {
   };
   
   // Function to find existing conversation by email or phone
-  const findExistingConversation = async (email, phone) => {
+  const findExistingConversation = async (email, phone, botToUse = bot) => {
     if (!email && !phone) return null;
     
     try {
@@ -1041,7 +1046,7 @@ export const generateWidgetJS = (): string => {
       
       // Build query: find conversation with same bot_id and (same email OR same phone)
       // Use Supabase OR filter: or=(user_email.eq.email,user_phone.eq.phone)
-      let queryUrl = supabaseUrl + '/rest/v1/conversations?bot_id=eq.' + bot.id + '&user_id=is.null';
+      let queryUrl = supabaseUrl + '/rest/v1/conversations?bot_id=eq.' + botToUse.id + '&user_id=is.null';
       
       // Build OR condition for email or phone match
       const orConditions = [];
@@ -1070,7 +1075,7 @@ export const generateWidgetJS = (): string => {
           console.log('Found existing conversation:', existingConvId);
           
           // Save session for existing conversation
-          saveSession(bot.id, existingConvId, email || phone ? { email: email || null, phone: phone || null } : null);
+          saveSession(botToUse.id, existingConvId, email || phone ? { email: email || null, phone: phone || null } : null);
           
           return existingConvId;
         }
@@ -1087,11 +1092,11 @@ export const generateWidgetJS = (): string => {
   
   // Function to save lead and create conversation (for collectLeads=true)
   // First checks for existing conversation by email/phone, creates new one if not found
-  const saveLeadAndCreateConversation = async (email, phone) => {
+  const saveLeadAndCreateConversation = async (email, phone, botToUse = bot) => {
     if (!email || !phone) return null;
     
     // First, try to find existing conversation
-    const existingConvId = await findExistingConversation(email, phone);
+    const existingConvId = await findExistingConversation(email, phone, botToUse);
     if (existingConvId) {
       console.log('Using existing conversation:', existingConvId);
       return existingConvId;
@@ -1099,7 +1104,7 @@ export const generateWidgetJS = (): string => {
     
     // No existing conversation found, create new one
     console.log('No existing conversation found, creating new one');
-    return await createConversation(email, phone);
+    return await createConversation(email, phone, botToUse);
   };
   
   // Function to load conversation history from Supabase
@@ -1351,15 +1356,29 @@ export const generateWidgetJS = (): string => {
         
         console.log('Validation passed, proceeding with submission');
         
+        // Check if department is required and selected
+        const departmentBots = config.departmentBots;
+        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+          if (!selectedDepartmentBot) {
+            showError('aether-department', 'aether-department-error', 'Please select a department');
+            return;
+          }
+        }
+        
         // Store lead data
         leadData = { email: email, phone: phone };
         
+        // Use selected bot if department was chosen, otherwise use default bot
+        const botToUse = selectedDepartmentBot ? currentBot : bot;
+        
         // Save lead and create or find existing conversation
-        const convId = await saveLeadAndCreateConversation(email, phone);
+        const convId = await saveLeadAndCreateConversation(email, phone, botToUse);
         if (convId) {
           conversationId = convId;
           leadData = { email: email, phone: phone };
-          console.log('Conversation created/found:', convId);
+          // Update bot reference for the rest of the session
+          bot = botToUse;
+          console.log('Conversation created/found:', convId, 'with bot:', botToUse.name);
         } else {
           console.error('Failed to create/find conversation');
           showError('aether-email', 'aether-email-error', 'Failed to start conversation. Please try again.');
@@ -1379,6 +1398,104 @@ export const generateWidgetJS = (): string => {
   const emailInput = document.getElementById('aether-email');
   const phoneInput = document.getElementById('aether-phone');
   
+  // Function to show department selection
+  const showDepartmentSelection = async () => {
+    const departmentBots = config.departmentBots;
+    if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
+      // No departments, show phone input directly
+      if (phoneGroup) phoneGroup.style.display = 'block';
+      if (submitLead) submitLead.style.display = 'block';
+      return;
+    }
+
+    // Show department selection
+    if (departmentGroup && departmentOptions) {
+      departmentGroup.style.display = 'block';
+      departmentOptions.innerHTML = '';
+      
+      departmentBots.forEach((dept) => {
+        if (!dept.botId || !dept.departmentLabel) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'aether-department-btn';
+        btn.textContent = dept.departmentLabel;
+        btn.dataset.botId = dept.botId;
+        btn.dataset.departmentName = dept.departmentName || dept.departmentLabel.toLowerCase();
+        btn.style.cssText = 'width: 100%; padding: 12px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; text-align: left; cursor: pointer; transition: all 0.2s;';
+        btn.addEventListener('mouseenter', () => {
+          btn.style.background = 'rgba(255,255,255,0.1)';
+          btn.style.borderColor = 'rgba(99,102,241,0.5)';
+        });
+        btn.addEventListener('mouseleave', () => {
+          if (btn.dataset.selected !== 'true') {
+            btn.style.background = 'rgba(255,255,255,0.05)';
+            btn.style.borderColor = 'rgba(255,255,255,0.1)';
+          }
+        });
+        btn.addEventListener('click', async () => {
+          // Mark as selected
+          Array.from(departmentOptions.children).forEach((child: any) => {
+            child.dataset.selected = 'false';
+            child.style.background = 'rgba(255,255,255,0.05)';
+            child.style.borderColor = 'rgba(255,255,255,0.1)';
+          });
+          btn.dataset.selected = 'true';
+          btn.style.background = 'rgba(99,102,241,0.2)';
+          btn.style.borderColor = 'rgba(99,102,241,0.5)';
+          
+          // Store selected department bot
+          selectedDepartmentBot = dept;
+          
+          // Fetch the selected bot config
+          const selectedBotConfig = await fetchBotConfig(dept.botId, config.supabaseUrl, config.supabaseAnonKey);
+          if (selectedBotConfig) {
+            // Map bot_actions to actions
+            let actions = [];
+            if (selectedBotConfig.actions && Array.isArray(selectedBotConfig.actions)) {
+              actions = selectedBotConfig.actions;
+            } else if (selectedBotConfig.bot_actions && Array.isArray(selectedBotConfig.bot_actions)) {
+              actions = selectedBotConfig.bot_actions.map(function(action) {
+                return {
+                  id: action.id,
+                  type: action.type,
+                  label: action.label,
+                  payload: action.payload,
+                  description: action.description || '',
+                  triggerMessage: action.trigger_message || undefined,
+                  mediaType: action.media_type || undefined,
+                  fileSize: action.file_size || undefined
+                };
+              });
+            }
+            
+            // Update current bot
+            currentBot = {
+              id: selectedBotConfig.id || dept.botId,
+              name: selectedBotConfig.name || 'Chat Assistant',
+              systemInstruction: selectedBotConfig.system_instruction || selectedBotConfig.systemInstruction || 'You are a helpful AI assistant.',
+              knowledgeBase: selectedBotConfig.knowledge_base || selectedBotConfig.knowledgeBase || '',
+              provider: selectedBotConfig.provider || 'gemini',
+              model: selectedBotConfig.model || (selectedBotConfig.provider === 'openai' ? 'gpt-4' : 'gemini-3-flash-preview'),
+              temperature: selectedBotConfig.temperature ?? 0.7,
+              actions: actions,
+              collectLeads: collectLeads,
+              brandingText: selectedBotConfig.branding_text || selectedBotConfig.brandingText || undefined,
+              headerImageUrl: selectedBotConfig.header_image_url || selectedBotConfig.headerImageUrl || undefined
+            };
+            
+            console.log('Switched to department bot:', dept.departmentLabel, currentBot);
+          }
+          
+          // Show phone input and submit button
+          if (phoneGroup) phoneGroup.style.display = 'block';
+          if (submitLead) submitLead.style.display = 'block';
+          clearError('aether-department', 'aether-department-error');
+        });
+        departmentOptions.appendChild(btn);
+      });
+    }
+  };
+
   if (emailInput) {
     emailInput.addEventListener('blur', () => {
       const email = emailInput.value;
@@ -1389,6 +1506,8 @@ export const generateWidgetJS = (): string => {
           showError('aether-email', 'aether-email-error', 'Please enter a valid email address');
         } else {
           clearError('aether-email', 'aether-email-error');
+          // Show department selection if available
+          showDepartmentSelection();
         }
       } else {
         clearError('aether-email', 'aether-email-error');

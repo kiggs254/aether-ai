@@ -1471,6 +1471,39 @@ body.aether-chat-open #aether-launcher {
     background: rgba(255,255,255,0.1);
     transform: scale(1.1);
   }
+
+  .aether-department-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .aether-department-btn {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    border-radius: 8px !important;
+    color: white !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+  }
+
+  .aether-department-btn:hover {
+    background: rgba(255,255,255,0.1) !important;
+    border-color: rgba(99,102,241,0.5) !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .aether-department-btn[data-selected="true"] {
+    background: rgba(99,102,241,0.2) !important;
+    border-color: rgba(99,102,241,0.5) !important;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.1) !important;
+  }
 }
 `;
 };

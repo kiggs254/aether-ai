@@ -452,71 +452,99 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                              Collect Leads
                           </label>
                        </div>
-                       <div className="space-y-2 pt-2 border-t border-white/5">
-                          <label className="text-xs font-medium text-slate-400 flex items-center gap-2">
-                             <BotIcon className="w-4 h-4" />
-                             Department Bots (Premium)
-                          </label>
-                          <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
-                          <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
-                             {departmentBots.map((deptBot, index) => (
-                                <div key={index} className="flex items-center gap-2 p-2 bg-white/5 rounded-lg">
-                                   <select
-                                      value={deptBot.botId}
-                                      onChange={(e) => {
-                                         const updated = [...departmentBots];
-                                         updated[index].botId = e.target.value;
-                                         setDepartmentBots(updated);
-                                      }}
-                                      className="flex-1 p-2 rounded-lg glass-input text-sm text-white"
-                                   >
-                                      <option value="">Select Bot</option>
-                                      {availableBots.map((b) => (
-                                         <option key={b.id} value={b.id}>{b.name}</option>
-                                      ))}
-                                   </select>
-                                   <input
-                                      type="text"
-                                      value={deptBot.departmentName}
-                                      onChange={(e) => {
-                                         const updated = [...departmentBots];
-                                         updated[index].departmentName = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                                         setDepartmentBots(updated);
-                                      }}
-                                      placeholder="sales"
-                                      className="w-24 p-2 rounded-lg glass-input text-sm text-white placeholder-slate-500"
-                                   />
-                                   <input
-                                      type="text"
-                                      value={deptBot.departmentLabel}
-                                      onChange={(e) => {
-                                         const updated = [...departmentBots];
-                                         updated[index].departmentLabel = e.target.value;
-                                         setDepartmentBots(updated);
-                                      }}
-                                      placeholder="Sales"
-                                      className="flex-1 p-2 rounded-lg glass-input text-sm text-white placeholder-slate-500"
-                                   />
-                                   <button
-                                      onClick={() => {
-                                         setDepartmentBots(departmentBots.filter((_, i) => i !== index));
-                                      }}
-                                      className="p-2 text-red-400 hover:text-red-300 transition-colors"
-                                   >
-                                      <X className="w-4 h-4" />
-                                   </button>
-                                </div>
-                             ))}
-                             <button
-                                onClick={() => {
-                                   setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
-                                }}
-                                className="w-full p-2 border border-dashed border-white/20 rounded-lg text-slate-400 hover:text-white hover:border-white/40 transition-colors text-sm flex items-center justify-center gap-2"
-                             >
-                                <Plus className="w-4 h-4" />
-                                Add Department
-                             </button>
+                       <div className="space-y-3 pt-3 border-t border-white/10">
+                          <div className="flex items-center justify-between">
+                             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <BotIcon className="w-4 h-4 text-indigo-400" />
+                                Department Bots
+                                <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
+                             </label>
                           </div>
+                          <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
+                          <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                             {departmentBots.length === 0 ? (
+                                <div className="text-center py-6 text-slate-500 text-sm">
+                                   No departments added. Click "Add Department" to get started.
+                                </div>
+                             ) : (
+                                departmentBots.map((deptBot, index) => (
+                                   <div key={index} className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
+                                      <div className="flex items-center justify-between">
+                                         <span className="text-xs font-medium text-slate-400">Department {index + 1}</span>
+                                         <button
+                                            onClick={() => {
+                                               setDepartmentBots(departmentBots.filter((_, i) => i !== index));
+                                            }}
+                                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            title="Remove department"
+                                         >
+                                            <X className="w-4 h-4" />
+                                         </button>
+                                      </div>
+                                      <div className="space-y-2">
+                                         <div>
+                                            <label className="text-xs text-slate-400 mb-1.5 block">Bot</label>
+                                            <select
+                                               value={deptBot.botId}
+                                               onChange={(e) => {
+                                                  const updated = [...departmentBots];
+                                                  updated[index].botId = e.target.value;
+                                                  setDepartmentBots(updated);
+                                               }}
+                                               className="w-full p-2.5 rounded-lg glass-input text-sm text-white focus:ring-2 focus:ring-indigo-500/50"
+                                            >
+                                               <option value="">Select a bot...</option>
+                                               {availableBots.map((b) => (
+                                                  <option key={b.id} value={b.id}>{b.name}</option>
+                                               ))}
+                                            </select>
+                                         </div>
+                                         <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                               <label className="text-xs text-slate-400 mb-1.5 block">Department ID</label>
+                                               <input
+                                                  type="text"
+                                                  value={deptBot.departmentName}
+                                                  onChange={(e) => {
+                                                     const updated = [...departmentBots];
+                                                     updated[index].departmentName = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                                                     setDepartmentBots(updated);
+                                                  }}
+                                                  placeholder="sales"
+                                                  className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                                               />
+                                               <p className="text-[10px] text-slate-600 mt-1">URL-friendly (e.g., sales, support)</p>
+                                            </div>
+                                            <div>
+                                               <label className="text-xs text-slate-400 mb-1.5 block">Display Name</label>
+                                               <input
+                                                  type="text"
+                                                  value={deptBot.departmentLabel}
+                                                  onChange={(e) => {
+                                                     const updated = [...departmentBots];
+                                                     updated[index].departmentLabel = e.target.value;
+                                                     setDepartmentBots(updated);
+                                                  }}
+                                                  placeholder="Sales"
+                                                  className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                                               />
+                                               <p className="text-[10px] text-slate-600 mt-1">Shown to users</p>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   </div>
+                                ))
+                             )}
+                          </div>
+                          <button
+                             onClick={() => {
+                                setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
+                             }}
+                             className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10"
+                          >
+                             <Plus className="w-4 h-4" />
+                             Add Department
+                          </button>
                        </div>
                     </div>
                  </div>

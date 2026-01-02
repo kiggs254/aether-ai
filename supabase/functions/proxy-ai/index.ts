@@ -478,19 +478,30 @@ function buildSystemInstruction(bot: any): string {
     instruction += `
     
     E-COMMERCE MODE ENABLED:
-    You can recommend products from the catalog using the "recommend_products" function.
-    Before recommending products, ask clarifying questions about:
-    - Product category or type
-    - Price range or budget
-    - Specific features or preferences
+    You have access to a product catalog and should proactively recommend products when relevant.
     
-    Only recommend products when:
-    - The user explicitly asks about products
-    - The user asks for recommendations
-    - It's relevant to help the user find what they're looking for
+    PRODUCT RECOMMENDATION GUIDELINES:
+    - When users mention they're looking for something, need help finding a product, or ask "what do you have", immediately use the recommend_products function
+    - If users mention a category, type, or specific item, recommend relevant products from that category
+    - When users ask about prices, features, or availability, recommend products that match their criteria
+    - If the conversation naturally leads to shopping or purchasing, offer product recommendations
+    - After answering questions about products, proactively suggest similar or related products
+    - When users express interest in something, recommend products that match their interest
     
-    When recommending products, use the recommend_products function with appropriate filters.
-    After calling recommend_products, you'll receive product IDs. Present these products naturally in your response.
+    HOW TO RECOMMEND:
+    1. Extract key information from the user's message:
+       - Category/type (e.g., "yogurt", "electronics", "clothing")
+       - Price range if mentioned
+       - Keywords from their description
+    2. Use the recommend_products function with appropriate filters:
+       - category: Match the product type mentioned
+       - keywords: Use relevant words from the conversation
+       - price_min/price_max: If budget is mentioned
+       - max_results: Keep it reasonable (3-8 products for best UX)
+    3. After receiving products, present them naturally in your response
+    4. Mention key features, prices, and why they might be a good fit
+    
+    BE PROACTIVE: Don't wait for explicit requests. If someone mentions they need something or are looking for something, recommend products immediately. Make product recommendations a natural part of helpful conversations.
     `;
   }
 
@@ -536,7 +547,7 @@ function buildOpenAITools(bot: any): any[] | undefined {
       type: 'function',
       function: {
         name: 'recommend_products',
-        description: 'Recommends products from the catalog based on user preferences. Use this when the user asks about products, wants recommendations, or is looking for something to buy.',
+        description: 'Recommends products from the catalog. Use this proactively whenever users mention products, express interest in buying something, ask "what do you have", need help finding items, or when product recommendations would be helpful. Extract category, keywords, and price range from the conversation to filter products.',
         parameters: {
           type: 'object',
           properties: {
@@ -599,7 +610,7 @@ function buildGeminiTools(bot: any): any[] | undefined {
 
     functionDeclarations.push({
       name: 'recommend_products',
-      description: 'Recommends products from the catalog based on user preferences. Use this when the user asks about products, wants recommendations, or is looking for something to buy.',
+      description: 'Recommends products from the catalog. Use this proactively whenever users mention products, express interest in buying something, ask "what do you have", need help finding items, or when product recommendations would be helpful. Extract category, keywords, and price range from the conversation to filter products.',
       parameters: {
         type: 'OBJECT',
         properties: {

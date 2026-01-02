@@ -561,6 +561,7 @@ body.aether-chat-open #aether-launcher {
   background: transparent;
   box-sizing: border-box;
   width: 100%;
+  height: 48px;
 }
 
 .aether-image-btn {
@@ -572,15 +573,18 @@ body.aether-chat-open #aether-launcher {
   border: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
   background: hsl(var(--background, 0 0% 100%));
   color: hsl(var(--foreground, 222.2 84% 4.9%));
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
   position: relative;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  margin: 0 !important;
+  padding: 0 !important;
+  vertical-align: middle;
 }
 
 .aether-image-btn:hover {
@@ -653,6 +657,7 @@ body.aether-chat-open #aether-launcher {
   font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 48px;
+  height: 48px;
   max-height: 120px;
   line-height: 1.4;
   -webkit-appearance: none;
@@ -661,8 +666,8 @@ body.aether-chat-open #aether-launcher {
   margin: 0;
   box-sizing: border-box;
   width: auto;
-  height: auto;
   vertical-align: middle;
+  resize: none;
 }
 
 /* Hide scrollbar on mobile until needed (4+ lines) */
@@ -722,9 +727,9 @@ body.aether-chat-open #aether-launcher {
   background: var(--aether-brand-color);
   color: white;
   border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
@@ -733,6 +738,9 @@ body.aether-chat-open #aether-launcher {
   z-index: 1;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  margin: 0 !important;
+  padding: 0 !important;
+  vertical-align: middle;
 }
 
 .aether-send-btn svg {

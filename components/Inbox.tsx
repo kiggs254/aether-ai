@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Conversation, Bot } from '../types';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File, ShoppingBag } from 'lucide-react';
+import { Conversation, Bot, Product } from '../types';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File, ShoppingBag, X } from 'lucide-react';
 import { useNotification } from './Notification';
+import { queryProducts } from '../services/productQuery';
 
 interface InboxProps {
   conversations: Conversation[];
@@ -22,6 +23,11 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
   
   // Mobile view state: true = showing detail, false = showing list
   const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
+  
+  // Product recommendation modal state
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [modalProducts, setModalProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   
   // Find the selected conversation from the conversations prop (always up-to-date)
   const selectedConversation = selectedConversationId 
@@ -525,12 +531,87 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                     const text = msg.text || '';
                                     const hasProductRecommendation = text.includes('[PRODUCT_RECOMMENDATION:');
                                     if (hasProductRecommendation && !isUser) {
+                                       // Parse the recommendation marker to extract filters
+                                       const parseRecommendationMarker = (messageText: string) => {
+                                          const markerStart = messageText.indexOf('[PRODUCT_RECOMMENDATION:');
+                                          if (markerStart === -1) return null;
+                                          
+                                          let bracketCount = 0;
+                                          const jsonStart = markerStart + '[PRODUCT_RECOMMENDATION:'.length;
+                                          let jsonEnd = -1;
+                                          
+                                          for (let k = jsonStart; k < messageText.length; k++) {
+                                             if (messageText[k] === '[') bracketCount++;
+                                             else if (messageText[k] === ']') {
+                                                if (bracketCount === 0) {
+                                                   jsonEnd = k;
+                                                   break;
+                                                }
+                                                bracketCount--;
+                                             }
+                                          }
+                                          
+                                          if (jsonEnd !== -1) {
+                                             try {
+                                                const jsonStr = messageText.substring(jsonStart, jsonEnd);
+                                                return JSON.parse(jsonStr);
+                                             } catch (e) {
+                                                console.error('Failed to parse product recommendation args:', e);
+                                                return null;
+                                             }
+                                          }
+                                          return null;
+                                       };
+                                       
+                                       const recommendationArgs = parseRecommendationMarker(text);
+                                       const bot = selectedConversation ? bots.find(b => b.id === selectedConversation.botId) : null;
+                                       
+                                       const handleViewProducts = async () => {
+                                          if (!bot || !recommendationArgs) return;
+                                          
+                                          setIsLoadingProducts(true);
+                                          setShowProductModal(true);
+                                          
+                                          try {
+                                             // Query products using the filters from the recommendation
+                                             const products = await queryProducts(bot.id, {
+                                                category: recommendationArgs.category,
+                                                priceMin: recommendationArgs.price_min,
+                                                priceMax: recommendationArgs.price_max,
+                                                keywords: recommendationArgs.keywords,
+                                                maxResults: recommendationArgs.max_results || 10,
+                                                inStock: true,
+                                             });
+                                             
+                                             // Convert ProductSummary to Product format for display
+                                             // We need to fetch full product details
+                                             const { getProductCatalog } = await import('../services/productQuery');
+                                             const fullCatalog = await getProductCatalog(bot.id);
+                                             
+                                             // Match products by productId
+                                             const matchedProducts = products
+                                                .map(summary => fullCatalog.find(p => p.productId === summary.productId))
+                                                .filter((p): p is Product => p !== undefined);
+                                             
+                                             setModalProducts(matchedProducts);
+                                          } catch (error: any) {
+                                             showError('Failed to load products', error.message || 'Error loading product recommendations');
+                                             setModalProducts([]);
+                                          } finally {
+                                             setIsLoadingProducts(false);
+                                          }
+                                       };
+                                       
                                        return (
                                           <div className="mt-3 pt-3 border-t border-white/10">
-                                             <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                                             <button
+                                                onClick={handleViewProducts}
+                                                className="flex items-center gap-2 text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
+                                             >
                                                 <ShoppingBag className="w-3 h-3" />
-                                                <span>Product recommendations displayed</span>
-                                             </div>
+                                                <span>View recommended products ({recommendationArgs?.max_results || '?'})</span>
+                                                <ChevronRight className="w-3 h-3" />
+                                             </button>
                                           </div>
                                        );
                                     }
@@ -593,6 +674,80 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                </div>
                <p className="text-lg font-medium text-slate-400">Select a conversation</p>
                <p className="text-sm opacity-60">View captured leads and chat history.</p>
+            </div>
+         )}
+         
+         {/* Product Recommendations Modal */}
+         {showProductModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowProductModal(false)}>
+               <div className="bg-slate-900 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/10" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between p-6 border-b border-white/10">
+                     <div className="flex items-center gap-3">
+                        <ShoppingBag className="w-5 h-5 text-indigo-400" />
+                        <h2 className="text-white font-semibold text-lg">Recommended Products</h2>
+                     </div>
+                     <button
+                        onClick={() => setShowProductModal(false)}
+                        className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                     >
+                        <X className="w-5 h-5" />
+                     </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                     {isLoadingProducts ? (
+                        <div className="flex items-center justify-center py-12">
+                           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                     ) : modalProducts.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400">
+                           <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                           <p>No products found</p>
+                        </div>
+                     ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                           {modalProducts.map((product) => {
+                              const priceDisplay = product.price
+                                 ? `${product.currency || 'USD'} ${product.price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
+                                 : 'Price not available';
+                              
+                              return (
+                                 <a
+                                    key={product.id}
+                                    href={product.productUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="bg-white/5 rounded-xl overflow-hidden border border-white/10 hover:border-indigo-500/50 transition-all group"
+                                 >
+                                    <div className="aspect-square bg-slate-800 flex items-center justify-center overflow-hidden">
+                                       {product.imageUrl ? (
+                                          <img
+                                             src={product.imageUrl}
+                                             alt={product.name}
+                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                             onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                                                if (placeholder) placeholder.classList.remove('hidden');
+                                             }}
+                                          />
+                                       ) : null}
+                                       <div className={`${product.imageUrl ? 'hidden' : ''} text-slate-500 text-sm`}>No Image</div>
+                                    </div>
+                                    <div className="p-4">
+                                       <h3 className="text-white font-medium text-sm mb-2 line-clamp-2">{product.name}</h3>
+                                       {product.category && (
+                                          <p className="text-xs text-slate-400 mb-2">{product.category}</p>
+                                       )}
+                                       <p className="text-indigo-400 font-semibold text-sm">{priceDisplay}</p>
+                                    </div>
+                                 </a>
+                              );
+                           })}
+                        </div>
+                     )}
+                  </div>
+               </div>
             </div>
          )}
       </div>

@@ -163,11 +163,29 @@ function parseRSSItem(item: Element, defaultCurrency: string = 'USD'): Product |
     price = parseFloat(priceMatch[priceMatch.length - 1].replace(/,/g, ''));
   }
 
-  // Try to find image
-  const imageUrl = getText('enclosure[type^="image"]') || 
-                   getText('image') ||
-                   getText('media\\:content[type^="image"]') ||
-                   extractImageFromDescription(description);
+  // Try to find image - check multiple sources
+  let imageUrl = getText('enclosure[type^="image"]');
+  if (!imageUrl) {
+    // Check enclosure url attribute
+    const enclosure = item.querySelector('enclosure[type^="image"]');
+    if (enclosure) {
+      imageUrl = enclosure.getAttribute('url') || '';
+    }
+  }
+  if (!imageUrl) {
+    imageUrl = getText('image') || getText('media\\:content[type^="image"]');
+  }
+  if (!imageUrl) {
+    // Check media:content url attribute
+    const mediaContent = item.querySelector('media\\:content[type^="image"]');
+    if (mediaContent) {
+      imageUrl = mediaContent.getAttribute('url') || '';
+    }
+  }
+  if (!imageUrl) {
+    // Try extracting from description HTML
+    imageUrl = extractImageFromDescription(description);
+  }
 
   return {
     id: '', // Will be set when saving
@@ -190,8 +208,36 @@ function parseRSSItem(item: Element, defaultCurrency: string = 'USD'): Product |
  */
 function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD'): Product | null {
   const getText = (selector: string) => {
-    const el = item.querySelector(selector);
-    return el?.textContent?.trim() || '';
+    try {
+      const el = item.querySelector(selector);
+      if (el) return el.textContent?.trim() || '';
+    } catch (e) {
+      // Selector might not work (e.g., namespace issues)
+    }
+    
+    // Fallback: search children directly for namespace handling
+    const children = Array.from(item.children);
+    const parts = selector.split('\\:');
+    const localName = parts.length > 1 ? parts[1] : parts[0];
+    const prefix = parts.length > 1 ? parts[0] : null;
+    
+    const found = children.find(child => {
+      const tagName = (child.tagName || child.nodeName || '').toLowerCase();
+      const childLocalName = child.localName?.toLowerCase();
+      const childPrefix = child.prefix?.toLowerCase();
+      
+      if (prefix) {
+        // Looking for namespaced element (e.g., g:image_link)
+        return (tagName === selector.toLowerCase() || 
+                (childLocalName === localName && childPrefix === prefix) ||
+                (tagName.includes(':') && tagName === selector.toLowerCase()));
+      } else {
+        // Looking for non-namespaced element
+        return tagName === localName || childLocalName === localName;
+      }
+    });
+    
+    return found?.textContent?.trim() || '';
   };
 
   // Google Shopping uses g: namespace
@@ -365,7 +411,32 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
     }
   }
   
-  const imageUrl = getText('g\\:image_link') || getText('g\\:image');
+  // Try multiple ways to get image URL (namespace handling can be tricky)
+  let imageUrl = getText('g\\:image_link') || getText('g\\:image');
+  if (!imageUrl) {
+    // Try direct child search for image element
+    const children = Array.from(item.children);
+    const imageChild = children.find(child => {
+      const tagName = (child.tagName || child.nodeName || '').toLowerCase();
+      return tagName === 'g:image_link' || 
+             tagName === 'g:image' ||
+             tagName === 'image_link' ||
+             tagName === 'image' ||
+             (child.localName === 'image_link' || child.localName === 'image') && 
+             (child.prefix === 'g' || child.namespaceURI?.includes('google.com'));
+    });
+    imageUrl = imageChild?.textContent?.trim() || '';
+  }
+  if (!imageUrl) {
+    // Try with wildcard namespace (might not work in all browsers)
+    try {
+      const imageEl = item.querySelector('*|image_link') || item.querySelector('*|image');
+      imageUrl = imageEl?.textContent?.trim() || '';
+    } catch (e) {
+      // Wildcard namespace not supported
+    }
+  }
+  
   const category = getText('g\\:google_product_category') || getText('g\\:product_type') || getText('g\\:category');
   const availability = getText('g\\:availability')?.toLowerCase();
   const inStock = !availability || availability.includes('in stock') || availability === 'in_stock';
@@ -471,7 +542,19 @@ function parseGenericItem(item: Element, defaultCurrency: string = 'USD'): Produ
     }
   }
   
-  const imageUrl = getText('image') || getText('imageUrl') || getText('img');
+  // Try multiple image field names
+  let imageUrl = getText('image') || getText('imageUrl') || getText('img') || getText('image_url');
+  if (!imageUrl) {
+    // Check for image element with src attribute
+    const imgEl = item.querySelector('image, img');
+    if (imgEl) {
+      imageUrl = imgEl.getAttribute('src') || imgEl.getAttribute('url') || imgEl.textContent?.trim() || '';
+    }
+  }
+  if (!imageUrl) {
+    // Try extracting from description HTML
+    imageUrl = extractImageFromDescription(description);
+  }
   const category = getText('category') || getText('cat');
 
   return {

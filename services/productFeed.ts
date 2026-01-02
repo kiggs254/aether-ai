@@ -9,10 +9,35 @@ import { supabase } from '../lib/supabase';
  */
 export async function parseXMLFeed(url: string, defaultCurrency: string = 'USD'): Promise<Product[]> {
   try {
-    // Fetch the XML feed
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
+    // Fetch the XML feed with CORS proxy if needed
+    let response: Response;
+    try {
+      // Try direct fetch first
+      response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/xml, text/xml, */*',
+        },
+        mode: 'cors',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch feed: ${response.status} ${response.statusText}`);
+      }
+    } catch (fetchError: any) {
+      // If CORS fails, try using a CORS proxy
+      if (fetchError.message?.includes('CORS') || fetchError.message?.includes('Failed to fetch')) {
+        console.warn('Direct fetch failed, trying CORS proxy...');
+        // Use a public CORS proxy
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        response = await fetch(proxyUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch feed via proxy: ${response.status} ${response.statusText}`);
+        }
+      } else {
+        throw fetchError;
+      }
     }
 
     const xmlText = await response.text();
@@ -306,6 +331,26 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
       const bestMatch = allMatches[0];
       currency = bestMatch.currency;
       price = bestMatch.price;
+      
+      // Additional validation: If price is suspiciously small (< 1) and we have defaultCurrency set,
+      // check if there's a better match with defaultCurrency
+      if (price < 1 && defaultCurrency && currency !== defaultCurrency) {
+        const defaultMatch = allMatches.find(m => m.currency === defaultCurrency && m.price >= 1);
+        if (defaultMatch) {
+          currency = defaultMatch.currency;
+          price = defaultMatch.price;
+        }
+      }
+      
+      // If we have multiple matches and the best one has a very small price, 
+      // prefer a match with a larger price if it exists
+      if (allMatches.length > 1 && price < 10) {
+        const largerPriceMatch = allMatches.find(m => m.price >= 10);
+        if (largerPriceMatch && largerPriceMatch.confidence >= 5) {
+          currency = largerPriceMatch.currency;
+          price = largerPriceMatch.price;
+        }
+      }
     } else {
       // Last resort: extract just the number, use default currency
       // Only do this if we can't find any currency code

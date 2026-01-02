@@ -1173,7 +1173,8 @@ body.aether-chat-open #aether-launcher {
   }
 
   /* Lightbox styles - Full screen on all devices */
-  #aether-lightbox {
+  /* Ensure lightbox is not affected by widget container */
+  body > #aether-lightbox {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -1204,9 +1205,47 @@ body.aether-chat-open #aether-launcher {
     transform: translateZ(0) !important; /* Force hardware acceleration */
     -webkit-transform: translateZ(0) !important;
     will-change: transform !important;
+    isolation: isolate !important; /* Create new stacking context */
+  }
+  
+  /* Fallback selector */
+  #aether-lightbox {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    width: 100dvw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-width: 100vw !important;
+    min-width: 100dvw !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    max-width: 100vw !important;
+    max-width: 100dvw !important;
+    max-height: 100vh !important;
+    max-height: 100dvh !important;
+    z-index: 999999 !important;
+    display: none !important;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    will-change: transform !important;
+    isolation: isolate !important;
   }
 
   /* Lightbox visible state */
+  body > #aether-lightbox[style*="display: flex"],
+  body > #aether-lightbox[style*="display:flex"],
   #aether-lightbox[style*="display: flex"],
   #aether-lightbox[style*="display:flex"] {
     display: flex !important;

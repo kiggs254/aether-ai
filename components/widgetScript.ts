@@ -2197,20 +2197,33 @@ export const generateWidgetJS = (): string => {
   const openLightbox = (imageSrc) => {
     if (lightbox && lightboxImage && imageSrc) {
       lightboxImage.src = imageSrc;
+      
+      // Get viewport dimensions
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      
+      // Force full screen positioning - use explicit pixel values for mobile
       lightbox.style.setProperty('display', 'flex', 'important');
-      // Force full screen positioning
       lightbox.style.setProperty('position', 'fixed', 'important');
-      lightbox.style.setProperty('top', '0', 'important');
-      lightbox.style.setProperty('left', '0', 'important');
-      lightbox.style.setProperty('right', '0', 'important');
-      lightbox.style.setProperty('bottom', '0', 'important');
-      lightbox.style.setProperty('width', '100vw', 'important');
-      lightbox.style.setProperty('height', '100vh', 'important');
+      lightbox.style.setProperty('top', '0px', 'important');
+      lightbox.style.setProperty('left', '0px', 'important');
+      lightbox.style.setProperty('right', '0px', 'important');
+      lightbox.style.setProperty('bottom', '0px', 'important');
+      lightbox.style.setProperty('width', vw + 'px', 'important');
+      lightbox.style.setProperty('height', vh + 'px', 'important');
+      lightbox.style.setProperty('min-width', vw + 'px', 'important');
+      lightbox.style.setProperty('min-height', vh + 'px', 'important');
+      lightbox.style.setProperty('max-width', vw + 'px', 'important');
+      lightbox.style.setProperty('max-height', vh + 'px', 'important');
       lightbox.style.setProperty('z-index', '999999', 'important');
+      lightbox.style.setProperty('margin', '0', 'important');
+      lightbox.style.setProperty('padding', '0', 'important');
       
       // Prevent body scroll on mobile
+      const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
+      document.body.style.top = '-' + scrollY + 'px';
       document.body.style.width = '100%';
       document.body.style.height = '100%';
       
@@ -2225,16 +2238,25 @@ export const generateWidgetJS = (): string => {
   const closeLightbox = () => {
     if (lightbox) {
       lightbox.style.setProperty('display', 'none', 'important');
+      
       // Restore body scroll
+      const scrollY = document.body.style.top;
       document.body.style.overflow = '';
       document.body.style.position = '';
+      document.body.style.top = '';
       document.body.style.width = '';
       document.body.style.height = '';
+      
       // Restore html scroll
       document.documentElement.style.overflow = '';
       document.documentElement.style.position = '';
       document.documentElement.style.width = '';
       document.documentElement.style.height = '';
+      
+      // Restore scroll position
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
     }
   };
 

@@ -467,26 +467,35 @@ export const generateWidgetJS = (): string => {
     '</div>' +
     '<div class="aether-content">' +
       (showForm ? '<div id="aether-lead-form">' +
-        '<div>' +
-          '<div class="aether-form-title">Start Conversation</div>' +
-          '<div class="aether-form-desc">Please share your details to connect with us.</div>' +
+        '<div id="aether-lead-form-step1">' +
+          '<div>' +
+            '<div class="aether-form-title">Start Conversation</div>' +
+            '<div class="aether-form-desc">Please share your details to connect with us.</div>' +
+          '</div>' +
+          '<div class="aether-form-group" id="aether-email-group">' +
+            '<label>Email Address</label>' +
+            '<input type="text" class="aether-input" id="aether-email" placeholder="you@company.com" autocomplete="email" />' +
+            '<div class="aether-form-error" id="aether-email-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
+          '</div>' +
+          '<div class="aether-form-group" id="aether-phone-group">' +
+            '<label>Phone Number</label>' +
+            '<input type="tel" class="aether-input" id="aether-phone" placeholder="+1 (555) 000-0000" required />' +
+            '<div class="aether-form-error" id="aether-phone-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
+          '</div>' +
+          '<button class="aether-btn" id="aether-next-btn">Next</button>' +
         '</div>' +
-        '<div class="aether-form-group" id="aether-email-group">' +
-          '<label>Email Address</label>' +
-          '<input type="text" class="aether-input" id="aether-email" placeholder="you@company.com" autocomplete="email" />' +
-          '<div class="aether-form-error" id="aether-email-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
+        '<div id="aether-lead-form-step2" style="display:none;">' +
+          '<div>' +
+            '<div class="aether-form-title">Select Department</div>' +
+            '<div class="aether-form-desc">Choose the department you\'d like to chat with.</div>' +
+          '</div>' +
+          '<div class="aether-form-group" id="aether-department-group">' +
+            '<label>Select Department</label>' +
+            '<div id="aether-department-options" class="aether-department-options"></div>' +
+            '<div class="aether-form-error" id="aether-department-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
+          '</div>' +
+          '<button class="aether-btn" id="aether-submit-lead">Start Chatting</button>' +
         '</div>' +
-        '<div class="aether-form-group" id="aether-department-group" style="display:none;">' +
-          '<label>Select Department</label>' +
-          '<div id="aether-department-options" class="aether-department-options"></div>' +
-          '<div class="aether-form-error" id="aether-department-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
-        '</div>' +
-        '<div class="aether-form-group" id="aether-phone-group">' +
-          '<label>Phone Number</label>' +
-          '<input type="tel" class="aether-input" id="aether-phone" placeholder="+1 (555) 000-0000" required />' +
-          '<div class="aether-form-error" id="aether-phone-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
-        '</div>' +
-        '<button class="aether-btn" id="aether-submit-lead">Start Chatting</button>' +
       '</div>' : '') +
       '<div class="aether-messages" id="aether-messages" style="' + (showForm ? 'display:none' : '') + '">' +
         '<div class="aether-welcome-container" id="aether-welcome-container">' +
@@ -535,14 +544,61 @@ export const generateWidgetJS = (): string => {
     }
   }
   
-  // Hide phone and submit button if departments exist (they'll be shown after department selection)
+  // Check for existing session - if found and departments exist, skip to department selection
   if (showForm) {
     const departmentBots = config.departmentBots;
-    if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
-      const phoneGroupEl = container.querySelector('#aether-phone-group');
-      const submitLeadEl = container.querySelector('#aether-submit-lead');
-      if (phoneGroupEl) phoneGroupEl.style.display = 'none';
-      if (submitLeadEl) submitLeadEl.style.display = 'none';
+    // Check all possible bot IDs for sessions (default bot + department bots)
+    let existingSession = null;
+    let sessionBotId = bot.id;
+    
+    // Try to find session for default bot
+    existingSession = loadSession(bot.id);
+    
+    // If no session for default bot and departments exist, check department bots
+    if (!existingSession && departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+      for (let i = 0; i < departmentBots.length; i++) {
+        const deptBot = departmentBots[i];
+        if (deptBot.botId) {
+          const deptSession = loadSession(deptBot.botId);
+          if (deptSession) {
+            existingSession = deptSession;
+            sessionBotId = deptBot.botId;
+            break;
+          }
+        }
+      }
+    }
+    
+    // If session exists and has lead data, skip to department selection
+    if (existingSession && existingSession.leadData && (existingSession.leadData.email || existingSession.leadData.phone)) {
+      leadData = existingSession.leadData;
+      conversationId = existingSession.conversationId;
+      
+      // Hide step 1, show step 2 (department selection)
+      const formStep1El = container.querySelector('#aether-lead-form-step1');
+      const formStep2El = container.querySelector('#aether-lead-form-step2');
+      if (formStep1El) formStep1El.style.display = 'none';
+      if (formStep2El) {
+        formStep2El.style.display = 'block';
+        // Show department selection
+        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+          // Wait a bit for DOM to be ready and function to be defined, then show departments
+          setTimeout(function() {
+            if (typeof showDepartmentSelection === 'function') {
+              showDepartmentSelection();
+            }
+          }, 300);
+        } else {
+          // No departments, start chatting directly
+          if (leadForm) leadForm.style.display = 'none';
+          if (messages) messages.style.display = 'flex';
+          if (inputArea) inputArea.style.display = 'block';
+        }
+      }
+    } else if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+      // Has departments but no session - show step 1 (email/phone) first
+      const formStep2El = container.querySelector('#aether-lead-form-step2');
+      if (formStep2El) formStep2El.style.display = 'none';
     }
   }
   
@@ -590,6 +646,9 @@ export const generateWidgetJS = (): string => {
   const inputArea = document.getElementById('aether-input-area');
   const leadForm = document.getElementById('aether-lead-form');
   const submitLead = document.getElementById('aether-submit-lead');
+  const nextBtn = document.getElementById('aether-next-btn');
+  const formStep1 = document.getElementById('aether-lead-form-step1');
+  const formStep2 = document.getElementById('aether-lead-form-step2');
   const launcherIcon = document.getElementById('aether-launcher-icon');
   const closeWindowBtn = document.getElementById('aether-close-window-btn');
   const emailGroup = document.getElementById('aether-email-group');
@@ -1323,20 +1382,14 @@ export const generateWidgetJS = (): string => {
     }
   };
   
-  if (submitLead) {
-    submitLead.addEventListener('click', async () => {
+  // Next button handler - validates email/phone and moves to department selection
+  if (nextBtn) {
+    nextBtn.addEventListener('click', async () => {
       const emailEl = document.getElementById('aether-email');
       const phoneEl = document.getElementById('aether-phone');
       if (emailEl && phoneEl) {
-        // Get raw values first
-        const emailRaw = emailEl.value;
-        const phoneRaw = phoneEl.value;
-        console.log('Submit clicked - raw values:', { email: emailRaw, phone: phoneRaw, emailType: typeof emailRaw });
-        
-        const email = emailRaw ? emailRaw.trim() : '';
-        const phone = phoneRaw ? phoneRaw.trim() : '';
-        
-        console.log('Submit clicked - trimmed values:', { email: email, phone: phone, emailLength: email.length });
+        const email = emailEl.value ? emailEl.value.trim() : '';
+        const phone = phoneEl.value ? phoneEl.value.trim() : '';
         
         // Clear previous errors
         clearError('aether-email', 'aether-email-error');
@@ -1346,19 +1399,11 @@ export const generateWidgetJS = (): string => {
         
         // Validate email
         if (!email) {
-          console.log('Email is empty');
           showError('aether-email', 'aether-email-error', 'Email is required');
           hasError = true;
-        } else {
-          const isValid = validateEmail(email);
-          console.log('Submit validation - Email:', email, 'isValid:', isValid);
-          if (!isValid) {
-            showError('aether-email', 'aether-email-error', 'Please enter a valid email address');
-            hasError = true;
-          } else {
-            // Make sure error is cleared if valid
-            clearError('aether-email', 'aether-email-error');
-          }
+        } else if (!validateEmail(email)) {
+          showError('aether-email', 'aether-email-error', 'Please enter a valid email address');
+          hasError = true;
         }
         
         // Validate phone
@@ -1371,47 +1416,74 @@ export const generateWidgetJS = (): string => {
         }
         
         if (hasError) {
-          console.log('Validation failed, preventing submission');
           return;
-        }
-        
-        console.log('Validation passed, proceeding with submission');
-        
-        // Check if department is required and selected
-        const departmentBots = config.departmentBots;
-        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
-          if (!selectedDepartmentBot) {
-            showError('aether-department', 'aether-department-error', 'Please select a department');
-            return;
-          }
         }
         
         // Store lead data
         leadData = { email: email, phone: phone };
         
-        // Use selected bot if department was chosen, otherwise use default bot
-        const botToUse = selectedDepartmentBot ? currentBot : bot;
-        
-        // Save lead and create or find existing conversation
-        const convId = await saveLeadAndCreateConversation(email, phone, botToUse);
-        if (convId) {
-          conversationId = convId;
-          leadData = { email: email, phone: phone };
-          // Update bot reference for the rest of the session
-          bot = botToUse;
-          console.log('Conversation created/found:', convId, 'with bot:', botToUse.name);
+        // Check if departments exist
+        const departmentBots = config.departmentBots;
+        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+          // Show step 2 (department selection)
+          if (formStep1) formStep1.style.display = 'none';
+          if (formStep2) {
+            formStep2.style.display = 'block';
+            showDepartmentSelection();
+          }
         } else {
-          console.error('Failed to create/find conversation');
-          showError('aether-email', 'aether-email-error', 'Failed to start conversation. Please try again.');
+          // No departments, create conversation and start chatting
+          const convId = await saveLeadAndCreateConversation(email, phone, bot);
+          if (convId) {
+            conversationId = convId;
+            // Show chat interface
+            if (leadForm) leadForm.style.display = 'none';
+            if (messages) messages.style.display = 'flex';
+            if (inputArea) inputArea.style.display = 'block';
+            if (input) input.focus();
+          } else {
+            showError('aether-email', 'aether-email-error', 'Failed to start conversation. Please try again.');
+          }
+        }
+      }
+    });
+  }
+
+  // Submit button handler - starts chatting after department selection
+  if (submitLead) {
+    submitLead.addEventListener('click', async () => {
+      // Check if department is required and selected
+      const departmentBots = config.departmentBots;
+      if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+        if (!selectedDepartmentBot) {
+          showError('aether-department', 'aether-department-error', 'Please select a department');
           return;
         }
-        
-        // Show chat interface
-        if (leadForm) leadForm.style.display = 'none';
-        if (messages) messages.style.display = 'flex';
-        if (inputArea) inputArea.style.display = 'block';
-        if (input) input.focus();
       }
+      
+      // Use selected bot if department was chosen, otherwise use default bot
+      const botToUse = selectedDepartmentBot ? currentBot : bot;
+      const email = leadData.email;
+      const phone = leadData.phone;
+      
+      // Save lead and create or find existing conversation
+      const convId = await saveLeadAndCreateConversation(email, phone, botToUse);
+      if (convId) {
+        conversationId = convId;
+        // Update bot reference for the rest of the session
+        bot = botToUse;
+        console.log('Conversation created/found:', convId, 'with bot:', botToUse.name);
+      } else {
+        console.error('Failed to create/find conversation');
+        showError('aether-department', 'aether-department-error', 'Failed to start conversation. Please try again.');
+        return;
+      }
+      
+      // Show chat interface
+      if (leadForm) leadForm.style.display = 'none';
+      if (messages) messages.style.display = 'flex';
+      if (inputArea) inputArea.style.display = 'block';
+      if (input) input.focus();
     });
   }
   
@@ -1419,17 +1491,12 @@ export const generateWidgetJS = (): string => {
   const emailInput = document.getElementById('aether-email');
   const phoneInput = document.getElementById('aether-phone');
   
-  // Function to show department selection or phone input
+  // Function to show department selection
   const showDepartmentSelection = async () => {
     const departmentBots = config.departmentBots;
     if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
-      // No departments, show phone input and submit button directly
-      if (phoneGroup) phoneGroup.style.display = 'block';
-      if (submitLead) submitLead.style.display = 'block';
       return;
     }
-
-    // Has departments - department selection will show phone/submit after selection
 
     // Show department selection
     if (departmentGroup && departmentOptions) {
@@ -1528,8 +1595,7 @@ export const generateWidgetJS = (): string => {
             console.log('Switched to department bot:', dept.departmentLabel, currentBot);
           }
           
-          // Show phone input and submit button
-          if (phoneGroup) phoneGroup.style.display = 'block';
+          // Show submit button (phone/email already collected in step 1)
           if (submitLead) submitLead.style.display = 'block';
           clearError('aether-department', 'aether-department-error');
         });
@@ -1548,8 +1614,6 @@ export const generateWidgetJS = (): string => {
           showError('aether-email', 'aether-email-error', 'Please enter a valid email address');
         } else {
           clearError('aether-email', 'aether-email-error');
-          // Show department selection if available
-          showDepartmentSelection();
         }
       } else {
         clearError('aether-email', 'aether-email-error');
@@ -2579,29 +2643,32 @@ export const generateWidgetJS = (): string => {
     });
   });
   
-  // Check for existing session and load conversation history
-  const session = loadSession(bot.id);
-  if (session && session.conversationId) {
-    console.log('Found existing session, loading conversation:', session.conversationId);
-    conversationId = session.conversationId;
-    
-    // Restore lead data if present
-    if (session.leadData) {
-      leadData = session.leadData;
-    }
-    
-    // Load conversation history asynchronously
-    loadConversationHistory(session.conversationId).then(function(historyMessages) {
-      if (historyMessages && historyMessages.length > 0) {
-        // Hide welcome container
-        hideWelcomeContainer();
-        
-        // If collectLeads is true and we have lead data, skip form and show chat
-        if (collectLeads && leadData.email && leadData.phone) {
-          if (leadForm) leadForm.style.display = 'none';
-          if (messages) messages.style.display = 'flex';
-          if (inputArea) inputArea.style.display = 'block';
-        }
+  // Check for existing session and load conversation history (only if not in lead form flow or already handled)
+  if (!showForm || (leadData && leadData.email && conversationId)) {
+    // Only check session if we're not in the lead collection flow, or if we already have lead data and conversation
+    const session = loadSession(bot.id);
+    if (session && session.conversationId && !conversationId) {
+      // Only load if we don't already have a conversationId (from initialization)
+      console.log('Found existing session, loading conversation:', session.conversationId);
+      conversationId = session.conversationId;
+      
+      // Restore lead data if present
+      if (session.leadData) {
+        leadData = session.leadData;
+      }
+      
+      // Load conversation history asynchronously
+      loadConversationHistory(session.conversationId).then(function(historyMessages) {
+        if (historyMessages && historyMessages.length > 0) {
+          // Hide welcome container
+          hideWelcomeContainer();
+          
+          // If collectLeads is true and we have lead data, skip form and show chat
+          if (collectLeads && leadData && leadData.email && leadData.phone) {
+            if (leadForm) leadForm.style.display = 'none';
+            if (messages) messages.style.display = 'flex';
+            if (inputArea) inputArea.style.display = 'block';
+          }
         
         // Display messages and restore messageHistory
         messageHistory = [];

@@ -384,6 +384,15 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
           <Zap className="w-4 h-4" />
           Actions & Tools
         </button>
+        <button
+          onClick={() => setActiveTab('ecommerce')}
+          className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+            activeTab === 'ecommerce' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          E-commerce
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-10 space-y-6 animate-fade-in custom-scrollbar">

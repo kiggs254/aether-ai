@@ -59,6 +59,29 @@ serve(async (req) => {
       );
     }
 
+    // Validate and log bot structure
+    console.log('Bot configuration:', {
+      id: bot.id,
+      name: bot.name,
+      provider: bot.provider,
+      actionsCount: Array.isArray(bot.actions) ? bot.actions.length : 0,
+      ecommerceEnabled: !!bot.ecommerceEnabled,
+      hasActions: Array.isArray(bot.actions) && bot.actions.length > 0,
+      actions: Array.isArray(bot.actions) ? bot.actions.map((a: any) => ({ id: a.id, type: a.type, description: a.description })) : []
+    });
+
+    // Validate bot.actions is an array if present
+    if (bot.actions !== undefined && !Array.isArray(bot.actions)) {
+      console.warn('bot.actions is not an array, converting to empty array');
+      bot.actions = [];
+    }
+
+    // Validate bot.ecommerceEnabled is a boolean
+    if (bot.ecommerceEnabled !== undefined && typeof bot.ecommerceEnabled !== 'boolean') {
+      console.warn('bot.ecommerceEnabled is not a boolean, defaulting to false');
+      bot.ecommerceEnabled = false;
+    }
+
     // Validate provider
     const provider = bot.provider || 'gemini';
     if (provider !== 'gemini' && provider !== 'openai' && provider !== 'deepseek') {
@@ -92,6 +115,10 @@ serve(async (req) => {
         ];
 
         const tools = buildOpenAITools(bot);
+        console.log('DeepSeek tools built:', tools ? `${tools.length} tools` : 'no tools');
+        if (tools) {
+          console.log('DeepSeek tools structure:', JSON.stringify(tools, null, 2));
+        }
         const requestBody: any = {
           model: bot.model || 'deepseek-chat',
           messages: messages,
@@ -101,6 +128,9 @@ serve(async (req) => {
         if (tools) {
           requestBody.tools = tools;
           requestBody.tool_choice = 'auto';
+          console.log('Added tools to DeepSeek request with tool_choice: auto');
+        } else {
+          console.log('No tools to add to DeepSeek request');
         }
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -223,6 +253,10 @@ serve(async (req) => {
         ];
 
         const tools = buildOpenAITools(bot);
+        console.log('OpenAI streaming tools built:', tools ? `${tools.length} tools` : 'no tools');
+        if (tools) {
+          console.log('OpenAI streaming tools structure:', JSON.stringify(tools, null, 2));
+        }
         const requestBody: any = {
           model: bot.model || 'gpt-4',
           messages: messages,
@@ -232,6 +266,9 @@ serve(async (req) => {
         if (tools) {
           requestBody.tools = tools;
           requestBody.tool_choice = 'auto';
+          console.log('Added tools to OpenAI streaming request with tool_choice: auto');
+        } else {
+          console.log('No tools to add to OpenAI streaming request');
         }
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -345,7 +382,12 @@ serve(async (req) => {
         }
 
         const tools = buildGeminiTools(bot);
+        console.log('Gemini tools built:', tools ? `${tools.length} tool groups` : 'no tools');
+        if (tools) {
+          console.log('Gemini tools structure:', JSON.stringify(tools, null, 2));
+        }
         const systemInstructionText = buildSystemInstruction(bot);
+        console.log('System instruction length:', systemInstructionText.length, 'chars');
         
         // Validate inputs
         if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -381,13 +423,33 @@ serve(async (req) => {
           },
         };
         
+        // Try adding systemInstruction as top-level field (works better for function calling)
+        if (systemInstructionText) {
+          requestBody.systemInstruction = {
+            parts: [{ text: systemInstructionText }]
+          };
+          console.log('Added systemInstruction as top-level field for streaming');
+        }
+        
         // Only add tools if we have them - some models may not support tools
         // Try adding tools, but if it fails, we'll handle it in error response
         if (tools && tools.length > 0) {
           requestBody.tools = tools;
+          // Add toolConfig to force function calling when appropriate
+          // Use ANY mode to encourage function calls when tools are available
+          requestBody.toolConfig = {
+            functionCallingConfig: {
+              mode: 'ANY', // ANY mode encourages function calls when tools are available
+            }
+          };
+          console.log('Added tools and toolConfig to Gemini streaming request. Tools count:', tools.length);
+          console.log('ToolConfig:', JSON.stringify(requestBody.toolConfig));
+          console.log('Full tools structure:', JSON.stringify(tools, null, 2));
+        } else {
+          console.log('No tools to add to Gemini streaming request');
         }
         
-        console.log('Gemini request body:', JSON.stringify(requestBody).substring(0, 1000));
+        console.log('Gemini request body (first 2000 chars):', JSON.stringify(requestBody).substring(0, 2000));
 
         // Use v1 API only (v1beta is deprecated and doesn't support newer models)
         // Default to gemini-2.5-flash (fast and cost-effective)
@@ -511,6 +573,61 @@ serve(async (req) => {
         );
       }
 
+      // Helper function to parse text-based function calls that Gemini sometimes generates
+      // Pattern: ___INLINECODE0___(...) where content is either a string (action ID) or object (function args)
+      const parseTextBasedFunctionCall = (text: string): any | null => {
+        if (!text) return null;
+        
+        // Pattern 1: ___INLINECODE0___("action-id") - trigger_action
+        const triggerActionPattern = /___INLINECODE\d+___\s*\(\s*"([^"]+)"\s*\)/;
+        const triggerMatch = text.match(triggerActionPattern);
+        if (triggerMatch) {
+          const actionId = triggerMatch[1];
+          console.log('Detected trigger_action pattern with action_id:', actionId);
+          return {
+            name: 'trigger_action',
+            args: { action_id: actionId }
+          };
+        }
+        
+        // Pattern 2: ___INLINECODE0___({...}) - recommend_products or other functions
+        // Use non-greedy match with 's' flag to handle multiline JSON
+        const functionCallPattern = /___INLINECODE\d+___\s*\(\s*(\{[\s\S]*?\})\s*\)/;
+        const functionMatch = text.match(functionCallPattern);
+        if (functionMatch) {
+          try {
+            const jsonStr = functionMatch[1];
+            const args = JSON.parse(jsonStr);
+            // Determine function name based on args structure
+            if (args.action_id) {
+              console.log('✓ Detected trigger_action pattern with args:', args);
+              return {
+                name: 'trigger_action',
+                args: args
+              };
+            } else if (args.keywords || args.category || args.price_min || args.price_max || args.max_results) {
+              console.log('✓ Detected recommend_products pattern with args:', args);
+              return {
+                name: 'recommend_products',
+                args: args
+              };
+            } else {
+              console.log('Function call pattern found but args structure unclear:', args);
+            }
+          } catch (e) {
+            console.warn('Failed to parse function call args from text:', e, 'JSON string:', functionMatch[1].substring(0, 200));
+          }
+        }
+        
+        // Also check if the entire text IS a function call pattern (no other text)
+        const trimmedText = text.trim();
+        if (trimmedText.match(/^___INLINECODE\d+___/)) {
+          console.log('Text appears to be a function call pattern:', trimmedText.substring(0, 100));
+        }
+        
+        return null;
+      };
+
       // Transform Gemini SSE stream to include function calls in expected format
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -523,6 +640,7 @@ serve(async (req) => {
             let totalBytes = 0;
             let lineCount = 0;
             let firstDataLine = true;
+            let accumulatedText = ''; // Track all text to check for function calls at the end
             
             console.log('Starting to read Gemini stream...');
             
@@ -530,6 +648,25 @@ serve(async (req) => {
               const { done, value } = await reader.read();
               if (done) {
                 console.log(`Stream ended. Total bytes: ${totalBytes}, Lines processed: ${lineCount}, Data extracted: ${hasExtractedData}`);
+                
+                // FINAL CHECK: Check accumulated text for function calls before ending
+                if (accumulatedText && !hasExtractedData) {
+                  const parsedFunctionCall = parseTextBasedFunctionCall(accumulatedText);
+                  if (parsedFunctionCall) {
+                    console.log('✓ FINAL CHECK: Parsed function call from accumulated text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                    const functionCalls = [{
+                      name: parsedFunctionCall.name,
+                      args: parsedFunctionCall.args || {}
+                    }];
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                    hasExtractedData = true;
+                  }
+                }
+                
+                if (!hasExtractedData) {
+                  console.warn('Gemini stream ended without extracting any text or function calls.');
+                  console.log('Accumulated text (last 500 chars):', accumulatedText.substring(Math.max(0, accumulatedText.length - 500)));
+                }
                 break;
               }
 
@@ -562,18 +699,33 @@ serve(async (req) => {
                       const candidate = item.candidates[0];
                       if (candidate.content?.parts) {
                         for (const part of candidate.content.parts) {
-                          if (part.text) {
-                            console.log(`Extracting text from JSON array (${part.text.length} chars):`, part.text.substring(0, 100));
-                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
-                            hasExtractedData = true;
-                          }
+                          // PRIORITY: Check for function calls FIRST
                           if (part.functionCall) {
+                            console.log('✓ Function call detected in JSON array:', part.functionCall.name, 'args:', JSON.stringify(part.functionCall.args || {}));
                             const functionCalls = [{
                               name: part.functionCall.name,
                               args: part.functionCall.args || {}
                             }];
                             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
                             hasExtractedData = true;
+                            // DO NOT send text if function call is present
+                          } else if (part.text) {
+                            // Check if text contains function call patterns
+                            const parsedFunctionCall = parseTextBasedFunctionCall(part.text);
+                            if (parsedFunctionCall) {
+                              console.log('✓ Parsed function call from JSON array text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                              const functionCalls = [{
+                                name: parsedFunctionCall.name,
+                                args: parsedFunctionCall.args || {}
+                              }];
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                              hasExtractedData = true;
+                            } else {
+                              // Only send text if there's no function call
+                              console.log(`Extracting text from JSON array (${part.text.length} chars):`, part.text.substring(0, 100));
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                              hasExtractedData = true;
+                            }
                           }
                         }
                       }
@@ -636,7 +788,17 @@ serve(async (req) => {
                         const parts = candidate.content.parts;
                         for (const part of parts) {
                           if (part.text) {
-                            textContent = (textContent || '') + part.text;
+                            // Check if text contains function call patterns (Gemini sometimes generates function calls as text)
+                            const parsedFunctionCall = parseTextBasedFunctionCall(part.text);
+                            if (parsedFunctionCall) {
+                              functionCall = parsedFunctionCall;
+                              console.log('✓ Parsed function call from text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                              // Don't add this text to textContent if it's a function call
+                            } else {
+                              const textToAdd = part.text;
+                              textContent = (textContent || '') + textToAdd;
+                              accumulatedText += textToAdd; // Track for final check
+                            }
                           }
                           if (part.functionCall) {
                             functionCall = part.functionCall;
@@ -646,7 +808,15 @@ serve(async (req) => {
                       
                       // Check for delta (incremental updates in streaming)
                       if (candidate.delta?.text) {
-                        textContent = (textContent || '') + candidate.delta.text;
+                        // Check if delta text contains function call patterns
+                        const parsedFunctionCall = parseTextBasedFunctionCall(candidate.delta.text);
+                        if (parsedFunctionCall) {
+                          functionCall = parsedFunctionCall;
+                          console.log('✓ Parsed function call from delta text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                        } else {
+                          textContent = (textContent || '') + candidate.delta.text;
+                          accumulatedText += candidate.delta.text; // Track for final check
+                        }
                       }
                       
                       if (candidate.delta?.functionCall) {
@@ -655,7 +825,15 @@ serve(async (req) => {
                       
                       // Check for content.text (direct)
                       if (!textContent && candidate.content?.text) {
-                        textContent = candidate.content.text;
+                        // Check if content text contains function call patterns
+                        const parsedFunctionCall = parseTextBasedFunctionCall(candidate.content.text);
+                        if (parsedFunctionCall) {
+                          functionCall = parsedFunctionCall;
+                          console.log('✓ Parsed function call from content text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                        } else {
+                          textContent = candidate.content.text;
+                          accumulatedText += candidate.content.text; // Track for final check
+                        }
                       }
                       
                       // Check for finishReason and empty content
@@ -666,7 +844,15 @@ serve(async (req) => {
                     
                     // Try alternative format: direct text field
                     if (!textContent && data.text) {
-                      textContent = data.text;
+                      // Check if text contains function call patterns
+                      const parsedFunctionCall = parseTextBasedFunctionCall(data.text);
+                      if (parsedFunctionCall) {
+                        functionCall = parsedFunctionCall;
+                        console.log('✓ Parsed function call from data.text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                      } else {
+                        textContent = data.text;
+                        accumulatedText += data.text; // Track for final check
+                      }
                     }
                     
                     // Try functionCall at top level
@@ -674,21 +860,43 @@ serve(async (req) => {
                       functionCall = data.functionCall;
                     }
                     
-                    // Send text content if found
-                    if (textContent) {
-                      console.log(`Extracting text (${textContent.length} chars):`, textContent.substring(0, 100));
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: textContent })}\n\n`));
-                      hasExtractedData = true;
+                    // CRITICAL: Also check accumulated textContent for function calls before sending
+                    if (!functionCall && textContent) {
+                      const parsedFunctionCall = parseTextBasedFunctionCall(textContent);
+                      if (parsedFunctionCall) {
+                        functionCall = parsedFunctionCall;
+                        textContent = null; // Clear text since it's a function call
+                        console.log('✓ Parsed function call from accumulated textContent:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                      }
                     }
                     
-                    // Send function calls if found
+                    // CRITICAL: Also check accumulated textContent for function calls before sending
+                    if (!functionCall && textContent) {
+                      const parsedFunctionCall = parseTextBasedFunctionCall(textContent);
+                      if (parsedFunctionCall) {
+                        functionCall = parsedFunctionCall;
+                        textContent = null; // Clear text since it's a function call
+                        console.log('✓ Parsed function call from accumulated textContent:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                      }
+                    }
+                    
+                    // PRIORITY: Send function calls FIRST if found (they take precedence over text)
                     if (functionCall) {
-                      console.log('Extracting function call:', functionCall.name || functionCall.function?.name);
+                      const functionName = functionCall.name || functionCall.function?.name;
+                      const functionArgs = functionCall.args || functionCall.function?.arguments || {};
+                      console.log('✓ Function call detected in SSE stream:', functionName, 'args:', JSON.stringify(functionArgs));
                       const functionCalls = [{
-                        name: functionCall.name || functionCall.function?.name,
-                        args: functionCall.args || functionCall.function?.arguments || {}
+                        name: functionName,
+                        args: functionArgs
                       }];
                       controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                      hasExtractedData = true;
+                      // DO NOT send text if function call is present - function calls take priority
+                      // The widget will show a default message when function call is detected
+                    } else if (textContent) {
+                      // Only send text if there's no function call
+                      console.log(`Extracting text (${textContent.length} chars):`, textContent.substring(0, 100));
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: textContent })}\n\n`));
                       hasExtractedData = true;
                     }
                     
@@ -717,18 +925,33 @@ serve(async (req) => {
                       const candidate = item.candidates[0];
                       if (candidate.content?.parts) {
                         for (const part of candidate.content.parts) {
-                          if (part.text) {
-                            console.log(`Extracting text from final buffer (${part.text.length} chars):`, part.text.substring(0, 100));
-                            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
-                            hasExtractedData = true;
-                          }
+                          // PRIORITY: Check for function calls FIRST
                           if (part.functionCall) {
+                            console.log('✓ Function call detected in final buffer:', part.functionCall.name, 'args:', JSON.stringify(part.functionCall.args || {}));
                             const functionCalls = [{
                               name: part.functionCall.name,
                               args: part.functionCall.args || {}
                             }];
                             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
                             hasExtractedData = true;
+                            // DO NOT send text if function call is present
+                          } else if (part.text) {
+                            // Check if text contains function call patterns
+                            const parsedFunctionCall = parseTextBasedFunctionCall(part.text);
+                            if (parsedFunctionCall) {
+                              console.log('✓ Parsed function call from final buffer text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                              const functionCalls = [{
+                                name: parsedFunctionCall.name,
+                                args: parsedFunctionCall.args || {}
+                              }];
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                              hasExtractedData = true;
+                            } else {
+                              // Only send text if there's no function call
+                              console.log(`Extracting text from final buffer (${part.text.length} chars):`, part.text.substring(0, 100));
+                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                              hasExtractedData = true;
+                            }
                           }
                         }
                       }
@@ -746,15 +969,32 @@ serve(async (req) => {
                         if (data.candidates && data.candidates[0]?.content?.parts) {
                           const parts = data.candidates[0].content.parts;
                           for (const part of parts) {
-                            if (part.text) {
-                              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
-                            }
+                            // PRIORITY: Check for function calls FIRST
                             if (part.functionCall) {
+                              console.log('✓ Function call detected in remaining buffer:', part.functionCall.name, 'args:', JSON.stringify(part.functionCall.args || {}));
                               const functionCalls = [{
                                 name: part.functionCall.name,
                                 args: part.functionCall.args || {}
                               }];
                               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                              hasExtractedData = true;
+                              // DO NOT send text if function call is present
+                            } else if (part.text) {
+                              // Check if text contains function call patterns
+                              const parsedFunctionCall = parseTextBasedFunctionCall(part.text);
+                              if (parsedFunctionCall) {
+                                console.log('✓ Parsed function call from remaining buffer text:', parsedFunctionCall.name, 'args:', JSON.stringify(parsedFunctionCall.args || {}));
+                                const functionCalls = [{
+                                  name: parsedFunctionCall.name,
+                                  args: parsedFunctionCall.args || {}
+                                }];
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                                hasExtractedData = true;
+                              } else {
+                                // Only send text if there's no function call
+                                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: part.text })}\n\n`));
+                                hasExtractedData = true;
+                              }
                             }
                           }
                         }
@@ -832,6 +1072,10 @@ serve(async (req) => {
         ];
 
         const tools = buildOpenAITools(bot);
+        console.log('OpenAI non-streaming tools built:', tools ? `${tools.length} tools` : 'no tools');
+        if (tools) {
+          console.log('OpenAI non-streaming tools structure:', JSON.stringify(tools, null, 2));
+        }
         const requestBody: any = {
           model: bot.model || 'gpt-4',
           messages: messages,
@@ -840,6 +1084,9 @@ serve(async (req) => {
         if (tools) {
           requestBody.tools = tools;
           requestBody.tool_choice = 'auto';
+          console.log('Added tools to OpenAI non-streaming request with tool_choice: auto');
+        } else {
+          console.log('No tools to add to OpenAI non-streaming request');
         }
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -883,6 +1130,10 @@ serve(async (req) => {
         }
 
         const tools = buildGeminiTools(bot);
+        console.log('Gemini non-streaming tools built:', tools ? `${tools.length} tool groups` : 'no tools');
+        if (tools) {
+          console.log('Gemini non-streaming tools structure:', JSON.stringify(tools, null, 2));
+        }
         
         // Validate inputs
         if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -914,9 +1165,29 @@ serve(async (req) => {
           },
         };
         
+        // Try adding systemInstruction as top-level field (works better for function calling)
+        if (systemInstruction) {
+          requestBody.systemInstruction = {
+            parts: [{ text: systemInstruction }]
+          };
+          console.log('Added systemInstruction as top-level field for non-streaming');
+        }
+        
         // Only add tools if we have them - some models may not support tools
         if (tools && tools.length > 0) {
           requestBody.tools = tools;
+          // Add toolConfig to force function calling when appropriate
+          // Use ANY mode to encourage function calls when tools are available
+          requestBody.toolConfig = {
+            functionCallingConfig: {
+              mode: 'ANY', // ANY mode encourages function calls when tools are available
+            }
+          };
+          console.log('Added tools and toolConfig to Gemini non-streaming request. Tools count:', tools.length);
+          console.log('ToolConfig:', JSON.stringify(requestBody.toolConfig));
+          console.log('Full tools structure:', JSON.stringify(tools, null, 2));
+        } else {
+          console.log('No tools to add to Gemini non-streaming request');
         }
 
         // Use v1 API only (v1beta is deprecated and doesn't support newer models)
@@ -1056,6 +1327,16 @@ serve(async (req) => {
 });
 
 function buildSystemInstruction(bot: any): string {
+  // Build action list for system instruction
+  let actionListText = '';
+  if (bot.actions && Array.isArray(bot.actions) && bot.actions.length > 0) {
+    actionListText = '\n\nAVAILABLE CUSTOM ACTIONS:\n';
+    bot.actions.forEach((a: any) => {
+      actionListText += `- Action ID: "${a.id}" | Type: ${a.type} | Description: "${a.description || 'No description'}"\n`;
+    });
+    actionListText += '\nYOU MUST check if the user\'s message matches ANY of these actions FIRST before doing anything else.\n';
+  }
+
   let instruction = `
     You are ${bot.name}. ${bot.systemInstruction}
     
@@ -1064,12 +1345,20 @@ function buildSystemInstruction(bot: any): string {
     ${bot.knowledgeBase}
     ---
     
-    You have access to interactive UI tools/actions. 
-    PRIORITY ORDER: Always check if a custom action is appropriate FIRST before recommending products.
-    If a user's request is best served by triggering a UI action (like showing a button, opening a link, or handing off to a human), invoke the "trigger_action" function with the appropriate action_id.
-    Do not mention the internal action_id to the user, just trigger it naturally.
+    ⚠️ CRITICAL: YOU HAVE ACCESS TO INTERACTIVE UI TOOLS/ACTIONS. YOU MUST USE THEM WHEN APPROPRIATE. ⚠️
+    ${actionListText}
     
-    ACTION PRIORITY: Custom actions take precedence over product recommendations. Only recommend products if no custom action matches the user's intent.
+    MANDATORY PRIORITY ORDER (DO NOT VIOLATE):
+    1. FIRST: Check if user's message matches ANY custom action above - if YES, YOU MUST call trigger_action with that action_id IMMEDIATELY
+    2. SECOND: Only if NO custom action matches, then proceed with other functions (like recommend_products)
+    3. NEVER skip checking actions - they take ABSOLUTE PRIORITY
+    
+    EXAMPLES OF WHEN TO CALL trigger_action:
+    - User says "milk" and you have a "milk products" action → IMMEDIATELY call trigger_action with that action_id
+    - User asks about something that matches an action description → IMMEDIATELY call trigger_action
+    - User's intent clearly matches an available action → IMMEDIATELY call trigger_action
+    
+    ACTION PRIORITY: Custom actions take ABSOLUTE PRECEDENCE over product recommendations. Only recommend products if NO custom action matches the user's intent.
   `;
 
   // Add e-commerce instructions if enabled
@@ -1095,12 +1384,19 @@ function buildSystemInstruction(bot: any): string {
     5. DO NOT generate a text response about products until AFTER you have called recommend_products and received results
     
     MANDATORY WORKFLOW FOR PRODUCT QUESTIONS:
-    Step 1: User asks about a product (e.g., "do you have yogurt?", "yogurt", "what yogurt do you have?")
-    Step 2: FIRST check if any custom action (trigger_action) matches the user's intent - if yes, use that action instead
-    Step 3: If no custom action matches, IMMEDIATELY call recommend_products function - DO NOT generate any text response yet
-    Step 4: Wait for the function to return actual products
-    Step 5: ONLY THEN respond with the real products from the catalog
-    Step 6: If no products found, say "I don't see any [product] in our catalog right now" - DO NOT make up products
+    Step 1: User asks about a product (e.g., "do you have yogurt?", "yogurt", "what yogurt do you have?", "milk")
+    Step 2: FIRST check if any custom action (trigger_action) matches the user's intent - if YES, YOU MUST call trigger_action IMMEDIATELY and STOP (do not proceed to Step 3)
+    Step 3: ONLY if NO custom action matches, IMMEDIATELY call recommend_products function - DO NOT generate ANY text response first
+    Step 4: DO NOT say "Let me check" or "I'll help you" or "Okay, I can help you" - just call the function immediately
+    Step 5: Wait for the function to return actual products
+    Step 6: ONLY THEN respond with the real products from the catalog
+    Step 7: If no products found, say "I don't see any [product] in our catalog right now" - DO NOT make up products
+    
+    CRITICAL EXAMPLES:
+    - User says "milk" → Check actions first: If "milk products" action exists → Call trigger_action with that action_id. If no action → Call recommend_products with keywords: ["milk"]
+    - User says "yogurt" → Check actions first: If matching action exists → Call trigger_action. If no action → Call recommend_products with keywords: ["yogurt"]
+    
+    CRITICAL: When user says a product name (like "milk" or "yogurt"), FIRST check for matching actions, THEN if no match, call recommend_products IMMEDIATELY without any preliminary text. Do NOT say "Okay, I can help you" or "Let me check" - just call the appropriate function.
     
     WHEN TO CALL recommend_products (CALL IT IMMEDIATELY - NO TEXT FIRST):
     - ONLY if no custom action matches the user's intent
@@ -1142,18 +1438,35 @@ function buildOpenAITools(bot: any): any[] | undefined {
   const tools: any[] = [];
 
   // Add trigger_action if bot has actions
-  if (bot.actions && bot.actions.length > 0) {
+  if (bot.actions && Array.isArray(bot.actions) && bot.actions.length > 0) {
+    // Build detailed action list for description
+    const actionList = bot.actions.map((a: any) => {
+      return `- Action ID: "${a.id}" | Type: ${a.type} | Description: "${a.description || 'No description'}" | Use when: ${a.description || 'user intent matches this action'}`;
+    }).join('\n');
+
     tools.push({
       type: 'function',
       function: {
         name: 'trigger_action',
-        description: 'Triggers a UI action, button, or redirect for the user.',
+        description: `⚠️ MANDATORY FUNCTION FOR ACTIONS ⚠️ Triggers a custom UI action, button, or redirect for the user. YOU MUST call this function when the user's message matches ANY of the available actions below.
+
+AVAILABLE ACTIONS:
+${actionList}
+
+MATCHING LOGIC:
+- If the user's message mentions, asks about, or relates to ANY action description above, you MUST call trigger_action with that action's ID
+- Examples:
+  * User says "milk" and you have a "milk products" action → Call trigger_action with that action_id
+  * User asks about something matching an action description → Call trigger_action with that action_id
+  * User's intent clearly matches an action → Call trigger_action with that action_id
+
+CRITICAL: Check the action descriptions above FIRST before calling recommend_products. Actions take ABSOLUTE PRIORITY.`,
         parameters: {
           type: 'object',
           properties: {
             action_id: {
               type: 'string',
-              description: `The ID of the action to trigger. Available IDs: ${bot.actions.map((a: any) => `${a.id} (Use when: ${a.description})`).join(', ')}`
+              description: `The ID of the action to trigger. Must be one of: ${bot.actions.map((a: any) => a.id).join(', ')}`
             }
           },
           required: ['action_id']
@@ -1210,16 +1523,33 @@ function buildGeminiTools(bot: any): any[] | undefined {
   const functionDeclarations: any[] = [];
 
   // Add trigger_action if bot has actions
-  if (bot.actions && bot.actions.length > 0) {
+  if (bot.actions && Array.isArray(bot.actions) && bot.actions.length > 0) {
+    // Build detailed action list for description
+    const actionList = bot.actions.map((a: any) => {
+      return `- Action ID: "${a.id}" | Type: ${a.type} | Description: "${a.description || 'No description'}" | Use when: ${a.description || 'user intent matches this action'}`;
+    }).join('\n');
+
     functionDeclarations.push({
       name: 'trigger_action',
-      description: 'Triggers a UI action, button, or redirect for the user.',
+      description: `⚠️ MANDATORY FUNCTION FOR ACTIONS ⚠️ Triggers a custom UI action, button, or redirect for the user. YOU MUST call this function when the user's message matches ANY of the available actions below.
+
+AVAILABLE ACTIONS:
+${actionList}
+
+MATCHING LOGIC:
+- If the user's message mentions, asks about, or relates to ANY action description above, you MUST call trigger_action with that action's ID
+- Examples:
+  * User says "milk" and you have a "milk products" action → Call trigger_action with that action_id
+  * User asks about something matching an action description → Call trigger_action with that action_id
+  * User's intent clearly matches an action → Call trigger_action with that action_id
+
+CRITICAL: Check the action descriptions above FIRST before calling recommend_products. Actions take ABSOLUTE PRIORITY.`,
       parameters: {
         type: 'OBJECT',
         properties: {
           action_id: {
             type: 'STRING',
-            description: `The ID of the action to trigger. Available IDs: ${bot.actions.map((a: any) => `${a.id} (Use when: ${a.description})`).join(', ')}`
+            description: `The ID of the action to trigger. Must be one of: ${bot.actions.map((a: any) => a.id).join(', ')}`
           }
         },
         required: ['action_id']
@@ -1265,6 +1595,14 @@ function buildGeminiTools(bot: any): any[] | undefined {
     });
   }
 
-  return functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined;
+  // Gemini API v1 expects tools in format: [{ functionDeclarations: [...] }]
+  if (functionDeclarations.length > 0) {
+    const tools = [{ functionDeclarations }];
+    console.log('Built Gemini tools:', JSON.stringify(tools, null, 2));
+    return tools;
+  }
+  
+  console.log('No Gemini tools to build');
+  return undefined;
 }
 

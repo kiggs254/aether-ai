@@ -2164,7 +2164,8 @@ export const generateWidgetJS = (): string => {
     
     carousel.appendChild(carouselInner);
     
-    // Add navigation arrows if there are multiple products
+    // Always use carouselWrapper for consistent styling, even with single product
+    // Add navigation arrows only if there are multiple products
     if (products.length > 1) {
       const prevBtn = document.createElement('button');
       prevBtn.className = 'aether-carousel-btn aether-carousel-btn-prev';
@@ -2183,11 +2184,12 @@ export const generateWidgetJS = (): string => {
       carouselWrapper.appendChild(prevBtn);
       carouselWrapper.appendChild(carousel);
       carouselWrapper.appendChild(nextBtn);
-      
-      container.appendChild(carouselWrapper);
     } else {
-      container.appendChild(carousel);
+      // Single product: still use wrapper for consistent styling, just without navigation buttons
+      carouselWrapper.appendChild(carousel);
     }
+    
+    container.appendChild(carouselWrapper);
   };
 
   // Handle product recommendation function call

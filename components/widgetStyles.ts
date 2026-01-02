@@ -58,25 +58,25 @@ export const generateWidgetCSS = (): string => {
   pointer-events: auto !important;
 }
 
-/* Launcher Button - Mobile First */
+/* Launcher Button - Modern Design */
 #aether-launcher {
   width: 56px;
   height: 56px;
-  min-width: var(--aether-touch-target);
-  min-height: var(--aether-touch-target);
-  border-radius: 28px;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50% !important;
   background: linear-gradient(135deg, var(--aether-brand-color), color-mix(in srgb, var(--aether-brand-color), black 15%)) !important;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 0 0 rgba(0,0,0,0) !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   border: none !important;
   color: white !important;
   position: fixed !important;
-  bottom: 20px !important;
-  right: 20px !important;
+  bottom: 24px !important;
+  right: 24px !important;
   z-index: 99999 !important;
   overflow: hidden !important;
   visibility: visible !important;
@@ -87,9 +87,14 @@ export const generateWidgetCSS = (): string => {
   touch-action: manipulation !important;
 }
 
+#aether-launcher:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 0 rgba(0,0,0,0) !important;
+  transform: scale(1.05) !important;
+}
+
 #aether-widget-container[data-position="left"] #aether-launcher {
   right: auto;
-  left: 20px;
+  left: 24px;
 }
 
 body.aether-chat-open #aether-launcher {
@@ -110,7 +115,7 @@ body.aether-chat-open #aether-launcher {
   z-index: 1;
 }
 
-/* Window - Mobile First (Full Screen) */
+/* Window - Modern Design (Mobile Full Screen, Desktop Rounded) */
 #aether-window {
   width: 100vw;
   height: 100vh;
@@ -147,19 +152,20 @@ body.aether-chat-open #aether-launcher {
   visibility: visible;
 }
 
-/* Header - Mobile First */
+/* Header - Modern Design */
 .aether-header {
-  padding: var(--aether-spacing-md);
-  padding-top: calc(var(--aether-spacing-md) + env(safe-area-inset-top, 0px));
-  padding-bottom: var(--aether-spacing-md);
-  background: #0f172a;
-  color: white;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: 16px;
+  background: hsl(var(--background, 0 0% 100%));
+  border-bottom: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+  color: hsl(var(--foreground, 222.2 84% 4.9%));
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--aether-spacing-md);
-  min-height: 56px;
+  gap: 16px;
+  min-height: 64px;
   -webkit-tap-highlight-color: transparent;
   margin: 0;
   border: none;
@@ -393,19 +399,22 @@ body.aether-chat-open #aether-launcher {
 }
 
 .aether-msg.bot {
-  background: #ffffff;
-  color: #333333;
+  background: hsl(var(--muted, 210 40% 96.1%));
+  color: hsl(var(--foreground, 222.2 84% 4.9%));
+  border-radius: 12px;
   border-bottom-left-radius: 4px;
   align-self: flex-start;
-  border: 1px solid rgba(0,0,0,0.05);
+  border: none;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .aether-msg.user {
   background: var(--aether-brand-color) !important;
   color: white !important;
   align-self: flex-end;
+  border-radius: 12px;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -626,20 +635,19 @@ body.aether-chat-open #aether-launcher {
   opacity: 1;
 }
 
-/* Input Field - Mobile First */
+/* Input Field - Modern Design */
 .aether-input {
   flex: 1;
-  padding: var(--aether-spacing-sm) var(--aether-spacing-md);
-  border-radius: 20px;
-  border: 1px solid var(--aether-border-color);
-  background: #f4f4f5;
-  color: var(--aether-text-color) !important;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
+  background: hsl(var(--background, 0 0% 100%));
+  color: hsl(var(--foreground, 222.2 84% 4.9%)) !important;
   outline: none;
   font-size: 15px;
   font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  resize: none;
-  min-height: 44px;
+  min-height: 48px;
   max-height: 120px;
   line-height: 1.4;
   -webkit-appearance: none;

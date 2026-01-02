@@ -46,7 +46,7 @@ async function deployWidget() {
   }
 
   // Helper function to upload a file with retry logic
-  const uploadFile = async (localPath, remotePath, fileName) => {
+  const uploadFile = async (localPath, remotePath, fileName, maxRetries = 3) => {
     console.log(`  📤 Uploading ${fileName}...`);
     
     // First, try to remove existing file (use same format for rm)
@@ -61,70 +61,83 @@ async function deployWidget() {
       // File might not exist, ignore error
     }
     
-    // Try to upload with output capture to detect errors
-    let uploadSuccess = false;
-    let errorOutput = '';
+    // Try to upload with retry logic for network errors
+    let lastError = null;
     
-    try {
-      // Capture stderr to check for errors
-      const result = execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked 2>&1`, { 
-        encoding: 'utf-8',
-        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
-      });
-      
-      // Check if output contains error indicators
-      if (result.includes('409') || result.includes('Duplicate') || result.includes('already exists') || result.includes('Error status')) {
-        throw new Error(result);
-      }
-      
-      console.log(`  ✓ Uploaded ${fileName}`);
-      uploadSuccess = true;
-    } catch (error) {
-      errorOutput = error.stdout?.toString() || error.stderr?.toString() || error.message || error.toString() || '';
-      
-      // Check for duplicate/409 error
-      const isDuplicateError = 
-        errorOutput.includes('409') || 
-        errorOutput.includes('Duplicate') || 
-        errorOutput.includes('already exists') ||
-        errorOutput.includes('resource already exists') ||
-        errorOutput.includes('Error status');
-      
-      if (isDuplicateError) {
-        console.log(`  ⚠️  ${fileName} already exists, force removing and retrying...`);
-        try {
-          // Force remove the file
-          execSync(`supabase storage rm ${remotePath} --experimental --linked --yes`, { 
-            stdio: 'ignore',
-            encoding: 'utf-8'
-          });
-          await sleep(2000); // Longer delay to ensure deletion is processed
-          
-          // Try upload again
-          const retryResult = execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked 2>&1`, { 
-            encoding: 'utf-8',
-            maxBuffer: 10 * 1024 * 1024
-          });
-          
-          // Check if retry also failed
-          if (retryResult.includes('409') || retryResult.includes('Duplicate') || retryResult.includes('already exists') || retryResult.includes('Error status')) {
-            throw new Error(`File still exists after removal: ${retryResult}`);
-          }
-          
-          console.log(`  ✓ Uploaded ${fileName} (after retry)`);
-          uploadSuccess = true;
-        } catch (retryError) {
-          const retryErrorOutput = retryError.stdout?.toString() || retryError.stderr?.toString() || retryError.message || retryError.toString() || '';
-          throw new Error(`Failed to upload ${fileName} after retry: ${retryErrorOutput}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Capture stderr to check for errors
+        const result = execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked 2>&1`, { 
+          encoding: 'utf-8',
+          maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+        });
+        
+        // Check if output contains error indicators
+        if (result.includes('409') || result.includes('Duplicate') || result.includes('already exists') || result.includes('Error status')) {
+          throw new Error(result);
         }
-      } else {
-        // Not a duplicate error, re-throw
-        throw new Error(`Failed to upload ${fileName}: ${errorOutput}`);
+        
+        // Check for network/connection errors
+        if (result.includes('connection reset') || result.includes('read tcp') || result.includes('timeout') || result.includes('ECONNRESET')) {
+          throw new Error(`Network error: ${result}`);
+        }
+        
+        console.log(`  ✓ Uploaded ${fileName}${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+        return; // Success!
+      } catch (error) {
+        const errorOutput = error.stdout?.toString() || error.stderr?.toString() || error.message || error.toString() || '';
+        lastError = error;
+        
+        // Check for duplicate/409 error
+        const isDuplicateError = 
+          errorOutput.includes('409') || 
+          errorOutput.includes('Duplicate') || 
+          errorOutput.includes('already exists') ||
+          errorOutput.includes('resource already exists') ||
+          errorOutput.includes('Error status');
+        
+        // Check for network errors
+        const isNetworkError = 
+          errorOutput.includes('connection reset') || 
+          errorOutput.includes('read tcp') || 
+          errorOutput.includes('timeout') ||
+          errorOutput.includes('ECONNRESET') ||
+          errorOutput.includes('connection reset by peer');
+        
+        if (isDuplicateError && attempt < maxRetries) {
+          console.log(`  ⚠️  ${fileName} already exists, force removing and retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          try {
+            // Force remove the file
+            execSync(`supabase storage rm ${remotePath} --experimental --linked --yes`, { 
+              stdio: 'ignore',
+              encoding: 'utf-8'
+            });
+            await sleep(2000 * attempt); // Longer delay on each retry
+            continue; // Retry the upload
+          } catch (rmError) {
+            // If removal fails, still try to upload
+            await sleep(1000);
+            continue;
+          }
+        } else if (isNetworkError && attempt < maxRetries) {
+          console.log(`  ⚠️  Network error, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          await sleep(2000 * attempt); // Exponential backoff
+          continue; // Retry the upload
+        } else if (attempt < maxRetries) {
+          // Other error, but we have retries left
+          console.log(`  ⚠️  Upload failed, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+          await sleep(1000 * attempt);
+          continue;
+        } else {
+          // No more retries
+          throw new Error(`Failed to upload ${fileName} after ${maxRetries} attempts: ${errorOutput}`);
+        }
       }
     }
     
-    if (!uploadSuccess) {
-      throw new Error(`Failed to upload ${fileName}`);
+    // Should never reach here, but just in case
+    if (lastError) {
+      throw lastError;
     }
   };
 

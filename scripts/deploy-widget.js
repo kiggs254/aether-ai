@@ -56,54 +56,75 @@ async function deployWidget() {
         encoding: 'utf-8'
       });
       console.log(`  ✓ Removed existing ${fileName}`);
+      await sleep(1000); // Wait for deletion to process
     } catch (e) {
       // File might not exist, ignore error
     }
     
-    // Small delay to ensure deletion is processed
-    await sleep(1000);
+    // Try to upload with output capture to detect errors
+    let uploadSuccess = false;
+    let errorOutput = '';
     
-    // Try to upload
     try {
-      execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked`, { 
-        stdio: 'inherit',
-        encoding: 'utf-8'
+      // Capture stderr to check for errors
+      const result = execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked 2>&1`, { 
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024 // 10MB buffer
       });
+      
+      // Check if output contains error indicators
+      if (result.includes('409') || result.includes('Duplicate') || result.includes('already exists') || result.includes('Error status')) {
+        throw new Error(result);
+      }
+      
       console.log(`  ✓ Uploaded ${fileName}`);
+      uploadSuccess = true;
     } catch (error) {
-      // Check for duplicate/409 error in various error properties
-      const errorOutput = error.stderr?.toString() || error.stdout?.toString() || error.message || error.toString() || '';
+      errorOutput = error.stdout?.toString() || error.stderr?.toString() || error.message || error.toString() || '';
+      
+      // Check for duplicate/409 error
       const isDuplicateError = 
         errorOutput.includes('409') || 
         errorOutput.includes('Duplicate') || 
         errorOutput.includes('already exists') ||
-        errorOutput.includes('resource already exists');
+        errorOutput.includes('resource already exists') ||
+        errorOutput.includes('Error status');
       
       if (isDuplicateError) {
-        console.log(`  ⚠️  ${fileName} already exists, removing and retrying...`);
+        console.log(`  ⚠️  ${fileName} already exists, force removing and retrying...`);
         try {
           // Force remove the file
           execSync(`supabase storage rm ${remotePath} --experimental --linked --yes`, { 
             stdio: 'ignore',
             encoding: 'utf-8'
           });
-          await sleep(1500); // Longer delay to ensure deletion is processed
+          await sleep(2000); // Longer delay to ensure deletion is processed
           
           // Try upload again
-          execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked`, { 
-            stdio: 'inherit',
-            encoding: 'utf-8'
+          const retryResult = execSync(`supabase storage cp ${localPath} ${remotePath} --experimental --linked 2>&1`, { 
+            encoding: 'utf-8',
+            maxBuffer: 10 * 1024 * 1024
           });
+          
+          // Check if retry also failed
+          if (retryResult.includes('409') || retryResult.includes('Duplicate') || retryResult.includes('already exists') || retryResult.includes('Error status')) {
+            throw new Error(`File still exists after removal: ${retryResult}`);
+          }
+          
           console.log(`  ✓ Uploaded ${fileName} (after retry)`);
+          uploadSuccess = true;
         } catch (retryError) {
-          const retryErrorOutput = retryError.stderr?.toString() || retryError.stdout?.toString() || retryError.message || retryError.toString() || '';
+          const retryErrorOutput = retryError.stdout?.toString() || retryError.stderr?.toString() || retryError.message || retryError.toString() || '';
           throw new Error(`Failed to upload ${fileName} after retry: ${retryErrorOutput}`);
         }
       } else {
         // Not a duplicate error, re-throw
-        const errorOutput = error.stderr?.toString() || error.stdout?.toString() || error.message || error.toString() || '';
         throw new Error(`Failed to upload ${fileName}: ${errorOutput}`);
       }
+    }
+    
+    if (!uploadSuccess) {
+      throw new Error(`Failed to upload ${fileName}`);
     }
   };
 

@@ -92,8 +92,8 @@ export async function parseXMLFeed(url: string, defaultCurrency: string = 'USD')
     }
 
     // 4. Try generic structure (any element with common product fields)
-    const allItems = xmlDoc.querySelectorAll('item, entry, product');
-    allItems.forEach((item) => {
+    const genericItems = xmlDoc.querySelectorAll('item, entry, product');
+    genericItems.forEach((item) => {
       const product = parseGenericItem(item, defaultCurrency);
       if (product) products.push(product);
     });

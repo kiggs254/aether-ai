@@ -650,27 +650,43 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     <div>
                        <label className="text-xs font-medium text-slate-300 mb-1 block">Action Type</label>
                        <div className="grid grid-cols-2 gap-2">
-                          {['link', 'phone', 'whatsapp', 'handoff', 'media', 'products'].map((t) => (
-                             <button
-                                key={t}
-                                onClick={() => {
-                                  setCurrentAction(prev => ({ 
-                                    ...prev, 
-                                    type: t as ActionType, 
-                                    label: t === 'whatsapp' ? 'Chat on WhatsApp' : t === 'media' ? 'View Media' : t === 'products' ? 'View Products' : prev.label,
-                                    payload: t === 'media' || t === 'products' ? '' : prev.payload
-                                  }));
-                                  if (t !== 'media' && t !== 'products') {
-                                    setSelectedFile(null);
-                                    setFilePreview(null);
-                                  }
-                                }}
-                                className={`p-2 rounded-lg text-xs font-medium border flex items-center justify-center gap-2 transition-all ${currentAction.type === t ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5'}`}
-                             >
-                                {getActionIcon(t as ActionType)}
-                                <span className="capitalize">{t}</span>
-                             </button>
-                          ))}
+                          {['link', 'phone', 'whatsapp', 'handoff', 'media', 'products'].map((t) => {
+                             const isProducts = t === 'products';
+                             const isDisabled = isProducts && !ecommerceEnabled;
+                             return (
+                                <button
+                                   key={t}
+                                   onClick={() => {
+                                     if (isDisabled) {
+                                       showError('E-commerce Required', 'Please enable E-commerce Mode in the E-commerce tab to use product actions.');
+                                       return;
+                                     }
+                                     setCurrentAction(prev => ({ 
+                                       ...prev, 
+                                       type: t as ActionType, 
+                                       label: t === 'whatsapp' ? 'Chat on WhatsApp' : t === 'media' ? 'View Media' : t === 'products' ? 'View Products' : prev.label,
+                                       payload: t === 'media' || t === 'products' ? '' : prev.payload
+                                     }));
+                                     if (t !== 'media' && t !== 'products') {
+                                       setSelectedFile(null);
+                                       setFilePreview(null);
+                                     }
+                                   }}
+                                   disabled={isDisabled}
+                                   className={`p-2 rounded-lg text-xs font-medium border flex items-center justify-center gap-2 transition-all ${
+                                     isDisabled 
+                                       ? 'bg-black/10 border-white/5 text-slate-600 cursor-not-allowed opacity-50' 
+                                       : currentAction.type === t 
+                                         ? 'bg-indigo-600 border-indigo-500 text-white' 
+                                         : 'bg-black/20 border-white/10 text-slate-400 hover:bg-white/5'
+                                   }`}
+                                   title={isDisabled ? 'Enable E-commerce Mode to use product actions' : ''}
+                                >
+                                   {getActionIcon(t as ActionType)}
+                                   <span className="capitalize">{t}</span>
+                                </button>
+                             );
+                          })}
                        </div>
                     </div>
 
@@ -715,22 +731,30 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                        </div>
                     ) : currentAction.type === 'products' ? (
                        <div className="space-y-3">
-                          <div>
-                            <label className="text-xs font-medium text-slate-300 mb-1 block">Select Products</label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Load selected product IDs from payload if exists
-                                try {
-                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
-                                  setSelectedProductIds(payload.product_ids || []);
-                                } catch (e) {
-                                  setSelectedProductIds([]);
-                                }
-                                setIsProductModalOpen(true);
-                              }}
-                              className="w-full p-3 rounded-xl glass-input text-sm text-left flex items-center justify-between hover:bg-white/5 transition-colors"
-                            >
+                          {!ecommerceEnabled ? (
+                            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                              <p className="text-amber-400 text-sm font-medium mb-1">E-commerce Mode Required</p>
+                              <p className="text-slate-400 text-xs">Please enable E-commerce Mode in the E-commerce tab to use product actions.</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-xs font-medium text-slate-300 mb-1 block">Select Products</label>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Load selected product IDs from payload if exists
+                                    try {
+                                      const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                      setSelectedProductIds(payload.product_ids || []);
+                                    } catch (e) {
+                                      setSelectedProductIds([]);
+                                    }
+                                    setIsProductModalOpen(true);
+                                  }}
+                                  disabled={!ecommerceEnabled}
+                                  className="w-full p-3 rounded-xl glass-input text-sm text-left flex items-center justify-between hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                               <span className="text-slate-300">
                                 {(() => {
                                   try {
@@ -764,34 +788,37 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                               } catch (e) {}
                               return null;
                             })()}
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-slate-300 mb-1 block">Max Products to Show</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="20"
-                              value={(() => {
-                                try {
-                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
-                                  return payload.max_results || 5;
-                                } catch (e) {
-                                  return 5;
-                                }
-                              })()}
-                              onChange={(e) => {
-                                const maxResults = parseInt(e.target.value) || 5;
-                                try {
-                                  const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
-                                  const newPayload = { ...payload, max_results: maxResults };
-                                  setCurrentAction(prev => ({ ...prev, payload: JSON.stringify(newPayload) }));
-                                } catch (err) {
-                                  setCurrentAction(prev => ({ ...prev, payload: JSON.stringify({ max_results: maxResults }) }));
-                                }
-                              }}
-                              className="w-full p-2.5 rounded-xl glass-input text-sm"
-                            />
-                          </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-medium text-slate-300 mb-1 block">Max Products to Show</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="20"
+                                  value={(() => {
+                                    try {
+                                      const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                      return payload.max_results || 5;
+                                    } catch (e) {
+                                      return 5;
+                                    }
+                                  })()}
+                                  onChange={(e) => {
+                                    const maxResults = parseInt(e.target.value) || 5;
+                                    try {
+                                      const payload = currentAction.payload ? JSON.parse(currentAction.payload) : {};
+                                      const newPayload = { ...payload, max_results: maxResults };
+                                      setCurrentAction(prev => ({ ...prev, payload: JSON.stringify(newPayload) }));
+                                    } catch (err) {
+                                      setCurrentAction(prev => ({ ...prev, payload: JSON.stringify({ max_results: maxResults }) }));
+                                    }
+                                  }}
+                                  disabled={!ecommerceEnabled}
+                                  className="w-full p-2.5 rounded-xl glass-input text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                              </div>
+                            </>
+                          )}
                        </div>
                     ) : currentAction.type !== 'handoff' && (
                        <div>
@@ -836,7 +863,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
 
                     <button 
                        onClick={handleSaveAction}
-                       disabled={!currentAction.label || isUploading}
+                       disabled={!currentAction.label || isUploading || (currentAction.type === 'products' && !ecommerceEnabled)}
                        className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2"
                     >
                        {isUploading ? (

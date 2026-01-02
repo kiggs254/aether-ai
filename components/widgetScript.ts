@@ -2742,8 +2742,10 @@ export const generateWidgetJS = (): string => {
       clearSession(bot.id);
       conversationId = null;
     });
-  } else {
-    console.log('No existing session found, starting fresh');
+      } else {
+        console.log('No existing session found, starting fresh');
+      }
+    }
   }
   
   // Start initialization

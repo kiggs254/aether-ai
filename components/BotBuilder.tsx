@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
 import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
-import { uploadMediaFile, validateMediaFile, getMediaType, MediaType } from '../services/storage';
+import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
 import { useNotification } from './Notification';
 
 interface BotBuilderProps {

@@ -135,6 +135,7 @@ export interface ProductFilters {
 export interface EcommerceSettings {
   maxProductsToRecommend?: number; // Default: 10
   productsVisibleInCarousel?: number; // Default: 5
+  defaultCurrency?: string; // Default currency if not specified in feed (e.g., "KES", "USD")
   categoryFilters?: {
     include?: string[];
     exclude?: string[];

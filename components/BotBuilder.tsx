@@ -53,6 +53,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [ecommerceSettings, setEcommerceSettings] = useState<EcommerceSettings>(bot?.ecommerceSettings || {
     maxProductsToRecommend: 10,
     productsVisibleInCarousel: 5,
+    defaultCurrency: 'USD',
   });
   const [isTestingFeed, setIsTestingFeed] = useState(false);
   const [isRefreshingCatalog, setIsRefreshingCatalog] = useState(false);
@@ -85,6 +86,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setEcommerceSettings(bot.ecommerceSettings || {
         maxProductsToRecommend: 10,
         productsVisibleInCarousel: 5,
+        defaultCurrency: 'USD',
       });
     } else {
       setName('');
@@ -104,6 +106,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setEcommerceSettings({
         maxProductsToRecommend: 10,
         productsVisibleInCarousel: 5,
+        defaultCurrency: 'USD',
       });
       setCatalogProducts([]);
       setTestProducts([]);
@@ -842,7 +845,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             }
                             setIsTestingFeed(true);
                             try {
-                              const products = await parseXMLFeed(productFeedUrl);
+                              const defaultCurrency = ecommerceSettings.defaultCurrency || 'USD';
+                              const products = await parseXMLFeed(productFeedUrl, defaultCurrency);
                               setTestProducts(products);
                               showSuccess('Feed parsed', `Found ${products.length} products`);
                             } catch (error: any) {
@@ -892,7 +896,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                           }
                           setIsRefreshingCatalog(true);
                           try {
-                            const products = await parseXMLFeed(productFeedUrl);
+                            const defaultCurrency = ecommerceSettings.defaultCurrency || 'USD';
+                            const products = await parseXMLFeed(productFeedUrl, defaultCurrency);
                             await updateProductCatalog(bot.id, products);
                             const updated = await getProductCatalog(bot.id);
                             setCatalogProducts(updated);

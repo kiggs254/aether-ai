@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase';
 /**
  * Parse XML product feed from URL
  * Supports common formats: RSS, Google Shopping, and custom XML structures
+ * @param url - URL of the XML feed
+ * @param defaultCurrency - Default currency to use if not found in feed (e.g., "KES", "USD")
  */
-export async function parseXMLFeed(url: string): Promise<Product[]> {
+export async function parseXMLFeed(url: string, defaultCurrency: string = 'USD'): Promise<Product[]> {
   try {
     // Fetch the XML feed
     const response = await fetch(url);
@@ -30,7 +32,7 @@ export async function parseXMLFeed(url: string): Promise<Product[]> {
     const rssItems = xmlDoc.querySelectorAll('rss > channel > item, channel > item, item');
     if (rssItems.length > 0) {
       rssItems.forEach((item) => {
-        const product = parseRSSItem(item);
+        const product = parseRSSItem(item, defaultCurrency);
         if (product) products.push(product);
       });
       return products;
@@ -40,7 +42,7 @@ export async function parseXMLFeed(url: string): Promise<Product[]> {
     const googleItems = xmlDoc.querySelectorAll('rss > channel > item');
     if (googleItems.length > 0) {
       googleItems.forEach((item) => {
-        const product = parseGoogleShoppingItem(item);
+        const product = parseGoogleShoppingItem(item, defaultCurrency);
         if (product) products.push(product);
       });
       if (products.length > 0) return products;
@@ -50,7 +52,7 @@ export async function parseXMLFeed(url: string): Promise<Product[]> {
     const customProducts = xmlDoc.querySelectorAll('product, products > product, root > product');
     if (customProducts.length > 0) {
       customProducts.forEach((productEl) => {
-        const product = parseCustomProduct(productEl);
+        const product = parseCustomProduct(productEl, defaultCurrency);
         if (product) products.push(product);
       });
       return products;
@@ -59,7 +61,7 @@ export async function parseXMLFeed(url: string): Promise<Product[]> {
     // 4. Try generic structure (any element with common product fields)
     const allItems = xmlDoc.querySelectorAll('item, entry, product');
     allItems.forEach((item) => {
-      const product = parseGenericItem(item);
+      const product = parseGenericItem(item, defaultCurrency);
       if (product) products.push(product);
     });
 
@@ -73,7 +75,7 @@ export async function parseXMLFeed(url: string): Promise<Product[]> {
 /**
  * Parse RSS item format
  */
-function parseRSSItem(item: Element): Product | null {
+function parseRSSItem(item: Element, defaultCurrency: string = 'USD'): Product | null {
   const getText = (selector: string) => {
     const el = item.querySelector(selector);
     return el?.textContent?.trim() || '';
@@ -92,7 +94,7 @@ function parseRSSItem(item: Element): Product | null {
   const priceMatch = description.match(/(?:USD|EUR|GBP|KES|JPY|CNY|INR|AUD|CAD|CHF|NZD|ZAR|BRL|MXN|RUB|SEK|NOK|DKK|PLN|CZK|HUF|RON|BGN|HRK|TRY|ILS|AED|SAR|THB|SGD|HKD|KRW)\s*\$?([\d,]+\.?\d*)/i) || 
                      description.match(/\$?([\d,]+\.?\d*)/);
   let price: number | undefined = undefined;
-  let currency = 'USD';
+  let currency = defaultCurrency;
   
   if (priceMatch) {
     // Check if currency code was found
@@ -128,7 +130,7 @@ function parseRSSItem(item: Element): Product | null {
 /**
  * Parse Google Shopping item format
  */
-function parseGoogleShoppingItem(item: Element): Product | null {
+function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD'): Product | null {
   const getText = (selector: string) => {
     const el = item.querySelector(selector);
     return el?.textContent?.trim() || '';
@@ -145,25 +147,31 @@ function parseGoogleShoppingItem(item: Element): Product | null {
   
   // Extract currency code (3 uppercase letters, typically at the start)
   // Examples: "KES 13995.0", "USD 99.99", "EUR 50.00"
-  let currency = 'USD';
+  let currency = defaultCurrency;
   let price: number | undefined = undefined;
   
   if (priceText) {
-    // Try to match currency code at the start (e.g., "KES", "USD", "EUR")
-    const currencyMatch = priceText.match(/^([A-Z]{3})\s/);
+    // Try to match currency code at the start (e.g., "KES 13995.0")
+    // Pattern: 3 uppercase letters followed by space, then number
+    const currencyMatch = priceText.match(/^([A-Z]{3})\s+([\d,.]+)/);
     if (currencyMatch) {
       currency = currencyMatch[1];
+      // Extract numeric value (remove commas, keep decimal point)
+      const numericValue = currencyMatch[2].replace(/,/g, '');
+      price = parseFloat(numericValue);
     } else {
-      // Fallback: look for any 3 uppercase letters (might be in middle)
-      const fallbackCurrency = priceText.match(/\b([A-Z]{3})\b/);
-      if (fallbackCurrency) {
-        currency = fallbackCurrency[1];
+      // Fallback: look for any 3 uppercase letters followed by space or number
+      const fallbackMatch = priceText.match(/\b([A-Z]{3})\s*([\d,.]+)/);
+      if (fallbackMatch) {
+        currency = fallbackMatch[1];
+        const numericValue = fallbackMatch[2].replace(/,/g, '');
+        price = parseFloat(numericValue);
+      } else {
+        // Last resort: extract just the number, use default currency
+        const numericValue = priceText.replace(/[^\d.]/g, '');
+        price = numericValue ? parseFloat(numericValue) : undefined;
       }
     }
-    
-    // Extract numeric price value (remove all non-digit/non-decimal characters)
-    const numericValue = priceText.replace(/[^\d.]/g, '');
-    price = numericValue ? parseFloat(numericValue) : undefined;
   }
   
   const imageUrl = getText('g\\:image_link') || getText('g\\:image');
@@ -190,7 +198,7 @@ function parseGoogleShoppingItem(item: Element): Product | null {
 /**
  * Parse custom product XML format
  */
-function parseCustomProduct(productEl: Element): Product | null {
+function parseCustomProduct(productEl: Element, defaultCurrency: string = 'USD'): Product | null {
   const getText = (selector: string) => {
     const el = productEl.querySelector(selector);
     return el?.textContent?.trim() || '';
@@ -229,7 +237,7 @@ function parseCustomProduct(productEl: Element): Product | null {
 /**
  * Parse generic item (fallback)
  */
-function parseGenericItem(item: Element): Product | null {
+function parseGenericItem(item: Element, defaultCurrency: string = 'USD'): Product | null {
   const getText = (selector: string) => {
     const el = item.querySelector(selector);
     return el?.textContent?.trim() || '';
@@ -246,26 +254,29 @@ function parseGenericItem(item: Element): Product | null {
   const priceText = getText('price') || getText('cost');
   
   // Extract currency and price
-  let currency = 'USD';
+  let currency = defaultCurrency;
   let price: number | undefined = undefined;
   
   if (priceText) {
     // Check if price text contains currency code (e.g., "KES 13995.0")
-    const currencyMatch = priceText.match(/^([A-Z]{3})\s/);
+    const currencyMatch = priceText.match(/^([A-Z]{3})\s+([\d,.]+)/);
     if (currencyMatch) {
       currency = currencyMatch[1];
+      const numericValue = currencyMatch[2].replace(/,/g, '');
+      price = parseFloat(numericValue);
     } else {
       // Fallback: look for currency code anywhere in the string
-      const fallbackCurrency = priceText.match(/\b([A-Z]{3})\b/);
-      if (fallbackCurrency && !priceText.match(/^\d/)) {
-        // Only use if it's not at the start of a number
-        currency = fallbackCurrency[1];
+      const fallbackMatch = priceText.match(/\b([A-Z]{3})\s*([\d,.]+)/);
+      if (fallbackMatch) {
+        currency = fallbackMatch[1];
+        const numericValue = fallbackMatch[2].replace(/,/g, '');
+        price = parseFloat(numericValue);
+      } else {
+        // Last resort: extract just the number
+        const numericValue = priceText.replace(/[^\d.]/g, '');
+        price = numericValue ? parseFloat(numericValue) : undefined;
       }
     }
-    
-    // Extract numeric value
-    const numericValue = priceText.replace(/[^\d.]/g, '');
-    price = numericValue ? parseFloat(numericValue) : undefined;
   }
   
   const imageUrl = getText('image') || getText('imageUrl') || getText('img');

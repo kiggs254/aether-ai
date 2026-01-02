@@ -3290,38 +3290,77 @@ export const generateWidgetJS = (): string => {
             }
           }
           
+          // Store the timestamp of this message to help identify it later
+          var messageTimestamp = msg.timestamp || Date.now();
+          
           // If this is an action message, don't show the text bubble - just the action card
           if (actionId) {
             // Only add the action card, no message bubble
             addMessage('', role, actionId);
           } else {
             // Regular message - show both text and any action
-            // Store reference to the message element we're about to add
-            var messageElementBefore = messages ? messages.children.length : 0;
-            addMessage(messageText, role, actionId);
+            // Ensure we have at least some text to display
+            // If messageText is empty after marker removal, use a minimal placeholder
+            // so the message element is created and we can attach the carousel to it
+            var displayText = messageText || (productRecommendationArgs ? ' ' : '');
+            
+            // Add the message - always add it, even if text is minimal
+            // We'll manually create the message element if addMessage doesn't create one
+            var messageElementCreated = false;
+            if (displayText.trim() || !productRecommendationArgs) {
+              addMessage(displayText, role, actionId);
+              messageElementCreated = true;
+            }
             
             // If this message has a product recommendation, restore the carousel
             if (productRecommendationArgs && role === 'bot') {
               // Use setTimeout to ensure the message is added to DOM first
               setTimeout(function() {
-                // Find the bot message element we just added by checking the count
-                var botMessages = messages.querySelectorAll('.aether-msg.bot');
-                // Get the last bot message (should be the one we just added)
-                var lastBotMsg = botMessages[botMessages.length - 1];
+                var lastBotMsg = null;
                 
-                // Double-check: verify this is the right message by checking if it contains our text
-                if (lastBotMsg && messageText && lastBotMsg.textContent && !lastBotMsg.textContent.includes(messageText.trim())) {
-                  // If the last message doesn't match, try to find the one that does
+                // If no message element was created (empty text), create one now
+                if (!messageElementCreated) {
+                  var msgEl = document.createElement('div');
+                  msgEl.className = 'aether-msg bot';
+                  msgEl.dataset.timestamp = messageTimestamp.toString();
+                  msgEl.style.display = 'none'; // Hide empty message bubble
+                  if (messages) {
+                    messages.appendChild(msgEl);
+                    lastBotMsg = msgEl;
+                    console.log('Created hidden message element for product recommendation');
+                  }
+                } else {
+                  // Find the bot message element we just added by checking timestamp or position
+                  var botMessages = messages.querySelectorAll('.aether-msg.bot');
+                  
+                  // Try to find by timestamp first (most reliable)
                   for (var j = botMessages.length - 1; j >= 0; j--) {
-                    if (botMessages[j].textContent && botMessages[j].textContent.includes(messageText.trim())) {
-                      lastBotMsg = botMessages[j];
+                    var msgEl = botMessages[j];
+                    var msgTimestamp = msgEl.dataset ? parseInt(msgEl.dataset.timestamp) : null;
+                    if (msgTimestamp && Math.abs(msgTimestamp - messageTimestamp) < 2000) {
+                      lastBotMsg = msgEl;
                       break;
+                    }
+                  }
+                  
+                  // Fallback: use the last bot message if timestamp matching didn't work
+                  if (!lastBotMsg && botMessages.length > 0) {
+                    lastBotMsg = botMessages[botMessages.length - 1];
+                  }
+                  
+                  // Additional fallback: if we have text, try to match by text content
+                  if (!lastBotMsg && displayText && displayText.trim()) {
+                    for (var k = botMessages.length - 1; k >= 0; k--) {
+                      if (botMessages[k].textContent && botMessages[k].textContent.trim() === displayText.trim()) {
+                        lastBotMsg = botMessages[k];
+                        break;
+                      }
                     }
                   }
                 }
                 
                 if (lastBotMsg && bot && bot.id) {
-                  console.log('Restoring product recommendation for message:', messageText);
+                  console.log('Restoring product recommendation for message:', displayText || '(empty text)');
                   // Fetch and render products
                   queryProducts(bot.id, {
                     category: productRecommendationArgs.category,
@@ -3356,10 +3395,12 @@ export const generateWidgetJS = (): string => {
                   console.warn('Could not find bot message element for product recommendation restoration', {
                     lastBotMsg: !!lastBotMsg,
                     botId: bot ? bot.id : null,
-                    messageText: messageText
+                    displayText: displayText,
+                    messageTimestamp: messageTimestamp,
+                    messageElementCreated: messageElementCreated
                   });
                 }
-              }, 100); // Increased timeout to ensure DOM is ready
+              }, 150); // Increased timeout to ensure DOM is ready
             }
           }
           

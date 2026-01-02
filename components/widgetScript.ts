@@ -282,6 +282,13 @@ export const generateWidgetJS = (): string => {
     if (!bot.headerImageUrl) {
       bot.headerImageUrl = undefined;
     }
+    // Ensure e-commerce fields exist (for old format)
+    if (!bot.ecommerceEnabled) {
+      bot.ecommerceEnabled = false;
+    }
+    if (!bot.ecommerceSettings) {
+      bot.ecommerceSettings = undefined;
+    }
     theme = config.theme || 'dark';
     position = config.position || 'right';
     brandColor = config.brandColor || '#6366f1';
@@ -360,7 +367,9 @@ export const generateWidgetJS = (): string => {
       actions: actions,
       collectLeads: collectLeads, // Use collectLeads from integration config
       brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined,
-      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined
+      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined,
+      ecommerceEnabled: fetchedBot.ecommerce_enabled || fetchedBot.ecommerceEnabled || false,
+      ecommerceSettings: fetchedBot.ecommerce_settings || fetchedBot.ecommerceSettings || undefined
     };
     
     console.log('Integration and bot configs loaded successfully');
@@ -417,7 +426,9 @@ export const generateWidgetJS = (): string => {
       actions: actions,
       collectLeads: collectLeads,
       brandingText: fetchedBot.branding_text || fetchedBot.brandingText || undefined,
-      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined
+      headerImageUrl: fetchedBot.header_image_url || fetchedBot.headerImageUrl || undefined,
+      ecommerceEnabled: fetchedBot.ecommerce_enabled || fetchedBot.ecommerceEnabled || false,
+      ecommerceSettings: fetchedBot.ecommerce_settings || fetchedBot.ecommerceSettings || undefined
     };
     
     console.log('Bot config loaded and merged with UI overrides');
@@ -1668,7 +1679,9 @@ export const generateWidgetJS = (): string => {
               actions: actions,
               collectLeads: collectLeads,
               brandingText: selectedBotConfig.branding_text || selectedBotConfig.brandingText || undefined,
-              headerImageUrl: selectedBotConfig.header_image_url || selectedBotConfig.headerImageUrl || undefined
+              headerImageUrl: selectedBotConfig.header_image_url || selectedBotConfig.headerImageUrl || undefined,
+              ecommerceEnabled: selectedBotConfig.ecommerce_enabled || selectedBotConfig.ecommerceEnabled || false,
+              ecommerceSettings: selectedBotConfig.ecommerce_settings || selectedBotConfig.ecommerceSettings || undefined
             };
             
             console.log('Switched to department bot:', dept.departmentLabel, currentBot);

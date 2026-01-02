@@ -3248,12 +3248,16 @@ export const generateWidgetJS = (): string => {
           var productRecommendationArgs = null;
           
           // Extract product recommendation marker from text
-          var recommendationMatch = messageText.match(/\[PRODUCT_RECOMMENDATION:([^\]]+)\]/);
+          // Escape both opening and closing brackets in the regex pattern
+          // Use RegExp constructor to avoid escaping issues in generated code
+          var recommendationPattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:([^\\\\]]+)\\\\]');
+          var recommendationMatch = messageText.match(recommendationPattern);
           if (recommendationMatch) {
             try {
               productRecommendationArgs = JSON.parse(recommendationMatch[1]);
-              // Remove the marker from display text
-              messageText = messageText.replace(/\[PRODUCT_RECOMMENDATION:[^\]]+\]/, '').trim();
+              // Remove the marker from display text (escape both brackets)
+              var replacePattern = new RegExp('\\\\[PRODUCT_RECOMMENDATION:[^\\\\]]+\\\\]');
+              messageText = messageText.replace(replacePattern, '').trim();
             } catch (e) {
               console.error('Failed to parse product recommendation args:', e);
             }

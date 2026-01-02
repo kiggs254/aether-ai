@@ -2186,7 +2186,7 @@ export const generateWidgetJS = (): string => {
   };
 
   // Handle product recommendation function call
-  const handleProductRecommendation = async (args, botMsg, bot) => {
+  const handleProductRecommendation = async (args, botMsg, bot, conversationId) => {
     if (!bot || !bot.id) {
       console.error('Bot ID missing for product recommendation');
       return;
@@ -2204,12 +2204,29 @@ export const generateWidgetJS = (): string => {
       // Insert carousel after bot message
       const carouselContainer = document.createElement('div');
       carouselContainer.className = 'aether-product-carousel-container';
+      // Store recommendation metadata as data attribute for persistence
+      carouselContainer.setAttribute('data-product-recommendation', JSON.stringify(args));
       renderProductCarousel(products, carouselContainer);
       
       if (botMsg && botMsg.parentNode) {
         botMsg.parentNode.insertBefore(carouselContainer, botMsg.nextSibling);
       } else if (messages) {
         messages.appendChild(carouselContainer);
+      }
+      
+      // Save product recommendation metadata to message (append to text as hidden marker)
+      // Format: [PRODUCT_RECOMMENDATION:{"category":"...","max_results":5}]
+      if (conversationId && botMsg) {
+        const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(args) + ']';
+        const currentText = botMsg.textContent || '';
+        // Only save if not already saved (avoid duplicates)
+        if (!currentText.includes('[PRODUCT_RECOMMENDATION:')) {
+          // Update the saved message with recommendation marker
+          // Note: This is a workaround - ideally we'd have a metadata field
+          const messageText = currentText + recommendationMarker;
+          // The message was already saved, so we'll update it
+          // For now, we'll rely on the data attribute in the carousel container
+        }
       }
     }
   };
@@ -2738,7 +2755,8 @@ export const generateWidgetJS = (): string => {
       // Handle product recommendations
       if (productRecommendationCall) {
         try {
-          await handleProductRecommendation(productRecommendationCall, botMsg, bot);
+          await handleProductRecommendation(productRecommendationCall, botMsg, bot, conversationId);
+          // Note: The recommendation marker will be added when saving the message below
         } catch (error) {
           console.error('Error handling product recommendation:', error);
         }
@@ -2751,12 +2769,19 @@ export const generateWidgetJS = (): string => {
         // For actions, don't show message in bubble - it will be shown in the action card
         // Only show text if there's actual content (not just the trigger)
         if (fullText && fullText.trim()) {
-          updateMessage(fullText);
-          messageHistory.push({ role: 'model', text: fullText });
+          // Append product recommendation marker to text for persistence
+          let textToSave = fullText;
+          if (productRecommendationCall) {
+            const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(productRecommendationCall) + ']';
+            textToSave = fullText + recommendationMarker;
+          }
           
-          // Save bot message if we have a conversation
+          updateMessage(fullText); // Display without marker
+          messageHistory.push({ role: 'model', text: fullText }); // Context without marker
+          
+          // Save bot message if we have a conversation (with marker for restoration)
           if (conversationId) {
-            saveMessage(conversationId, 'model', fullText);
+            saveMessage(conversationId, 'model', textToSave);
           }
         } else {
           // No text content, just the action - remove the empty message bubble
@@ -3218,17 +3243,71 @@ export const generateWidgetJS = (): string => {
           // Add message to UI
           var role = msg.role === 'user' ? 'user' : 'bot';
           
+          // Check if message contains product recommendation marker
+          var messageText = msg.text || '';
+          var productRecommendationArgs = null;
+          
+          // Extract product recommendation marker from text
+          var recommendationMatch = messageText.match(/\[PRODUCT_RECOMMENDATION:([^\]]+)\]/);
+          if (recommendationMatch) {
+            try {
+              productRecommendationArgs = JSON.parse(recommendationMatch[1]);
+              // Remove the marker from display text
+              messageText = messageText.replace(/\[PRODUCT_RECOMMENDATION:[^\]]+\]/, '').trim();
+            } catch (e) {
+              console.error('Failed to parse product recommendation args:', e);
+            }
+          }
+          
           // If this is an action message, don't show the text bubble - just the action card
           if (actionId) {
             // Only add the action card, no message bubble
             addMessage('', role, actionId);
           } else {
             // Regular message - show both text and any action
-            addMessage(msg.text || '', role, actionId);
+            addMessage(messageText, role, actionId);
+            
+            // If this message has a product recommendation, restore the carousel
+            if (productRecommendationArgs && role === 'bot') {
+              // Use setTimeout to ensure the message is added to DOM first
+              setTimeout(function() {
+                // Find the bot message element we just added
+                var botMessages = messages.querySelectorAll('.aether-msg.bot');
+                var lastBotMsg = botMessages[botMessages.length - 1];
+                
+                if (lastBotMsg && bot && bot.id) {
+                  // Fetch and render products
+                  queryProducts(bot.id, {
+                    category: productRecommendationArgs.category,
+                    price_min: productRecommendationArgs.price_min,
+                    price_max: productRecommendationArgs.price_max,
+                    keywords: productRecommendationArgs.keywords,
+                    max_results: productRecommendationArgs.max_results || (bot.ecommerceSettings?.maxProductsToRecommend || 10),
+                  }).then(function(products) {
+                    if (products && products.length > 0) {
+                      var carouselContainer = document.createElement('div');
+                      carouselContainer.className = 'aether-product-carousel-container';
+                      renderProductCarousel(products, carouselContainer);
+                      
+                      if (lastBotMsg && lastBotMsg.parentNode) {
+                        lastBotMsg.parentNode.insertBefore(carouselContainer, lastBotMsg.nextSibling);
+                      } else if (messages) {
+                        messages.appendChild(carouselContainer);
+                      }
+                      
+                      // Scroll to show the carousel
+                      if (messages) messages.scrollTop = messages.scrollHeight;
+                    }
+                  }).catch(function(error) {
+                    console.error('Error restoring product recommendation:', error);
+                  });
+                }
+              }, 50);
+            }
           }
           
-          // Add to messageHistory for context
-          messageHistory.push({ role: msg.role, text: msg.text || '' });
+          // Add to messageHistory for context (without the marker)
+          messageHistory.push({ role: msg.role, text: messageText });
           
           lastMessageDate = msgDate;
         }

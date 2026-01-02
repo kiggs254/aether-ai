@@ -157,9 +157,9 @@ body.aether-chat-open #aether-launcher {
   padding: 16px;
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
   padding-bottom: 16px;
-  background: hsl(var(--background, 0 0% 100%));
-  border-bottom: 1px solid hsl(var(--border, 214.3 31.8% 91.4%));
-  color: hsl(var(--foreground, 222.2 84% 4.9%));
+  background: #0f172a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
   position: relative;
   display: flex;
   justify-content: space-between;

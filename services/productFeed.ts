@@ -28,24 +28,57 @@ export async function parseXMLFeed(url: string, defaultCurrency: string = 'USD')
     const products: Product[] = [];
 
     // Try different XML formats
-    // 1. RSS format (rss > channel > item)
-    const rssItems = xmlDoc.querySelectorAll('rss > channel > item, channel > item, item');
-    if (rssItems.length > 0) {
-      rssItems.forEach((item) => {
-        const product = parseRSSItem(item, defaultCurrency);
-        if (product) products.push(product);
-      });
-      return products;
-    }
-
-    // 2. Google Shopping format (rss > channel > item with g: namespace)
-    const googleItems = xmlDoc.querySelectorAll('rss > channel > item');
-    if (googleItems.length > 0) {
-      googleItems.forEach((item) => {
-        const product = parseGoogleShoppingItem(item, defaultCurrency);
-        if (product) products.push(product);
-      });
-      if (products.length > 0) return products;
+    // Check all items first to determine format
+    const allItems = xmlDoc.querySelectorAll('rss > channel > item, channel > item, item');
+    
+    if (allItems.length > 0) {
+      // Check first item to see if it has Google Shopping namespace (g:price)
+      const firstItem = allItems[0];
+      let hasGooglePrice = false;
+      
+      // Try multiple methods to detect Google Shopping format
+      // Method 1: Direct selector (escaped colon)
+      try {
+        hasGooglePrice = firstItem.querySelector('g\\:price') !== null;
+      } catch (e) {
+        // Selector might not work, try other methods
+      }
+      
+      // Method 2: Check children directly for price element
+      if (!hasGooglePrice) {
+        const children = Array.from(firstItem.children);
+        hasGooglePrice = children.some(child => {
+          const tagName = child.tagName || child.nodeName || '';
+          return tagName.toLowerCase() === 'g:price' || 
+                 (tagName.toLowerCase() === 'price' && child.prefix === 'g') ||
+                 (child.localName === 'price' && child.namespaceURI?.includes('google.com'));
+        });
+      }
+      
+      // Method 3: Check if any child has 'g:' prefix in tagName
+      if (!hasGooglePrice) {
+        const children = Array.from(firstItem.children);
+        hasGooglePrice = children.some(child => {
+          const tagName = child.tagName || child.nodeName || '';
+          return tagName.startsWith('g:') || tagName.includes(':g:');
+        });
+      }
+      
+      if (hasGooglePrice) {
+        // Google Shopping format - use Google Shopping parser
+        allItems.forEach((item) => {
+          const product = parseGoogleShoppingItem(item, defaultCurrency);
+          if (product) products.push(product);
+        });
+        return products;
+      } else {
+        // Regular RSS format
+        allItems.forEach((item) => {
+          const product = parseRSSItem(item, defaultCurrency);
+          if (product) products.push(product);
+        });
+        return products;
+      }
     }
 
     // 3. Custom XML format (products > product or root > product)
@@ -137,13 +170,36 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
   };
 
   // Google Shopping uses g: namespace
-  const title = getText('title') || getText('g\\:title');
-  const link = getText('link') || getText('g\\:link');
+  // Try multiple selector strategies for namespace handling
+  const title = getText('title') || getText('g\\:title') || getText('*|title');
+  const link = getText('link') || getText('g\\:link') || getText('*|link');
   if (!title || !link) return null;
 
-  const description = getText('description') || getText('g\\:description');
-  const id = getText('g\\:id') || link;
-  const priceText = getText('g\\:price');
+  const description = getText('description') || getText('g\\:description') || getText('*|description');
+  const id = getText('g\\:id') || getText('*|id') || link;
+  
+  // Try multiple ways to get price (namespace handling can be tricky)
+  let priceText = getText('g\\:price');
+  if (!priceText) {
+    // Try direct child search for price element
+    const children = Array.from(item.children);
+    const priceChild = children.find(child => {
+      const tagName = (child.tagName || child.nodeName || '').toLowerCase();
+      return tagName === 'g:price' || 
+             tagName === 'price' ||
+             (child.localName === 'price' && (child.prefix === 'g' || child.namespaceURI?.includes('google.com')));
+    });
+    priceText = priceChild?.textContent?.trim() || '';
+  }
+  if (!priceText) {
+    // Try with wildcard namespace (might not work in all browsers)
+    try {
+      const priceEl = item.querySelector('*|price');
+      priceText = priceEl?.textContent?.trim() || '';
+    } catch (e) {
+      // Wildcard namespace not supported
+    }
+  }
   
   // Extract currency code (3 uppercase letters, typically at the start)
   // Examples: "KES 13995.0", "USD 99.99", "EUR 50.00"
@@ -151,25 +207,39 @@ function parseGoogleShoppingItem(item: Element, defaultCurrency: string = 'USD')
   let price: number | undefined = undefined;
   
   if (priceText) {
+    // Trim whitespace and normalize
+    priceText = priceText.trim().replace(/\s+/g, ' ');
+    
     // Try to match currency code at the start (e.g., "KES 13995.0")
-    // Pattern: 3 uppercase letters followed by space, then number
-    const currencyMatch = priceText.match(/^([A-Z]{3})\s+([\d,.]+)/);
-    if (currencyMatch) {
+    // Pattern: 3 uppercase letters followed by space(s), then number (with optional decimal)
+    const currencyMatch = priceText.match(/^([A-Z]{3})\s+([\d,]+\.?\d*)/);
+    if (currencyMatch && currencyMatch.length >= 3) {
       currency = currencyMatch[1];
       // Extract numeric value (remove commas, keep decimal point)
       const numericValue = currencyMatch[2].replace(/,/g, '');
-      price = parseFloat(numericValue);
+      const parsedPrice = parseFloat(numericValue);
+      if (!isNaN(parsedPrice)) {
+        price = parsedPrice;
+      }
     } else {
       // Fallback: look for any 3 uppercase letters followed by space or number
-      const fallbackMatch = priceText.match(/\b([A-Z]{3})\s*([\d,.]+)/);
-      if (fallbackMatch) {
+      const fallbackMatch = priceText.match(/\b([A-Z]{3})\s*([\d,]+\.?\d*)/);
+      if (fallbackMatch && fallbackMatch.length >= 3) {
         currency = fallbackMatch[1];
         const numericValue = fallbackMatch[2].replace(/,/g, '');
-        price = parseFloat(numericValue);
+        const parsedPrice = parseFloat(numericValue);
+        if (!isNaN(parsedPrice)) {
+          price = parsedPrice;
+        }
       } else {
         // Last resort: extract just the number, use default currency
         const numericValue = priceText.replace(/[^\d.]/g, '');
-        price = numericValue ? parseFloat(numericValue) : undefined;
+        if (numericValue) {
+          const parsedPrice = parseFloat(numericValue);
+          if (!isNaN(parsedPrice)) {
+            price = parsedPrice;
+          }
+        }
       }
     }
   }

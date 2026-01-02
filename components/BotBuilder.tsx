@@ -283,8 +283,21 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
         }
         return;
       }
+    } else if (currentAction.type === 'products') {
+      // For products actions, payload is optional (can use filters from payload JSON)
+      // If no payload, use empty object (will show all products)
+      if (!currentAction.payload) {
+        currentAction.payload = '{}'; // Default: show all products
+      }
+      // Validate payload is valid JSON
+      try {
+        JSON.parse(currentAction.payload);
+      } catch (e) {
+        showError('Invalid JSON', 'Payload must be valid JSON with product filters (e.g., {"category": "electronics", "max_results": 5})');
+        return;
+      }
     } else {
-      // For non-media actions, payload is required
+      // For other non-media actions, payload is required
       if (!currentAction.payload) {
         showError('Missing payload', `Please provide a ${currentAction.type === 'link' ? 'URL' : currentAction.type === 'phone' || currentAction.type === 'whatsapp' ? 'phone number' : 'value'}.`);
         return;
@@ -311,6 +324,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       case 'whatsapp': return <MessageCircle className="w-4 h-4" />;
       case 'phone': return <Phone className="w-4 h-4" />;
       case 'handoff': return <Users className="w-4 h-4" />;
+      case 'products': return <ShoppingBag className="w-4 h-4" />;
       case 'media':
         switch (mediaType) {
           case 'image': return <Image className="w-4 h-4" />;
@@ -622,17 +636,17 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     <div>
                        <label className="text-xs font-medium text-slate-300 mb-1 block">Action Type</label>
                        <div className="grid grid-cols-2 gap-2">
-                          {['link', 'phone', 'whatsapp', 'handoff', 'media'].map((t) => (
+                          {['link', 'phone', 'whatsapp', 'handoff', 'media', 'products'].map((t) => (
                              <button
                                 key={t}
                                 onClick={() => {
                                   setCurrentAction(prev => ({ 
                                     ...prev, 
                                     type: t as ActionType, 
-                                    label: t === 'whatsapp' ? 'Chat on WhatsApp' : t === 'media' ? 'View Media' : prev.label,
-                                    payload: t === 'media' ? '' : prev.payload
+                                    label: t === 'whatsapp' ? 'Chat on WhatsApp' : t === 'media' ? 'View Media' : t === 'products' ? 'View Products' : prev.label,
+                                    payload: t === 'media' || t === 'products' ? '' : prev.payload
                                   }));
-                                  if (t !== 'media') {
+                                  if (t !== 'media' && t !== 'products') {
                                     setSelectedFile(null);
                                     setFilePreview(null);
                                   }
@@ -682,6 +696,76 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             <div className="mt-2 text-xs text-slate-400">
                               <p>Current file: {currentAction.mediaType || 'media'}</p>
                               {currentAction.fileSize && <p>Size: {(currentAction.fileSize / 1024 / 1024).toFixed(2)} MB</p>}
+                            </div>
+                          )}
+                       </div>
+                    ) : currentAction.type === 'products' ? (
+                       <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-medium text-slate-300 mb-1 block">Product Filters (JSON)</label>
+                            <textarea 
+                              value={currentAction.payload || '{}'}
+                              onChange={(e) => {
+                                try {
+                                  // Validate JSON
+                                  JSON.parse(e.target.value);
+                                  setCurrentAction(prev => ({ ...prev, payload: e.target.value }));
+                                } catch (err) {
+                                  // Still allow typing, but show error
+                                  setCurrentAction(prev => ({ ...prev, payload: e.target.value }));
+                                }
+                              }}
+                              placeholder='{"category": "electronics", "max_results": 5, "price_min": 10, "price_max": 1000}'
+                              className="w-full p-2.5 rounded-xl glass-input text-sm placeholder-slate-600 font-mono"
+                              rows={4}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                              Optional filters: category, max_results, price_min, price_max, keywords (array)
+                            </p>
+                            {currentAction.payload && (() => {
+                              try {
+                                JSON.parse(currentAction.payload);
+                                return null;
+                              } catch (e) {
+                                return <p className="text-xs text-red-400 mt-1">Invalid JSON format</p>;
+                              }
+                            })()}
+                          </div>
+                          {ecommerceEnabled && catalogProducts.length > 0 && (
+                            <div>
+                              <label className="text-xs font-medium text-slate-300 mb-1 block">Quick Filters</label>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => {
+                                    const categories = [...new Set(catalogProducts.map(p => p.category).filter(Boolean))];
+                                    if (categories.length > 0) {
+                                      const payload = JSON.stringify({ category: categories[0], max_results: 5 });
+                                      setCurrentAction(prev => ({ ...prev, payload }));
+                                    }
+                                  }}
+                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
+                                >
+                                  By Category
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const payload = JSON.stringify({ max_results: 5 });
+                                    setCurrentAction(prev => ({ ...prev, payload }));
+                                  }}
+                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
+                                >
+                                  All Products (5)
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const payload = JSON.stringify({ max_results: 10 });
+                                    setCurrentAction(prev => ({ ...prev, payload }));
+                                  }}
+                                  className="px-3 py-1.5 text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg border border-indigo-500/30"
+                                >
+                                  All Products (10)
+                                </button>
+                              </div>
                             </div>
                           )}
                        </div>

@@ -2232,6 +2232,67 @@ export const generateWidgetJS = (): string => {
         // Get trigger message to show in action card (replaces "Click below to proceed:")
         const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
         
+        // Handle products actions - fetch and display product carousel
+        if (action.type === 'products') {
+          actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+            triggerMessage +
+            '</div>' +
+            '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
+          
+          // Insert action card first
+          if (msg && msg.parentNode) {
+            msg.parentNode.insertBefore(actionCard, msg.nextSibling);
+          } else if (messages) {
+            messages.appendChild(actionCard);
+          }
+          
+          // Parse filters from payload
+          let filters = {};
+          try {
+            if (action.payload) {
+              filters = JSON.parse(action.payload);
+            }
+          } catch (e) {
+            console.error('Invalid product filters JSON:', e);
+          }
+          
+          // Fetch and render products
+          if (bot && bot.id) {
+            queryProducts(bot.id, {
+              category: filters.category,
+              price_min: filters.price_min,
+              price_max: filters.price_max,
+              keywords: filters.keywords,
+              max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
+            }).then(function(products) {
+              // Remove loading message
+              const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
+              if (loadingEl) loadingEl.remove();
+              
+              if (products && products.length > 0) {
+                renderProductCarousel(products, actionCard);
+              } else {
+                actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+                  triggerMessage +
+                  '</div>' +
+                  '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
+              }
+              
+              if (messages) messages.scrollTop = messages.scrollHeight;
+            }).catch(function(error) {
+              console.error('Error fetching products for action:', error);
+              const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
+              if (loadingEl) {
+                loadingEl.textContent = 'Failed to load products. Please try again.';
+                loadingEl.style.color = '#ef4444';
+              }
+            });
+          }
+          
+          // Skip the rest of the action card rendering for products
+          return;
+        }
+        
         // Handle media actions differently - display inline or as download
         if (action.type === 'media') {
           const mediaType = action.mediaType || 'image';
@@ -2613,6 +2674,67 @@ export const generateWidgetJS = (): string => {
           // Create and display action card
           const actionCard = document.createElement('div');
           actionCard.className = 'aether-action-card';
+          
+          // Handle products actions - fetch and display product carousel
+          if (action.type === 'products') {
+            actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+              triggerMessage +
+              '</div>' +
+              '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
+            
+            // Insert action card first
+            if (botMsg && botMsg.parentNode) {
+              botMsg.parentNode.insertBefore(actionCard, botMsg.nextSibling);
+            } else if (messages) {
+              messages.appendChild(actionCard);
+            }
+            
+            // Parse filters from payload
+            let filters = {};
+            try {
+              if (action.payload) {
+                filters = JSON.parse(action.payload);
+              }
+            } catch (e) {
+              console.error('Invalid product filters JSON:', e);
+            }
+            
+            // Fetch and render products
+            if (bot && bot.id) {
+              queryProducts(bot.id, {
+                category: filters.category,
+                price_min: filters.price_min,
+                price_max: filters.price_max,
+                keywords: filters.keywords,
+                max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
+              }).then(function(products) {
+                // Remove loading message
+                const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
+                if (loadingEl) loadingEl.remove();
+                
+                if (products && products.length > 0) {
+                  renderProductCarousel(products, actionCard);
+                } else {
+                  actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+                    triggerMessage +
+                    '</div>' +
+                    '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
+                }
+                
+                if (messages) messages.scrollTop = messages.scrollHeight;
+              }).catch(function(error) {
+                console.error('Error fetching products for action:', error);
+                const loadingEl = actionCard.querySelector('.aether-product-carousel-loading');
+                if (loadingEl) {
+                  loadingEl.textContent = 'Failed to load products. Please try again.';
+                  loadingEl.style.color = '#ef4444';
+                }
+              });
+            }
+            
+            // Skip the rest of the action card rendering for products
+            return;
+          }
           
           // Handle media actions differently - display inline or as download
           if (action.type === 'media') {

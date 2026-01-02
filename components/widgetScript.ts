@@ -2341,10 +2341,8 @@ export const generateWidgetJS = (): string => {
         if (action.type === 'products') {
           // Add a class to identify product action cards for full-width styling
           actionCard.classList.add('aether-product-action-card');
-          actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px; padding: 0 var(--aether-spacing-md);">' +
-            triggerMessage +
-            '</div>' +
-            '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
+            // Don't show trigger message in action card - it's already in the message bubble
+            actionCard.innerHTML = '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
           
           // Insert action card first
           if (msg && msg.parentNode) {
@@ -2413,10 +2411,8 @@ export const generateWidgetJS = (): string => {
                 });
                 renderProductCarousel(products, actionCard);
               } else {
-                actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-                  triggerMessage +
-                  '</div>' +
-                  '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
+                // Don't show trigger message - it's already in the message bubble
+                actionCard.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
               }
               
               if (messages) messages.scrollTop = messages.scrollHeight;
@@ -2858,10 +2854,8 @@ export const generateWidgetJS = (): string => {
           if (action.type === 'products') {
             // Add a class to identify product action cards for full-width styling
             actionCard.classList.add('aether-product-action-card');
-            actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px; padding: 0 var(--aether-spacing-md);">' +
-              triggerMessage +
-              '</div>' +
-              '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
+            // Don't show trigger message in action card - it's already in the message bubble
+            actionCard.innerHTML = '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
             
             // Insert action card first
             if (botMsg && botMsg.parentNode) {
@@ -2930,10 +2924,8 @@ export const generateWidgetJS = (): string => {
                   });
                   renderProductCarousel(products, actionCard);
                 } else {
-                  actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-                    triggerMessage +
-                    '</div>' +
-                    '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
+                  // Don't show trigger message - it's already in the message bubble
+                  actionCard.innerHTML = '<div style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">No products found matching your criteria.</div>';
                 }
                 
                 if (messages) messages.scrollTop = messages.scrollHeight;
@@ -3339,10 +3331,12 @@ export const generateWidgetJS = (): string => {
           // Store the timestamp of this message to help identify it later
           var messageTimestamp = msg.timestamp || Date.now();
           
-          // If this is an action message, don't show the text bubble - just the action card
+          // If this is an action message, show the message text in bubble AND the action card
           if (actionId) {
-            // Only add the action card, no message bubble
-            addMessage('', role, actionId);
+            // Show the message text in the bubble (it should contain the trigger message)
+            // If messageText is empty, use a default message
+            const actionDisplayText = messageText && messageText.trim() ? messageText : 'Action triggered';
+            addMessage(actionDisplayText, role, actionId);
           } else {
             // Regular message - show both text and any action
             // If messageText is empty after marker removal and we have a product recommendation,

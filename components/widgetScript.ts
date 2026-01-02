@@ -2339,7 +2339,9 @@ export const generateWidgetJS = (): string => {
         
         // Handle products actions - fetch and display product carousel
         if (action.type === 'products') {
-          actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+          // Add a class to identify product action cards for full-width styling
+          actionCard.classList.add('aether-product-action-card');
+          actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px; padding: 0 var(--aether-spacing-md);">' +
             triggerMessage +
             '</div>' +
             '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';
@@ -2839,7 +2841,9 @@ export const generateWidgetJS = (): string => {
           
           // Handle products actions - fetch and display product carousel
           if (action.type === 'products') {
-            actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
+            // Add a class to identify product action cards for full-width styling
+            actionCard.classList.add('aether-product-action-card');
+            actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px; padding: 0 var(--aether-spacing-md);">' +
               triggerMessage +
               '</div>' +
               '<div class="aether-product-carousel-loading" style="padding: 16px; text-align: center; color: var(--aether-text-color); opacity: 0.6;">Loading products...</div>';

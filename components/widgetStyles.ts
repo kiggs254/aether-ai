@@ -448,6 +448,35 @@ body.aether-chat-open #aether-launcher {
   animation: fadeIn 0.3s ease;
 }
 
+/* Product action cards should be full width */
+.aether-product-action-card {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
+  margin-left: var(--aether-spacing-md) !important;
+  margin-right: var(--aether-spacing-md) !important;
+  width: calc(100% - var(--aether-spacing-md) * 2) !important;
+  box-sizing: border-box;
+}
+
+.aether-product-action-card .aether-product-carousel-container,
+.aether-product-action-card .aether-product-carousel-wrapper {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.aether-product-action-card .aether-product-carousel-container {
+  margin-top: calc(-1 * var(--aether-spacing-md));
+  margin-bottom: calc(-1 * var(--aether-spacing-md));
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  padding-left: var(--aether-spacing-md);
+  padding-right: var(--aether-spacing-md);
+}
+
 @keyframes fadeIn {
   from { 
     opacity: 0; 
@@ -1540,12 +1569,16 @@ body.aether-chat-open #aether-launcher {
   
   .aether-product-carousel-container {
     margin-top: var(--aether-spacing-sm);
+    margin-left: var(--aether-spacing-md);
+    margin-right: var(--aether-spacing-md);
     padding: var(--aether-spacing-md);
     background: rgba(255,255,255,0.05);
     border-radius: 16px;
     border: 1px solid var(--aether-border-color);
-    align-self: flex-start;
-    max-width: 85%;
+    align-self: stretch;
+    width: calc(100% - var(--aether-spacing-md) * 2);
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   [data-theme="dark"] .aether-product-carousel-container,

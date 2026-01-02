@@ -529,11 +529,29 @@ function extractKeywords(name: string, description: string, category?: string): 
  * Update product catalog for a bot
  */
 export async function updateProductCatalog(botId: string, products: Product[]): Promise<void> {
-  if (products.length === 0) return;
+  if (products.length === 0) {
+    // If no products, clear the catalog for this bot
+    const { error: deleteError } = await supabase
+      .from('product_catalog')
+      .delete()
+      .eq('bot_id', botId);
+    
+    if (deleteError) {
+      console.error('Error clearing product catalog:', deleteError);
+      throw deleteError;
+    }
+    return;
+  }
+
+  // Set botId on all products
+  const productsWithBotId = products.map(p => ({
+    ...p,
+    botId: botId,
+  }));
 
   // Prepare products for upsert
-  const productsToUpsert = products.map(p => ({
-    bot_id: botId,
+  const productsToUpsert = productsWithBotId.map(p => ({
+    bot_id: p.botId,
     product_id: p.productId,
     name: p.name,
     description: p.description || null,
@@ -547,7 +565,39 @@ export async function updateProductCatalog(botId: string, products: Product[]): 
     last_updated: new Date().toISOString(),
   }));
 
+  // Get list of product IDs from the feed
+  const feedProductIds = productsWithBotId.map(p => p.productId);
+
+  // Delete products that are no longer in the feed
+  // First, get all existing product IDs for this bot
+  const { data: existingProducts, error: fetchError } = await supabase
+    .from('product_catalog')
+    .select('product_id')
+    .eq('bot_id', botId);
+
+  if (fetchError) {
+    console.warn('Warning: Could not fetch existing products:', fetchError);
+  } else if (existingProducts) {
+    // Find products that exist in DB but not in the new feed
+    const existingProductIds = existingProducts.map(p => p.product_id);
+    const productsToDelete = existingProductIds.filter(id => !feedProductIds.includes(id));
+
+    if (productsToDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('product_catalog')
+        .delete()
+        .eq('bot_id', botId)
+        .in('product_id', productsToDelete);
+
+      if (deleteError) {
+        console.warn('Warning: Could not delete old products:', deleteError);
+        // Continue anyway - we'll still upsert the new products
+      }
+    }
+  }
+
   // Upsert products (update if exists, insert if not)
+  // Use the unique constraint on (bot_id, product_id)
   const { error } = await supabase
     .from('product_catalog')
     .upsert(productsToUpsert, {

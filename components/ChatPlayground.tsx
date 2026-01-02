@@ -153,6 +153,17 @@ const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
       const action = bot.actions?.find(a => a.id === actionId);
       if (!action) return null;
 
+      // Handle product recommendations (displayed as action type 'products')
+      if (action.type === 'products') {
+        return (
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <div className="text-sm text-slate-400 italic">
+              Product recommendations are displayed in the chat widget. Products are recommended dynamically based on user queries.
+            </div>
+          </div>
+        );
+      }
+
       // Handle media actions
       if (action.type === 'media') {
         const mediaType = action.mediaType || 'image';

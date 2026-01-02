@@ -2001,6 +2001,111 @@ export const generateWidgetJS = (): string => {
     return cleaned;
   };
 
+  // Query products from Supabase
+  const queryProducts = async (botId, filters) => {
+    if (!config.supabaseUrl || !config.supabaseAnonKey) {
+      console.error('Supabase config missing for product queries');
+      return [];
+    }
+
+    try {
+      let queryUrl = config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + botId;
+      
+      // Add filters
+      if (filters.category) {
+        queryUrl += '&category=eq.' + encodeURIComponent(filters.category);
+      }
+      if (filters.price_min !== undefined) {
+        queryUrl += '&price=gte.' + filters.price_min;
+      }
+      if (filters.price_max !== undefined) {
+        queryUrl += '&price=lte.' + filters.price_max;
+      }
+      if (filters.keywords && filters.keywords.length > 0) {
+        // Use array overlap for keywords
+        queryUrl += '&keywords=ov.' + encodeURIComponent('{' + filters.keywords.join(',') + '}');
+      }
+      queryUrl += '&in_stock=eq.true';
+      queryUrl += '&order=name.asc';
+      queryUrl += '&limit=' + (filters.max_results || 10);
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': config.supabaseAnonKey,
+        'Authorization': 'Bearer ' + config.supabaseAnonKey,
+      };
+
+      const response = await fetch(queryUrl, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to query products: ' + response.status);
+      }
+
+      const data = await response.json();
+      return data || [];
+    } catch (error) {
+      console.error('Error querying products:', error);
+      return [];
+    }
+  };
+
+  // Render product carousel
+  const renderProductCarousel = (products, container) => {
+    if (!products || products.length === 0) return;
+
+    const carousel = document.createElement('div');
+    carousel.className = 'aether-product-carousel';
+    carousel.innerHTML = '<div class="aether-product-carousel-inner">' +
+      products.map(function(p) {
+        const price = p.price ? '$' + parseFloat(p.price).toFixed(2) : '';
+        const image = p.image_url ? '<img src="' + p.image_url + '" alt="' + (p.name || 'Product') + '" class="aether-product-image" />' : '<div class="aether-product-image-placeholder"></div>';
+        return '<div class="aether-product-card">' +
+          '<a href="' + (p.product_url || '#') + '" target="_blank" rel="noopener noreferrer" class="aether-product-link">' +
+            image +
+            '<div class="aether-product-info">' +
+              '<div class="aether-product-name">' + (p.name || 'Product') + '</div>' +
+              (price ? '<div class="aether-product-price">' + price + '</div>' : '') +
+            '</div>' +
+          '</a>' +
+        '</div>';
+      }).join('') +
+      '</div>';
+
+    container.appendChild(carousel);
+  };
+
+  // Handle product recommendation function call
+  const handleProductRecommendation = async (args, botMsg, bot) => {
+    if (!bot || !bot.id) {
+      console.error('Bot ID missing for product recommendation');
+      return;
+    }
+
+    const products = await queryProducts(bot.id, {
+      category: args.category,
+      price_min: args.price_min,
+      price_max: args.price_max,
+      keywords: args.keywords,
+      max_results: args.max_results || (bot.ecommerceSettings?.maxProductsToRecommend || 10),
+    });
+
+    if (products.length > 0) {
+      // Insert carousel after bot message
+      const carouselContainer = document.createElement('div');
+      carouselContainer.className = 'aether-product-carousel-container';
+      renderProductCarousel(products, carouselContainer);
+      
+      if (botMsg && botMsg.parentNode) {
+        botMsg.parentNode.insertBefore(carouselContainer, botMsg.nextSibling);
+      } else if (messages) {
+        messages.appendChild(carouselContainer);
+      }
+    }
+  };
+
   const addMessage = (text, type, actionId = null, imageUrl = null) => {
     if (!messages) return;
     
@@ -2307,6 +2412,7 @@ export const generateWidgetJS = (): string => {
       let fullText = '';
       let functionCallFound = false;
       let actionId = null;
+      let productRecommendationCall = null;
 
       const updateMessage = (text) => {
         if (botMsg) {
@@ -2357,6 +2463,13 @@ export const generateWidgetJS = (): string => {
                   if (fullText) {
                     updateMessage(fullText);
                   }
+                } else if (call.name === 'recommend_products') {
+                  productRecommendationCall = call.args || {};
+                  // Clean any accumulated text that contains triggeraction patterns
+                  fullText = cleanTriggerActionText(fullText);
+                  if (fullText) {
+                    updateMessage(fullText);
+                  }
                 }
               }
               
@@ -2369,13 +2482,22 @@ export const generateWidgetJS = (): string => {
                     const cleanedText = cleanTriggerActionText(fullText);
                     updateMessage(cleanedText || fullText);
                   }
-                  if (part.functionCall && part.functionCall.name === 'trigger_action') {
+                  if (part.functionCall) {
                     functionCallFound = true;
-                    actionId = part.functionCall.args?.action_id || null;
-                    // Clean any accumulated text that contains triggeraction patterns
-                    fullText = cleanTriggerActionText(fullText);
-                    if (fullText) {
-                      updateMessage(fullText);
+                    if (part.functionCall.name === 'trigger_action') {
+                      actionId = part.functionCall.args?.action_id || null;
+                      // Clean any accumulated text that contains triggeraction patterns
+                      fullText = cleanTriggerActionText(fullText);
+                      if (fullText) {
+                        updateMessage(fullText);
+                      }
+                    } else if (part.functionCall.name === 'recommend_products') {
+                      productRecommendationCall = part.functionCall.args || {};
+                      // Clean any accumulated text that contains triggeraction patterns
+                      fullText = cleanTriggerActionText(fullText);
+                      if (fullText) {
+                        updateMessage(fullText);
+                      }
                     }
                   }
                 }
@@ -2410,8 +2532,17 @@ export const generateWidgetJS = (): string => {
         }
       }
 
+      // Handle product recommendations
+      if (productRecommendationCall) {
+        try {
+          await handleProductRecommendation(productRecommendationCall, botMsg, bot);
+        } catch (error) {
+          console.error('Error handling product recommendation:', error);
+        }
+      }
+
       // Clean and finalize message text when function call is found
-      if (functionCallFound || actionId) {
+      if (functionCallFound || actionId || productRecommendationCall) {
         fullText = cleanTriggerActionText(fullText);
         
         // For actions, don't show message in bubble - it will be shown in the action card

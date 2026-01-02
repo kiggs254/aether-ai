@@ -460,7 +460,7 @@ serve(async (req) => {
 });
 
 function buildSystemInstruction(bot: any): string {
-  return `
+  let instruction = `
     You are ${bot.name}. ${bot.systemInstruction}
     
     Here is your core knowledge base/training data:
@@ -471,41 +471,112 @@ function buildSystemInstruction(bot: any): string {
     You have access to interactive UI tools/actions. 
     If a user's request is best served by triggering a UI action (like showing a button, opening a link, or handing off to a human), invoke the "trigger_action" function with the appropriate action_id.
     Do not mention the internal action_id to the user, just trigger it naturally.
+  `;
+
+  // Add e-commerce instructions if enabled
+  if (bot.ecommerceEnabled) {
+    instruction += `
+    
+    E-COMMERCE MODE ENABLED:
+    You can recommend products from the catalog using the "recommend_products" function.
+    Before recommending products, ask clarifying questions about:
+    - Product category or type
+    - Price range or budget
+    - Specific features or preferences
+    
+    Only recommend products when:
+    - The user explicitly asks about products
+    - The user asks for recommendations
+    - It's relevant to help the user find what they're looking for
+    
+    When recommending products, use the recommend_products function with appropriate filters.
+    After calling recommend_products, you'll receive product IDs. Present these products naturally in your response.
+    `;
+  }
+
+  instruction += `
     
     If the answer is not in the knowledge base, use your general knowledge but mention you are not explicitly trained on that specific detail if it seems obscure.
     Keep responses concise and helpful.
   `;
+
+  return instruction;
 }
 
 function buildOpenAITools(bot: any): any[] | undefined {
-  if (!bot.actions || bot.actions.length === 0) return undefined;
+  const tools: any[] = [];
 
-  const triggerActionFunc = {
-    type: 'function',
-    function: {
-      name: 'trigger_action',
-      description: 'Triggers a UI action, button, or redirect for the user.',
-      parameters: {
-        type: 'object',
-        properties: {
-          action_id: {
-            type: 'string',
-            description: `The ID of the action to trigger. Available IDs: ${bot.actions.map((a: any) => `${a.id} (Use when: ${a.description})`).join(', ')}`
-          }
-        },
-        required: ['action_id']
+  // Add trigger_action if bot has actions
+  if (bot.actions && bot.actions.length > 0) {
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'trigger_action',
+        description: 'Triggers a UI action, button, or redirect for the user.',
+        parameters: {
+          type: 'object',
+          properties: {
+            action_id: {
+              type: 'string',
+              description: `The ID of the action to trigger. Available IDs: ${bot.actions.map((a: any) => `${a.id} (Use when: ${a.description})`).join(', ')}`
+            }
+          },
+          required: ['action_id']
+        }
       }
-    }
-  };
+    });
+  }
 
-  return [triggerActionFunc];
+  // Add recommend_products if e-commerce is enabled
+  if (bot.ecommerceEnabled) {
+    const settings = bot.ecommerceSettings || {};
+    const maxResults = settings.maxProductsToRecommend || 10;
+
+    tools.push({
+      type: 'function',
+      function: {
+        name: 'recommend_products',
+        description: 'Recommends products from the catalog based on user preferences. Use this when the user asks about products, wants recommendations, or is looking for something to buy.',
+        parameters: {
+          type: 'object',
+          properties: {
+            category: {
+              type: 'string',
+              description: 'Product category to filter by (e.g., "electronics", "clothing", "books")'
+            },
+            price_min: {
+              type: 'number',
+              description: 'Minimum price in the default currency'
+            },
+            price_max: {
+              type: 'number',
+              description: 'Maximum price in the default currency'
+            },
+            keywords: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Keywords to search for in product names and descriptions'
+            },
+            max_results: {
+              type: 'number',
+              description: `Maximum number of products to return (default: ${maxResults}, max: ${maxResults})`
+            }
+          },
+          required: []
+        }
+      }
+    });
+  }
+
+  return tools.length > 0 ? tools : undefined;
 }
 
 function buildGeminiTools(bot: any): any[] | undefined {
-  if (!bot.actions || bot.actions.length === 0) return undefined;
+  const functionDeclarations: any[] = [];
 
-  const triggerActionFunc = {
-    functionDeclarations: [{
+  // Add trigger_action if bot has actions
+  if (bot.actions && bot.actions.length > 0) {
+    functionDeclarations.push({
       name: 'trigger_action',
       description: 'Triggers a UI action, button, or redirect for the user.',
       parameters: {
@@ -518,9 +589,47 @@ function buildGeminiTools(bot: any): any[] | undefined {
         },
         required: ['action_id']
       }
-    }]
-  };
+    });
+  }
 
-  return [triggerActionFunc];
+  // Add recommend_products if e-commerce is enabled
+  if (bot.ecommerceEnabled) {
+    const settings = bot.ecommerceSettings || {};
+    const maxResults = settings.maxProductsToRecommend || 10;
+
+    functionDeclarations.push({
+      name: 'recommend_products',
+      description: 'Recommends products from the catalog based on user preferences. Use this when the user asks about products, wants recommendations, or is looking for something to buy.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          category: {
+            type: 'STRING',
+            description: 'Product category to filter by (e.g., "electronics", "clothing", "books")'
+          },
+          price_min: {
+            type: 'NUMBER',
+            description: 'Minimum price in the default currency'
+          },
+          price_max: {
+            type: 'NUMBER',
+            description: 'Maximum price in the default currency'
+          },
+          keywords: {
+            type: 'ARRAY',
+            items: { type: 'STRING' },
+            description: 'Keywords to search for in product names and descriptions'
+          },
+          max_results: {
+            type: 'NUMBER',
+            description: `Maximum number of products to return (default: ${maxResults}, max: ${maxResults})`
+          }
+        },
+        required: []
+      }
+    });
+  }
+
+  return functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined;
 }
 

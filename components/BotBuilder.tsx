@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
-import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music } from 'lucide-react';
+import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
 import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
 import { useNotification } from './Notification';
+import { parseXMLFeed, updateProductCatalog } from '../services/productFeed';
+import { getProductCatalog } from '../services/productQuery';
+import { Product, EcommerceSettings } from '../types';
 
 interface BotBuilderProps {
   bot: Bot | null;
@@ -26,7 +29,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [brandingText, setBrandingText] = useState(bot?.brandingText || '');
   const [headerImageUrl, setHeaderImageUrl] = useState(bot?.headerImageUrl || '');
   
-  const [activeTab, setActiveTab] = useState<'persona' | 'knowledge' | 'actions'>('persona');
+  const [activeTab, setActiveTab] = useState<'persona' | 'knowledge' | 'actions' | 'ecommerce'>('persona');
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved'>('idle');
 
@@ -44,6 +47,25 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [headerImagePreview, setHeaderImagePreview] = useState<string | null>(null);
   const [isUploadingHeader, setIsUploadingHeader] = useState(false);
 
+  // E-commerce State
+  const [ecommerceEnabled, setEcommerceEnabled] = useState(bot?.ecommerceEnabled || false);
+  const [productFeedUrl, setProductFeedUrl] = useState(bot?.productFeedUrl || '');
+  const [ecommerceSettings, setEcommerceSettings] = useState<EcommerceSettings>(bot?.ecommerceSettings || {
+    maxProductsToRecommend: 10,
+    productsVisibleInCarousel: 5,
+  });
+  const [isTestingFeed, setIsTestingFeed] = useState(false);
+  const [isRefreshingCatalog, setIsRefreshingCatalog] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState<Product[]>([]);
+  const [testProducts, setTestProducts] = useState<Product[]>([]);
+
+  // Load catalog when bot is loaded and e-commerce is enabled
+  useEffect(() => {
+    if (bot?.id && ecommerceEnabled && activeTab === 'ecommerce') {
+      getProductCatalog(bot.id).then(setCatalogProducts).catch(console.error);
+    }
+  }, [bot?.id, ecommerceEnabled, activeTab]);
+
   useEffect(() => {
     if (bot) {
       setName(bot.name);
@@ -58,6 +80,12 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setBrandingText(bot.brandingText || '');
       setHeaderImageUrl(bot.headerImageUrl || '');
       setHeaderImagePreview(bot.headerImageUrl || null);
+      setEcommerceEnabled(bot.ecommerceEnabled || false);
+      setProductFeedUrl(bot.productFeedUrl || '');
+      setEcommerceSettings(bot.ecommerceSettings || {
+        maxProductsToRecommend: 10,
+        productsVisibleInCarousel: 5,
+      });
     } else {
       setName('');
       setDescription('');
@@ -71,6 +99,14 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setBrandingText('');
       setHeaderImageUrl('');
       setHeaderImagePreview(null);
+      setEcommerceEnabled(false);
+      setProductFeedUrl('');
+      setEcommerceSettings({
+        maxProductsToRecommend: 10,
+        productsVisibleInCarousel: 5,
+      });
+      setCatalogProducts([]);
+      setTestProducts([]);
     }
   }, [bot]);
 
@@ -91,7 +127,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       status: bot?.status || 'active',
       actions,
       brandingText: brandingText.trim() || undefined,
-      headerImageUrl: headerImageUrl.trim() || undefined
+      headerImageUrl: headerImageUrl.trim() || undefined,
+      ecommerceEnabled: ecommerceEnabled,
+      productFeedUrl: productFeedUrl.trim() || undefined,
+      ecommerceSettings: ecommerceEnabled ? ecommerceSettings : undefined
     };
     onSave(newBot);
     setSaveStatus('saved');
@@ -745,6 +784,215 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                   </div>
                </div>
             </div>
+          </div>
+        ) : activeTab === 'ecommerce' ? (
+          <div className="space-y-8">
+            {/* Enable E-commerce */}
+            <div className="glass-card p-6 rounded-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-white font-semibold text-lg flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-indigo-400" />
+                    E-commerce Mode
+                  </h3>
+                  <p className="text-slate-400 text-sm mt-1">Enable product recommendations in your chat widget</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={ecommerceEnabled}
+                    onChange={(e) => setEcommerceEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+            </div>
+
+            {ecommerceEnabled && (
+              <>
+                {/* Product Feed URL */}
+                <div className="glass-card p-6 rounded-2xl">
+                  <h3 className="text-white font-semibold mb-4">Product Feed</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm text-slate-400 mb-2 block">XML Feed URL</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          value={productFeedUrl}
+                          onChange={(e) => setProductFeedUrl(e.target.value)}
+                          placeholder="https://example.com/products.xml"
+                          className="flex-1 p-3 rounded-xl glass-input text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!productFeedUrl) {
+                              showError('Missing URL', 'Please enter a product feed URL');
+                              return;
+                            }
+                            setIsTestingFeed(true);
+                            try {
+                              const products = await parseXMLFeed(productFeedUrl);
+                              setTestProducts(products);
+                              showSuccess('Feed parsed', `Found ${products.length} products`);
+                            } catch (error: any) {
+                              showError('Failed to parse feed', error.message || 'Invalid feed URL');
+                              setTestProducts([]);
+                            } finally {
+                              setIsTestingFeed(false);
+                            }
+                          }}
+                          disabled={isTestingFeed || !productFeedUrl}
+                          className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isTestingFeed ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          Test Feed
+                        </button>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">Supports RSS, Google Shopping, and custom XML formats</p>
+                    </div>
+
+                    {testProducts.length > 0 && (
+                      <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                        <p className="text-emerald-400 text-sm font-medium mb-2">Preview: {testProducts.length} products found</p>
+                        <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-2">
+                          {testProducts.slice(0, 5).map((p, idx) => (
+                            <div key={idx} className="text-xs text-slate-300 p-2 bg-white/5 rounded">
+                              <span className="font-medium">{p.name}</span>
+                              {p.price && <span className="text-slate-500 ml-2">${p.price}</span>}
+                            </div>
+                          ))}
+                          {testProducts.length > 5 && (
+                            <p className="text-xs text-slate-500">... and {testProducts.length - 5} more</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {bot?.id && (
+                      <button
+                        onClick={async () => {
+                          if (!productFeedUrl) {
+                            showError('Missing URL', 'Please enter a product feed URL');
+                            return;
+                          }
+                          if (!bot.id) {
+                            showError('No bot ID', 'Please save the bot first');
+                            return;
+                          }
+                          setIsRefreshingCatalog(true);
+                          try {
+                            const products = await parseXMLFeed(productFeedUrl);
+                            await updateProductCatalog(bot.id, products);
+                            const updated = await getProductCatalog(bot.id);
+                            setCatalogProducts(updated);
+                            showSuccess('Catalog updated', `Updated ${products.length} products`);
+                          } catch (error: any) {
+                            showError('Failed to update catalog', error.message || 'Error updating product catalog');
+                          } finally {
+                            setIsRefreshingCatalog(false);
+                          }
+                        }}
+                        disabled={isRefreshingCatalog || !productFeedUrl}
+                        className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isRefreshingCatalog ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                        Refresh Catalog
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <div className="glass-card p-6 rounded-2xl">
+                  <h3 className="text-white font-semibold mb-4">Recommendation Settings</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-slate-400 mb-2 block">Max Products to Recommend</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={ecommerceSettings.maxProductsToRecommend || 10}
+                          onChange={(e) => setEcommerceSettings({
+                            ...ecommerceSettings,
+                            maxProductsToRecommend: parseInt(e.target.value) || 10
+                          })}
+                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-slate-400 mb-2 block">Products Visible in Carousel</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={ecommerceSettings.productsVisibleInCarousel || 5}
+                          onChange={(e) => setEcommerceSettings({
+                            ...ecommerceSettings,
+                            productsVisibleInCarousel: parseInt(e.target.value) || 5
+                          })}
+                          className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Catalog Preview */}
+                {bot?.id && (
+                  <div className="glass-card p-6 rounded-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-white font-semibold">Product Catalog</h3>
+                      <button
+                        onClick={async () => {
+                          if (!bot.id) return;
+                          try {
+                            const products = await getProductCatalog(bot.id);
+                            setCatalogProducts(products);
+                          } catch (error: any) {
+                            showError('Failed to load catalog', error.message);
+                          }
+                        }}
+                        className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Refresh
+                      </button>
+                    </div>
+                    {catalogProducts.length > 0 ? (
+                      <div className="max-h-96 overflow-y-auto custom-scrollbar space-y-2">
+                        {catalogProducts.map((p) => (
+                          <div key={p.id} className="p-3 bg-white/5 rounded-xl flex items-start gap-3">
+                            {p.imageUrl && (
+                              <img src={p.imageUrl} alt={p.name} className="w-12 h-12 object-cover rounded" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-sm font-medium truncate">{p.name}</p>
+                              {p.price && (
+                                <p className="text-slate-400 text-xs">${p.price} {p.currency || 'USD'}</p>
+                              )}
+                              {p.category && (
+                                <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded mt-1 inline-block">
+                                  {p.category}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <ShoppingBag className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No products in catalog. Add a feed URL and refresh to load products.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-6 animate-fade-in h-full flex flex-col">

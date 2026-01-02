@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot } from '../types';
-import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File } from 'lucide-react';
+import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File, ShoppingBag } from 'lucide-react';
 import { useNotification } from './Notification';
 
 interface InboxProps {
@@ -481,6 +481,9 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
                                                   action.mediaType === 'video' ? <Video className="w-4 h-4 text-purple-400" /> :
                                                   action.mediaType === 'audio' ? <Music className="w-4 h-4 text-purple-400" /> :
                                                   <File className="w-4 h-4 text-purple-400" />
+                                                )}
+                                                {action.type === 'products' && (
+                                                  <ShoppingBag className="w-4 h-4 text-indigo-400" />
                                                 )}
                                                 <span className="text-slate-300 font-medium">{action.label}</span>
                                                 {action.type === 'media' && action.mediaType && (

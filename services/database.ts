@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Bot, BotAction, Conversation, ChatMessage, Integration } from '../types';
+import { Bot, BotAction, Conversation, ChatMessage, Integration, Product } from '../types';
 
 // Bot operations
 export const botService = {
@@ -46,6 +46,9 @@ export const botService = {
       userId: bot.user_id,
       brandingText: bot.branding_text || undefined,
       headerImageUrl: bot.header_image_url || undefined,
+      ecommerceEnabled: bot.ecommerce_enabled || false,
+      productFeedUrl: bot.product_feed_url || undefined,
+      ecommerceSettings: bot.ecommerce_settings || undefined,
     }));
   },
 
@@ -95,6 +98,9 @@ export const botService = {
       userId: data.user_id,
       brandingText: data.branding_text || undefined,
       headerImageUrl: data.header_image_url || undefined,
+      ecommerceEnabled: data.ecommerce_enabled || false,
+      productFeedUrl: data.product_feed_url || undefined,
+      ecommerceSettings: data.ecommerce_settings || undefined,
     };
   },
 
@@ -118,6 +124,9 @@ export const botService = {
       collect_leads: bot.collectLeads || false,
       branding_text: bot.brandingText || null,
       header_image_url: bot.headerImageUrl || null,
+      ecommerce_enabled: bot.ecommerceEnabled || false,
+      product_feed_url: bot.productFeedUrl || null,
+      ecommerce_settings: bot.ecommerceSettings || null,
     };
 
     let savedBot;
@@ -892,6 +901,71 @@ export const integrationService = {
       .eq('id', integrationId);
 
     if (error) throw error;
+  },
+};
+
+// Product catalog operations
+export const productCatalogService = {
+  // Get product catalog for a bot
+  async getProductCatalog(botId: string): Promise<Product[]> {
+    const { data, error } = await supabase
+      .from('product_catalog')
+      .select('*')
+      .eq('bot_id', botId)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching product catalog:', error);
+      throw error;
+    }
+
+    return (data || []).map((p: any) => ({
+      id: p.id,
+      botId: p.bot_id,
+      productId: p.product_id,
+      name: p.name,
+      description: p.description || undefined,
+      price: p.price ? parseFloat(p.price) : undefined,
+      currency: p.currency || 'USD',
+      imageUrl: p.image_url || undefined,
+      productUrl: p.product_url,
+      category: p.category || undefined,
+      keywords: p.keywords || [],
+      inStock: p.in_stock !== false,
+      lastUpdated: p.last_updated ? new Date(p.last_updated).getTime() : undefined,
+    }));
+  },
+
+  // Update product catalog (upsert products)
+  async updateProductCatalog(botId: string, products: Product[]): Promise<void> {
+    if (products.length === 0) return;
+
+    const productsToUpsert = products.map(p => ({
+      bot_id: botId,
+      product_id: p.productId,
+      name: p.name,
+      description: p.description || null,
+      price: p.price || null,
+      currency: p.currency || 'USD',
+      image_url: p.imageUrl || null,
+      product_url: p.productUrl,
+      category: p.category || null,
+      keywords: p.keywords || [],
+      in_stock: p.inStock !== false,
+      last_updated: new Date().toISOString(),
+    }));
+
+    const { error } = await supabase
+      .from('product_catalog')
+      .upsert(productsToUpsert, {
+        onConflict: 'bot_id,product_id',
+        ignoreDuplicates: false,
+      });
+
+    if (error) {
+      console.error('Error updating product catalog:', error);
+      throw error;
+    }
   },
 };
 

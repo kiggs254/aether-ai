@@ -1,4 +1,4 @@
-export type ActionType = 'link' | 'phone' | 'whatsapp' | 'handoff' | 'custom' | 'media';
+export type ActionType = 'link' | 'phone' | 'whatsapp' | 'handoff' | 'custom' | 'media' | 'products';
 
 export interface BotAction {
   id: string;
@@ -33,6 +33,10 @@ export interface Bot {
   userId?: string; // Supabase user ID
   brandingText?: string; // Custom "Powered by" text for premium users
   headerImageUrl?: string; // Header image URL for chat widget
+  // E-commerce
+  ecommerceEnabled?: boolean;
+  productFeedUrl?: string;
+  ecommerceSettings?: EcommerceSettings;
 }
 
 export interface ChatMessage {
@@ -91,4 +95,52 @@ export interface Integration {
   departmentBots?: DepartmentBot[]; // Array of department bots for premium users
   createdAt: number;
   updatedAt: number;
+}
+
+// E-commerce types
+export interface Product {
+  id: string;
+  botId: string;
+  productId: string; // Unique identifier from feed
+  name: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  imageUrl?: string;
+  productUrl: string;
+  category?: string;
+  keywords?: string[];
+  inStock?: boolean;
+  lastUpdated?: number;
+}
+
+export interface ProductSummary {
+  id: string;
+  productId: string;
+  name: string;
+  price?: number;
+  currency?: string;
+  category?: string;
+}
+
+export interface ProductFilters {
+  category?: string;
+  priceMin?: number;
+  priceMax?: number;
+  keywords?: string[];
+  inStock?: boolean;
+  maxResults?: number;
+}
+
+export interface EcommerceSettings {
+  maxProductsToRecommend?: number; // Default: 10
+  productsVisibleInCarousel?: number; // Default: 5
+  categoryFilters?: {
+    include?: string[];
+    exclude?: string[];
+  };
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
 }

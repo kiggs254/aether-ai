@@ -2073,14 +2073,26 @@ export const generateWidgetJS = (): string => {
     carousel.className = 'aether-product-carousel';
     carousel.innerHTML = '<div class="aether-product-carousel-inner">' +
       products.map(function(p) {
-        const price = p.price ? '$' + parseFloat(p.price).toFixed(2) : '';
+        // Format price with currency
+        let priceDisplay = '';
+        if (p.price) {
+          const currency = p.currency || 'USD';
+          const priceValue = parseFloat(p.price);
+          // Format based on currency (some currencies don't use decimal places)
+          if (currency === 'JPY' || currency === 'KRW' || currency === 'VND') {
+            priceDisplay = currency + ' ' + Math.round(priceValue).toLocaleString();
+          } else {
+            priceDisplay = currency + ' ' + priceValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+          }
+        }
+        
         const image = p.image_url ? '<img src="' + p.image_url + '" alt="' + (p.name || 'Product') + '" class="aether-product-image" />' : '<div class="aether-product-image-placeholder"></div>';
         return '<div class="aether-product-card">' +
           '<a href="' + (p.product_url || '#') + '" target="_blank" rel="noopener noreferrer" class="aether-product-link">' +
             image +
             '<div class="aether-product-info">' +
               '<div class="aether-product-name">' + (p.name || 'Product') + '</div>' +
-              (price ? '<div class="aether-product-price">' + price + '</div>' : '') +
+              (priceDisplay ? '<div class="aether-product-price">' + priceDisplay + '</div>' : '') +
             '</div>' +
           '</a>' +
         '</div>';

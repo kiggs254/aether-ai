@@ -104,7 +104,7 @@ function parseRSSItem(item: Element): Product | null {
     name: title,
     description,
     price,
-    currency: 'USD',
+    currency,
     imageUrl,
     productUrl: link,
     category,
@@ -130,10 +130,32 @@ function parseGoogleShoppingItem(item: Element): Product | null {
   const description = getText('description') || getText('g\\:description');
   const id = getText('g\\:id') || link;
   const priceText = getText('g\\:price');
-  const price = priceText ? parseFloat(priceText.replace(/[^\d.]/g, '')) : undefined;
-  const currency = priceText?.match(/[A-Z]{3}/)?.[0] || 'USD';
+  
+  // Extract currency code (3 uppercase letters, typically at the start)
+  // Examples: "KES 13995.0", "USD 99.99", "EUR 50.00"
+  let currency = 'USD';
+  let price: number | undefined = undefined;
+  
+  if (priceText) {
+    // Try to match currency code at the start (e.g., "KES", "USD", "EUR")
+    const currencyMatch = priceText.match(/^([A-Z]{3})\s/);
+    if (currencyMatch) {
+      currency = currencyMatch[1];
+    } else {
+      // Fallback: look for any 3 uppercase letters (might be in middle)
+      const fallbackCurrency = priceText.match(/\b([A-Z]{3})\b/);
+      if (fallbackCurrency) {
+        currency = fallbackCurrency[1];
+      }
+    }
+    
+    // Extract numeric price value (remove all non-digit/non-decimal characters)
+    const numericValue = priceText.replace(/[^\d.]/g, '');
+    price = numericValue ? parseFloat(numericValue) : undefined;
+  }
+  
   const imageUrl = getText('g\\:image_link') || getText('g\\:image');
-  const category = getText('g\\:google_product_category') || getText('g\\:product_type');
+  const category = getText('g\\:google_product_category') || getText('g\\:product_type') || getText('g\\:category');
   const availability = getText('g\\:availability')?.toLowerCase();
   const inStock = !availability || availability.includes('in stock');
 
@@ -210,7 +232,30 @@ function parseGenericItem(item: Element): Product | null {
   const description = getText('description') || getText('desc');
   const id = getText('id') || getText('guid') || link;
   const priceText = getText('price') || getText('cost');
-  const price = priceText ? parseFloat(priceText.replace(/[^\d.]/g, '')) : undefined;
+  
+  // Extract currency and price
+  let currency = 'USD';
+  let price: number | undefined = undefined;
+  
+  if (priceText) {
+    // Check if price text contains currency code (e.g., "KES 13995.0")
+    const currencyMatch = priceText.match(/^([A-Z]{3})\s/);
+    if (currencyMatch) {
+      currency = currencyMatch[1];
+    } else {
+      // Fallback: look for currency code anywhere in the string
+      const fallbackCurrency = priceText.match(/\b([A-Z]{3})\b/);
+      if (fallbackCurrency && !priceText.match(/^\d/)) {
+        // Only use if it's not at the start of a number
+        currency = fallbackCurrency[1];
+      }
+    }
+    
+    // Extract numeric value
+    const numericValue = priceText.replace(/[^\d.]/g, '');
+    price = numericValue ? parseFloat(numericValue) : undefined;
+  }
+  
   const imageUrl = getText('image') || getText('imageUrl') || getText('img');
   const category = getText('category') || getText('cat');
 
@@ -221,7 +266,7 @@ function parseGenericItem(item: Element): Product | null {
     name,
     description,
     price,
-    currency: 'USD',
+    currency,
     imageUrl,
     productUrl: link,
     category,

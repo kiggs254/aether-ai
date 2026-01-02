@@ -1560,6 +1560,11 @@ body.aether-chat-open #aether-launcher {
     border-color: rgba(0,0,0,0.1);
   }
 
+  .aether-product-carousel-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
   .aether-product-carousel {
     width: 100%;
     overflow-x: auto;
@@ -1567,6 +1572,61 @@ body.aether-chat-open #aether-launcher {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: rgba(99,102,241,0.3) transparent;
+    scroll-behavior: smooth;
+  }
+  
+  .aether-carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+  }
+  
+  .aether-carousel-btn:hover {
+    background: rgba(0,0,0,0.8);
+    transform: translateY(-50%) scale(1.1);
+  }
+  
+  .aether-carousel-btn:active {
+    transform: translateY(-50%) scale(0.95);
+  }
+  
+  .aether-carousel-btn-prev {
+    left: 8px;
+  }
+  
+  .aether-carousel-btn-next {
+    right: 8px;
+  }
+  
+  .aether-carousel-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  [data-theme="light"] .aether-carousel-btn,
+  .aether-widget-container[data-theme="light"] .aether-carousel-btn {
+    background: rgba(255,255,255,0.9);
+    border-color: rgba(0,0,0,0.1);
+    color: var(--aether-text-color);
+  }
+  
+  [data-theme="light"] .aether-carousel-btn:hover,
+  .aether-widget-container[data-theme="light"] .aether-carousel-btn:hover {
+    background: rgba(255,255,255,1);
   }
 
   .aether-product-carousel::-webkit-scrollbar {

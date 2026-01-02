@@ -2022,7 +2022,8 @@ export const generateWidgetJS = (): string => {
     }
 
     try {
-      let queryUrl = config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + botId;
+      // Select all fields including image_url and product_url
+      let queryUrl = config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + botId + '&select=*';
       
       // Add filters
       if (filters.category) {
@@ -2069,37 +2070,107 @@ export const generateWidgetJS = (): string => {
   const renderProductCarousel = (products, container) => {
     if (!products || products.length === 0) return;
 
+    const carouselWrapper = document.createElement('div');
+    carouselWrapper.className = 'aether-product-carousel-wrapper';
+    
     const carousel = document.createElement('div');
     carousel.className = 'aether-product-carousel';
-    carousel.innerHTML = '<div class="aether-product-carousel-inner">' +
-      products.map(function(p) {
-        // Format price with currency
-        let priceDisplay = '';
-        if (p.price) {
-          const currency = p.currency || 'USD';
-          const priceValue = parseFloat(p.price);
-          // Format based on currency (some currencies don't use decimal places)
-          if (currency === 'JPY' || currency === 'KRW' || currency === 'VND') {
-            priceDisplay = currency + ' ' + Math.round(priceValue).toLocaleString();
-          } else {
-            priceDisplay = currency + ' ' + priceValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-          }
+    
+    const carouselInner = document.createElement('div');
+    carouselInner.className = 'aether-product-carousel-inner';
+    
+    products.forEach(function(p) {
+      // Format price with currency
+      let priceDisplay = '';
+      if (p.price) {
+        const currency = p.currency || 'USD';
+        const priceValue = parseFloat(p.price);
+        // Format based on currency (some currencies don't use decimal places)
+        if (currency === 'JPY' || currency === 'KRW' || currency === 'VND') {
+          priceDisplay = currency + ' ' + Math.round(priceValue).toLocaleString();
+        } else {
+          priceDisplay = currency + ' ' + priceValue.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
-        
-        const image = p.image_url ? '<img src="' + p.image_url + '" alt="' + (p.name || 'Product') + '" class="aether-product-image" />' : '<div class="aether-product-image-placeholder"></div>';
-        return '<div class="aether-product-card">' +
-          '<a href="' + (p.product_url || '#') + '" target="_blank" rel="noopener noreferrer" class="aether-product-link">' +
-            image +
-            '<div class="aether-product-info">' +
-              '<div class="aether-product-name">' + (p.name || 'Product') + '</div>' +
-              (priceDisplay ? '<div class="aether-product-price">' + priceDisplay + '</div>' : '') +
-            '</div>' +
-          '</a>' +
-        '</div>';
-      }).join('') +
-      '</div>';
-
-    container.appendChild(carousel);
+      }
+      
+      // Get image URL - handle both snake_case and camelCase
+      const imageUrl = p.image_url || p.imageUrl;
+      const productUrl = p.product_url || p.productUrl || '#';
+      
+      const productCard = document.createElement('div');
+      productCard.className = 'aether-product-card';
+      
+      const productLink = document.createElement('a');
+      productLink.href = productUrl;
+      productLink.target = '_blank';
+      productLink.rel = 'noopener noreferrer';
+      productLink.className = 'aether-product-link';
+      
+      if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = p.name || 'Product';
+        img.className = 'aether-product-image';
+        img.onerror = function() {
+          // Fallback to placeholder if image fails to load
+          this.style.display = 'none';
+          const placeholder = document.createElement('div');
+          placeholder.className = 'aether-product-image-placeholder';
+          this.parentNode.insertBefore(placeholder, this);
+        };
+        productLink.appendChild(img);
+      } else {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'aether-product-image-placeholder';
+        productLink.appendChild(placeholder);
+      }
+      
+      const productInfo = document.createElement('div');
+      productInfo.className = 'aether-product-info';
+      
+      const productName = document.createElement('div');
+      productName.className = 'aether-product-name';
+      productName.textContent = p.name || 'Product';
+      productInfo.appendChild(productName);
+      
+      if (priceDisplay) {
+        const productPrice = document.createElement('div');
+        productPrice.className = 'aether-product-price';
+        productPrice.textContent = priceDisplay;
+        productInfo.appendChild(productPrice);
+      }
+      
+      productLink.appendChild(productInfo);
+      productCard.appendChild(productLink);
+      carouselInner.appendChild(productCard);
+    });
+    
+    carousel.appendChild(carouselInner);
+    
+    // Add navigation arrows if there are multiple products
+    if (products.length > 1) {
+      const prevBtn = document.createElement('button');
+      prevBtn.className = 'aether-carousel-btn aether-carousel-btn-prev';
+      prevBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+      prevBtn.onclick = function() {
+        carousel.scrollBy({ left: -carousel.offsetWidth * 0.8, behavior: 'smooth' });
+      };
+      
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'aether-carousel-btn aether-carousel-btn-next';
+      nextBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+      nextBtn.onclick = function() {
+        carousel.scrollBy({ left: carousel.offsetWidth * 0.8, behavior: 'smooth' });
+      };
+      
+      carouselWrapper.appendChild(prevBtn);
+      carouselWrapper.appendChild(carousel);
+      carouselWrapper.appendChild(nextBtn);
+      
+      container.appendChild(carouselWrapper);
+    } else {
+      container.appendChild(carousel);
+    }
   };
 
   // Handle product recommendation function call

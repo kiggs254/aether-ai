@@ -487,7 +487,7 @@ export const generateWidgetJS = (): string => {
         '<div id="aether-lead-form-step2" style="display:none;">' +
           '<div>' +
             '<div class="aether-form-title">Select Department</div>' +
-            '<div class="aether-form-desc">Choose the department you\'d like to chat with.</div>' +
+            '<div class="aether-form-desc">Choose the department you would like to chat with.</div>' +
           '</div>' +
           '<div class="aether-form-group" id="aether-department-group">' +
             '<label>Select Department</label>' +

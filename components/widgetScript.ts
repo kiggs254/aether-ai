@@ -2776,16 +2776,18 @@ export const generateWidgetJS = (): string => {
         // For product recommendations, we ALWAYS need to save the message (even if text is empty)
         // so it can be restored on page reload
         if (productRecommendationCall) {
+          // If no text from AI, add a default accompanying message
+          const defaultMessage = 'Here are some products I found for you:';
+          const displayText = (fullText && fullText.trim()) ? fullText : defaultMessage;
+          
           // Append product recommendation marker to text for persistence
-          // Use at least a space so saveMessage doesn't reject it
-          let textToSave = (fullText && fullText.trim()) ? fullText : ' ';
+          let textToSave = displayText;
           const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(productRecommendationCall) + ']';
           textToSave = textToSave + recommendationMarker;
           
-          // Display message (use a space if empty so the element is created)
-          const displayText = (fullText && fullText.trim()) ? fullText : ' ';
+          // Display message with accompanying text
           updateMessage(displayText);
-          messageHistory.push({ role: 'model', text: fullText || '' }); // Context without marker
+          messageHistory.push({ role: 'model', text: displayText }); // Context without marker
           
           // Save bot message with marker for restoration (CRITICAL: always save for product recommendations)
           if (conversationId) {
@@ -2805,12 +2807,25 @@ export const generateWidgetJS = (): string => {
           if (conversationId) {
             saveMessage(conversationId, 'model', fullText);
           }
+        } else if (actionId) {
+          // For actions without text, show the trigger message in the message bubble
+          const action = bot.actions.find(a => a.id === actionId);
+          if (action) {
+            const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+            updateMessage(triggerMessage);
+            messageHistory.push({ role: 'model', text: triggerMessage });
+            // Message will be saved below in the actionId handling section
+          } else {
+            // No action found, remove empty message bubble
+            if (botMsg && botMsg.parentNode) {
+              botMsg.parentNode.removeChild(botMsg);
+            }
+          }
         } else {
-          // No text content, just the action - remove the empty message bubble
+          // No text content and no action - remove the empty message bubble
           if (botMsg && botMsg.parentNode) {
             botMsg.parentNode.removeChild(botMsg);
           }
-          // The action card will show the trigger message
         }
       } else if (fullText) {
         // No function call, just clean and save the text
@@ -3330,10 +3345,16 @@ export const generateWidgetJS = (): string => {
             addMessage('', role, actionId);
           } else {
             // Regular message - show both text and any action
-            // Ensure we have at least some text to display
-            // If messageText is empty after marker removal, use a minimal placeholder
-            // so the message element is created and we can attach the carousel to it
-            var displayText = messageText || (productRecommendationArgs ? ' ' : '');
+            // If messageText is empty after marker removal and we have a product recommendation,
+            // use a default message
+            var displayText = messageText;
+            if (!displayText || !displayText.trim()) {
+              if (productRecommendationArgs) {
+                displayText = 'Here are some products I found for you:';
+              } else {
+                displayText = '';
+              }
+            }
             
             // Add the message - always add it, even if text is minimal
             // We'll manually create the message element if addMessage doesn't create one

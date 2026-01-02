@@ -11,7 +11,7 @@ export interface BotAction {
   fileSize?: number; // File size in bytes for media actions
 }
 
-export type AIProvider = 'gemini' | 'openai';
+export type AIProvider = 'gemini' | 'openai' | 'deepseek';
 
 export interface Bot {
   id: string;

@@ -23,8 +23,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [instruction, setInstruction] = useState(bot?.systemInstruction || 'You are a helpful AI assistant.');
   const [knowledge, setKnowledge] = useState(bot?.knowledgeBase || '');
   const [temperature, setTemperature] = useState(bot?.temperature ?? 0.7);
-  const [provider, setProvider] = useState<'gemini' | 'openai'>(bot?.provider || 'gemini');
-  const [model, setModel] = useState(bot?.model || 'gemini-3-flash-preview');
+  const [provider, setProvider] = useState<'gemini' | 'openai' | 'deepseek'>(bot?.provider || 'gemini');
+  const [model, setModel] = useState(bot?.model || 'gemini-1.5-flash');
   const [actions, setActions] = useState<BotAction[]>(bot?.actions || []);
   const [brandingText, setBrandingText] = useState(bot?.brandingText || '');
   const [headerImageUrl, setHeaderImageUrl] = useState(bot?.headerImageUrl || '');
@@ -81,7 +81,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setKnowledge(bot.knowledgeBase);
       setTemperature(bot.temperature ?? 0.7);
       setProvider(bot.provider || 'gemini');
-      setModel(bot.model || 'gemini-3-flash-preview');
+      setModel(bot.model || 'gemini-1.5-flash');
       setActions(bot.actions || []);
       setBrandingText(bot.brandingText || '');
       setHeaderImageUrl(bot.headerImageUrl || '');
@@ -101,7 +101,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       setKnowledge('');
       setTemperature(0.7);
       setProvider('gemini');
-      setModel('gemini-3-flash-preview');
+      setModel('gemini-1.5-flash');
       setActions([]);
       setBrandingText('');
       setHeaderImageUrl('');
@@ -531,19 +531,22 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                         <select
                           value={provider}
                           onChange={(e) => {
-                            const newProvider = e.target.value as 'gemini' | 'openai';
+                            const newProvider = e.target.value as 'gemini' | 'openai' | 'deepseek';
                             setProvider(newProvider);
                             // Set default model based on provider
                             if (newProvider === 'openai') {
                               setModel('gpt-4');
+                            } else if (newProvider === 'deepseek') {
+                              setModel('deepseek-chat');
                             } else {
-                              setModel('gemini-3-flash-preview');
+                              setModel('gemini-1.5-flash');
                             }
                           }}
                           className="w-full p-3 rounded-xl glass-input text-white"
                         >
                           <option value="gemini">Google Gemini</option>
                           <option value="openai">OpenAI</option>
+                          <option value="deepseek">DeepSeek</option>
                         </select>
                      </div>
                      
@@ -556,10 +559,15 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                         >
                           {provider === 'gemini' ? (
                             <>
-                              <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
-                              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
-                              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                               <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                              <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                              <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                              <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
+                            </>
+                          ) : provider === 'deepseek' ? (
+                            <>
+                              <option value="deepseek-chat">DeepSeek Chat</option>
+                              <option value="deepseek-reasoner">DeepSeek Reasoner</option>
                             </>
                           ) : (
                             <>

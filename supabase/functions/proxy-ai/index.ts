@@ -46,7 +46,138 @@ serve(async (req) => {
 
     // Handle different AI actions
     if (action === 'chat-stream') {
-      if (provider === 'openai') {
+      if (provider === 'deepseek') {
+        // DeepSeek streaming (uses OpenAI-compatible API)
+        const deepseekApiKey = Deno.env.get('DEEPSEEK_API_KEY');
+        if (!deepseekApiKey) {
+          return new Response(
+            JSON.stringify({ error: 'DeepSeek API key not configured' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const messages = [
+          { role: 'system', content: systemInstruction },
+          ...history.map((h: any) => ({
+            role: h.role === 'model' ? 'assistant' : 'user',
+            content: h.text,
+          })),
+          { role: 'user', content: message },
+        ];
+
+        const tools = buildOpenAITools(bot);
+        const requestBody: any = {
+          model: bot.model || 'deepseek-chat',
+          messages: messages,
+          temperature: bot.temperature ?? 0.7,
+          stream: true,
+        };
+        if (tools) {
+          requestBody.tools = tools;
+          requestBody.tool_choice = 'auto';
+        }
+
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${deepseekApiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          return new Response(
+            JSON.stringify({ error: `DeepSeek API error: ${error}` }),
+            { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!response.body) {
+          return new Response(
+            JSON.stringify({ error: 'No response body from DeepSeek API' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Transform DeepSeek SSE to match expected format (same as OpenAI)
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          async start(controller) {
+            try {
+              let accumulatedFunctionCalls: any = {};
+              
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  // Send any accumulated function calls before closing
+                  if (Object.keys(accumulatedFunctionCalls).length > 0) {
+                    const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => ({
+                      name: fc.name,
+                      args: fc.args ? JSON.parse(fc.args) : {}
+                    }));
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                  }
+                  break;
+                }
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                  if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                      const data = JSON.parse(line.slice(6));
+                      const delta = data.choices?.[0]?.delta;
+                      
+                      // Handle text content
+                      if (delta?.content) {
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: delta.content })}\n\n`));
+                      }
+                      
+                      // Handle function calls (accumulate across chunks)
+                      if (delta?.tool_calls) {
+                        for (const toolCall of delta.tool_calls) {
+                          const index = toolCall.index;
+                          if (!accumulatedFunctionCalls[index]) {
+                            accumulatedFunctionCalls[index] = {
+                              name: '',
+                              args: ''
+                            };
+                          }
+                          if (toolCall.function?.name) {
+                            accumulatedFunctionCalls[index].name = toolCall.function.name;
+                          }
+                          if (toolCall.function?.arguments) {
+                            accumulatedFunctionCalls[index].args += toolCall.function.arguments;
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
+                  }
+                }
+              }
+              controller.close();
+            } catch (error) {
+              controller.error(error);
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        });
+      } else if (provider === 'openai') {
         // OpenAI streaming
         const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
         if (!openaiApiKey) {
@@ -210,16 +341,32 @@ serve(async (req) => {
           requestBody.tools = tools;
         }
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${bot.model || 'gemini-3-flash-preview'}:streamGenerateContent?key=${geminiApiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
+        // Try v1 first, fallback to v1beta if needed
+        const modelName = bot.model || 'gemini-1.5-flash';
+        let response = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/${modelName}:streamGenerateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        // If v1 fails, try v1beta
+        if (!response.ok && response.status === 404) {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?key=${geminiApiKey}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody),
+            }
+          );
         }
-      );
 
       if (!response.ok) {
         const error = await response.text();
@@ -427,8 +574,10 @@ serve(async (req) => {
           requestBody.tools = tools;
         }
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${bot.model || 'gemini-3-flash-preview'}:generateContent?key=${geminiApiKey}`,
+        // Try v1 first, fallback to v1beta if needed
+        const modelName = bot.model || 'gemini-1.5-flash';
+        let response = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {
@@ -437,6 +586,20 @@ serve(async (req) => {
             body: JSON.stringify(requestBody),
           }
         );
+
+        // If v1 fails, try v1beta
+        if (!response.ok && response.status === 404) {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(requestBody),
+            }
+          );
+        }
 
         const data = await response.json();
         return new Response(JSON.stringify(data), {

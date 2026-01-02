@@ -544,63 +544,7 @@ export const generateWidgetJS = (): string => {
     }
   }
   
-  // Check for existing session - if found and departments exist, skip to department selection
-  if (showForm) {
-    const departmentBots = config.departmentBots;
-    // Check all possible bot IDs for sessions (default bot + department bots)
-    let existingSession = null;
-    let sessionBotId = bot.id;
-    
-    // Try to find session for default bot
-    existingSession = loadSession(bot.id);
-    
-    // If no session for default bot and departments exist, check department bots
-    if (!existingSession && departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
-      for (let i = 0; i < departmentBots.length; i++) {
-        const deptBot = departmentBots[i];
-        if (deptBot.botId) {
-          const deptSession = loadSession(deptBot.botId);
-          if (deptSession) {
-            existingSession = deptSession;
-            sessionBotId = deptBot.botId;
-            break;
-          }
-        }
-      }
-    }
-    
-    // If session exists and has lead data, skip to department selection
-    if (existingSession && existingSession.leadData && (existingSession.leadData.email || existingSession.leadData.phone)) {
-      leadData = existingSession.leadData;
-      conversationId = existingSession.conversationId;
-      
-      // Hide step 1, show step 2 (department selection)
-      const formStep1El = container.querySelector('#aether-lead-form-step1');
-      const formStep2El = container.querySelector('#aether-lead-form-step2');
-      if (formStep1El) formStep1El.style.display = 'none';
-      if (formStep2El) {
-        formStep2El.style.display = 'block';
-        // Show department selection
-        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
-          // Wait a bit for DOM to be ready and function to be defined, then show departments
-          setTimeout(function() {
-            if (typeof showDepartmentSelection === 'function') {
-              showDepartmentSelection();
-            }
-          }, 300);
-        } else {
-          // No departments, start chatting directly
-          if (leadForm) leadForm.style.display = 'none';
-          if (messages) messages.style.display = 'flex';
-          if (inputArea) inputArea.style.display = 'block';
-        }
-      }
-    } else if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
-      // Has departments but no session - show step 1 (email/phone) first
-      const formStep2El = container.querySelector('#aether-lead-form-step2');
-      if (formStep2El) formStep2El.style.display = 'none';
-    }
-  }
+  // Note: Session checking will be done after loadSession function is defined
   
   // Create lightbox separately and append directly to body (outside container for full-screen)
   const lightboxContainer = document.createElement('div');
@@ -721,6 +665,64 @@ export const generateWidgetJS = (): string => {
     const expiryTime = SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000; // 7 days in milliseconds
     return (now - timestamp) > expiryTime;
   };
+  
+  // Check for existing session - if found and departments exist, skip to department selection
+  if (showForm) {
+    const departmentBots = config.departmentBots;
+    // Check all possible bot IDs for sessions (default bot + department bots)
+    let existingSession = null;
+    let sessionBotId = bot.id;
+    
+    // Try to find session for default bot
+    existingSession = loadSession(bot.id);
+    
+    // If no session for default bot and departments exist, check department bots
+    if (!existingSession && departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+      for (let i = 0; i < departmentBots.length; i++) {
+        const deptBot = departmentBots[i];
+        if (deptBot.botId) {
+          const deptSession = loadSession(deptBot.botId);
+          if (deptSession) {
+            existingSession = deptSession;
+            sessionBotId = deptBot.botId;
+            break;
+          }
+        }
+      }
+    }
+    
+    // If session exists and has lead data, skip to department selection
+    if (existingSession && existingSession.leadData && (existingSession.leadData.email || existingSession.leadData.phone)) {
+      leadData = existingSession.leadData;
+      conversationId = existingSession.conversationId;
+      
+      // Hide step 1, show step 2 (department selection)
+      const formStep1El = container.querySelector('#aether-lead-form-step1');
+      const formStep2El = container.querySelector('#aether-lead-form-step2');
+      if (formStep1El) formStep1El.style.display = 'none';
+      if (formStep2El) {
+        formStep2El.style.display = 'block';
+        // Show department selection
+        if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+          // Wait a bit for DOM to be ready and function to be defined, then show departments
+          setTimeout(function() {
+            if (typeof showDepartmentSelection === 'function') {
+              showDepartmentSelection();
+            }
+          }, 300);
+        } else {
+          // No departments, start chatting directly
+          if (leadForm) leadForm.style.display = 'none';
+          if (messages) messages.style.display = 'flex';
+          if (inputArea) inputArea.style.display = 'block';
+        }
+      }
+    } else if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
+      // Has departments but no session - show step 1 (email/phone) first
+      const formStep2El = container.querySelector('#aether-lead-form-step2');
+      if (formStep2El) formStep2El.style.display = 'none';
+    }
+  }
   
   // Ensure input area is visible on mobile on initial load and after window resize
   const ensureInputAreaVisible = () => {

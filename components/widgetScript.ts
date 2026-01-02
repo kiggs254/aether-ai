@@ -1444,27 +1444,46 @@ export const generateWidgetJS = (): string => {
         btn.textContent = dept.departmentLabel;
         btn.dataset.botId = dept.botId;
         btn.dataset.departmentName = dept.departmentName || dept.departmentLabel.toLowerCase();
-        btn.style.cssText = 'width: 100%; padding: 12px; margin-bottom: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; text-align: left; cursor: pointer; transition: all 0.2s;';
+        
+        // Theme-aware styling
+        const isDark = theme === 'dark';
+        const bgColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const textColor = isDark ? 'white' : '#18181b';
+        const hoverBg = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+        const selectedBg = isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)';
+        const selectedBorder = 'rgba(99,102,241,0.5)';
+        
+        btn.style.cssText = 'width: 100%; padding: 12px 16px; margin-bottom: 8px; background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; color: ' + textColor + '; text-align: left; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500;';
         btn.addEventListener('mouseenter', () => {
-          btn.style.background = 'rgba(255,255,255,0.1)';
-          btn.style.borderColor = 'rgba(99,102,241,0.5)';
+          if (btn.dataset.selected !== 'true') {
+            btn.style.background = hoverBg;
+            btn.style.borderColor = selectedBorder;
+          }
         });
         btn.addEventListener('mouseleave', () => {
           if (btn.dataset.selected !== 'true') {
-            btn.style.background = 'rgba(255,255,255,0.05)';
-            btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            btn.style.background = bgColor;
+            btn.style.borderColor = borderColor;
           }
         });
         btn.addEventListener('click', async () => {
           // Mark as selected
+          const isDark = theme === 'dark';
+          const bgColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+          const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+          const selectedBg = isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)';
+          const selectedBorder = 'rgba(99,102,241,0.5)';
+          
           Array.from(departmentOptions.children).forEach(function(child) {
             child.dataset.selected = 'false';
-            child.style.background = 'rgba(255,255,255,0.05)';
-            child.style.borderColor = 'rgba(255,255,255,0.1)';
+            child.style.background = bgColor;
+            child.style.borderColor = borderColor;
           });
           btn.dataset.selected = 'true';
-          btn.style.background = 'rgba(99,102,241,0.2)';
-          btn.style.borderColor = 'rgba(99,102,241,0.5)';
+          btn.style.background = selectedBg;
+          btn.style.borderColor = selectedBorder;
+          btn.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.1)';
           
           // Store selected department bot
           selectedDepartmentBot = dept;

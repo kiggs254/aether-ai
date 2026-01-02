@@ -2186,10 +2186,22 @@ export const generateWidgetJS = (): string => {
       carouselWrapper.appendChild(nextBtn);
     } else {
       // Single product: still use wrapper for consistent styling, just without navigation buttons
+      // Ensure carousel is visible for single product by setting explicit styles
+      carousel.style.overflowX = 'visible';
+      carousel.style.overflowY = 'visible';
       carouselWrapper.appendChild(carousel);
     }
     
     container.appendChild(carouselWrapper);
+    
+    // Debug logging
+    console.log('Product carousel rendered:', {
+      productCount: products.length,
+      hasWrapper: !!carouselWrapper,
+      hasCarousel: !!carousel,
+      hasInner: !!carouselInner,
+      containerChildren: container.children.length
+    });
   };
 
   // Handle product recommendation function call

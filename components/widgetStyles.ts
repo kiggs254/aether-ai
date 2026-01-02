@@ -1609,6 +1609,13 @@ body.aether-chat-open #aether-launcher {
     scrollbar-width: thin;
     scrollbar-color: rgba(99,102,241,0.3) transparent;
     scroll-behavior: smooth;
+    min-height: 200px; /* Ensure minimum height for visibility */
+  }
+  
+  /* Ensure single product carousel is visible */
+  .aether-product-carousel-wrapper:has(.aether-product-carousel-inner:only-child) .aether-product-carousel,
+  .aether-product-carousel-wrapper:has(.aether-product-card:only-child) .aether-product-carousel {
+    overflow-x: visible;
   }
   
   .aether-carousel-btn {

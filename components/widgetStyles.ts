@@ -1693,6 +1693,17 @@ body.aether-chat-open #aether-launcher {
     display: flex;
     gap: var(--aether-spacing-md);
     padding-bottom: var(--aether-spacing-xs);
+    min-width: fit-content; /* Ensure inner container expands to fit content */
+  }
+  
+  /* Ensure single product is visible */
+  .aether-product-carousel-inner:has(.aether-product-card:only-child) {
+    width: 100%;
+  }
+  
+  .aether-product-carousel-inner:has(.aether-product-card:only-child) .aether-product-card {
+    width: 100%;
+    max-width: 100%;
   }
 
   .aether-product-card {

@@ -553,7 +553,7 @@ body.aether-chat-open #aether-launcher {
 .aether-input-wrapper {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   margin: 0;
   padding: 0;
@@ -561,7 +561,7 @@ body.aether-chat-open #aether-launcher {
   background: transparent;
   box-sizing: border-box;
   width: 100%;
-  height: 48px;
+  min-height: 48px;
 }
 
 .aether-image-btn {
@@ -584,7 +584,8 @@ body.aether-chat-open #aether-launcher {
   touch-action: manipulation;
   margin: 0 !important;
   padding: 0 !important;
-  vertical-align: middle;
+  align-self: flex-end;
+  margin-bottom: 0 !important;
 }
 
 .aether-image-btn:hover {
@@ -657,17 +658,17 @@ body.aether-chat-open #aether-launcher {
   font-family: inherit;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 48px;
-  height: 48px;
   max-height: 120px;
-  line-height: 1.4;
+  line-height: 1.5;
   -webkit-appearance: none;
   appearance: none;
   overflow-y: hidden; /* Hide scrollbar by default */
   margin: 0;
   box-sizing: border-box;
   width: auto;
-  vertical-align: middle;
   resize: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Hide scrollbar on mobile until needed (4+ lines) */
@@ -740,7 +741,8 @@ body.aether-chat-open #aether-launcher {
   touch-action: manipulation;
   margin: 0 !important;
   padding: 0 !important;
-  vertical-align: middle;
+  align-self: flex-end;
+  margin-bottom: 0 !important;
 }
 
 .aether-send-btn svg {

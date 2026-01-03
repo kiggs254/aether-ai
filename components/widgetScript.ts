@@ -2216,7 +2216,7 @@ export const generateWidgetJS = (): string => {
   const handleProductRecommendation = async (args, botMsg, bot, conversationId) => {
     if (!bot || !bot.id) {
       console.error('Bot ID missing for product recommendation');
-      return;
+      return false;
     }
 
     const products = await queryProducts(bot.id, {
@@ -2255,6 +2255,7 @@ export const generateWidgetJS = (): string => {
           // For now, we'll rely on the data attribute in the carousel container
         }
       }
+      return true; // Products found
     } else {
       // No products found - update bot message to show a helpful response
       if (botMsg) {
@@ -2262,26 +2263,24 @@ export const generateWidgetJS = (): string => {
         const searchTerm = keywords || (args.category || 'products');
         const noProductsMessage = 'I could not find any ' + searchTerm + ' in our catalog right now. Please try a different search term or browse other categories.';
         
-        // Update the message text if it's still the default placeholder
-        const currentText = botMsg.textContent || '';
-        if (currentText === 'Here are some products I found for you:' || !currentText.trim()) {
-          botMsg.textContent = noProductsMessage;
-          botMsg.innerHTML = parseMarkdown(noProductsMessage);
-          
-          // Update message history
-          const historyIndex = messageHistory.length - 1;
-          if (historyIndex >= 0 && messageHistory[historyIndex].role === 'model') {
-            messageHistory[historyIndex].text = noProductsMessage;
-          }
-          
-          // Save updated message
-          if (conversationId) {
-            saveMessage(conversationId, 'model', noProductsMessage).catch(function(err) {
-              console.error('Failed to save no products message:', err);
-            });
-          }
+        // Always update the message - replace any placeholder text
+        botMsg.textContent = noProductsMessage;
+        botMsg.innerHTML = parseMarkdown(noProductsMessage);
+        
+        // Update message history
+        const historyIndex = messageHistory.length - 1;
+        if (historyIndex >= 0 && messageHistory[historyIndex].role === 'model') {
+          messageHistory[historyIndex].text = noProductsMessage;
+        }
+        
+        // Save updated message
+        if (conversationId) {
+          saveMessage(conversationId, 'model', noProductsMessage).catch(function(err) {
+            console.error('Failed to save no products message:', err);
+          });
         }
       }
+      return false; // No products found
     }
   };
 
@@ -2746,12 +2745,12 @@ export const generateWidgetJS = (): string => {
                   productRecommendationCall = call.args || {};
                   // Clean any accumulated text that contains triggeraction patterns
                   fullText = cleanTriggerActionText(fullText);
-                  // If no text from AI, show default message immediately
-                  if (!fullText || !fullText.trim()) {
-                    updateMessage('Here are some products I found for you:');
-                  } else {
+                  // Don't set default message here - wait for handleProductRecommendation to determine if products exist
+                  // If AI provided text, show it; otherwise wait for product fetch result
+                  if (fullText && fullText.trim()) {
                     updateMessage(fullText);
                   }
+                  // If no text, we'll set the message after products are fetched
                 }
               }
               
@@ -2784,12 +2783,12 @@ export const generateWidgetJS = (): string => {
                       productRecommendationCall = part.functionCall.args || {};
                       // Clean any accumulated text that contains triggeraction patterns
                       fullText = cleanTriggerActionText(fullText);
-                      // If no text from AI, show default message immediately
-                      if (!fullText || !fullText.trim()) {
-                        updateMessage('Here are some products I found for you:');
-                      } else {
+                      // Don't set default message here - wait for handleProductRecommendation to determine if products exist
+                      // If AI provided text, show it; otherwise wait for product fetch result
+                      if (fullText && fullText.trim()) {
                         updateMessage(fullText);
                       }
+                      // If no text, we'll set the message after products are fetched
                     }
                   }
                 }
@@ -2827,7 +2826,14 @@ export const generateWidgetJS = (): string => {
       // Handle product recommendations
       if (productRecommendationCall) {
         try {
-          await handleProductRecommendation(productRecommendationCall, botMsg, bot, conversationId);
+          const hasProducts = await handleProductRecommendation(productRecommendationCall, botMsg, bot, conversationId);
+          // If no products found, the message was already updated in handleProductRecommendation
+          // If products found and no text from AI, set default message
+          if (hasProducts && (!fullText || !fullText.trim())) {
+            const defaultMessage = 'Here are some products I found for you:';
+            updateMessage(defaultMessage);
+            fullText = defaultMessage;
+          }
           // Note: The recommendation marker will be added when saving the message below
         } catch (error) {
           console.error('Error handling product recommendation:', error);
@@ -2841,17 +2847,18 @@ export const generateWidgetJS = (): string => {
         // For product recommendations, we ALWAYS need to save the message (even if text is empty)
         // so it can be restored on page reload
         if (productRecommendationCall) {
-          // If no text from AI, add a default accompanying message
-          const defaultMessage = 'Here are some products I found for you:';
-          const displayText = (fullText && fullText.trim()) ? fullText : defaultMessage;
+          // Use the actual message text (which may have been updated by handleProductRecommendation)
+          const displayText = (fullText && fullText.trim()) ? fullText : 'Here are some products I found for you:';
           
           // Append product recommendation marker to text for persistence
           let textToSave = displayText;
           const recommendationMarker = '[PRODUCT_RECOMMENDATION:' + JSON.stringify(productRecommendationCall) + ']';
           textToSave = textToSave + recommendationMarker;
           
-          // Display message with accompanying text
-          updateMessage(displayText);
+          // Display message with accompanying text (if not already displayed)
+          if (botMsg && (!botMsg.textContent || botMsg.textContent.trim() === '')) {
+            updateMessage(displayText);
+          }
           messageHistory.push({ role: 'model', text: displayText }); // Context without marker
           
           // Save bot message with marker for restoration (CRITICAL: always save for product recommendations)

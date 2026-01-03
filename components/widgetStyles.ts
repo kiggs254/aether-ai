@@ -1621,14 +1621,35 @@ body.aether-chat-open #aether-launcher {
   }
   
   /* Single product specific styles */
+  .aether-single-product-wrapper {
+    width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .aether-single-product-wrapper .aether-product-carousel {
+    width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
   .aether-single-product-wrapper .aether-product-carousel-inner {
-    width: 100%;
+    width: 100% !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
   .aether-single-product-wrapper .aether-product-card {
     width: 100% !important;
     max-width: 100% !important;
     min-width: auto !important;
+    flex: 1 1 100% !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
   }
   
   .aether-carousel-btn {

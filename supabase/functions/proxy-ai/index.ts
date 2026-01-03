@@ -1390,7 +1390,7 @@ function buildSystemInstruction(bot: any): string {
     Step 4: DO NOT say "Let me check" or "I'll help you" or "Okay, I can help you" - just call the function immediately
     Step 5: Wait for the function to return actual products
     Step 6: ONLY THEN respond with the real products from the catalog
-    Step 7: If no products found, say "I don't see any [product] in our catalog right now" - DO NOT make up products
+    Step 7: If no products found, you MUST respond with a helpful message like "I couldn't find any [product/search term] in our catalog right now. Please try a different search term or browse other categories." - DO NOT make up products, but DO provide a helpful response
     
     CRITICAL EXAMPLES:
     - User says "milk" → Check actions first: If "milk products" action exists → Call trigger_action with that action_id. If no action → Call recommend_products with keywords: ["milk"]
@@ -1419,7 +1419,7 @@ function buildSystemInstruction(bot: any): string {
     
     CORRECT RESPONSES (DO THIS):
     ✅ [Call recommend_products with keywords: ["yogurt"]] → Wait for results → "Here's what we have: [real products from catalog]"
-    ✅ [Call recommend_products] → If no results → "I don't see any yogurt in our catalog right now"
+    ✅ [Call recommend_products] → If no results → "I couldn't find any yogurt in our catalog right now. Please try a different search term or browse other categories."
     
     REMEMBER: You are a shopping assistant with a real catalog. You must query the catalog to know what exists. You cannot know products exist without calling the function. NEVER describe products you haven't retrieved. ALWAYS call the function first, then respond.
     `;
@@ -1484,7 +1484,7 @@ CRITICAL: Check the action descriptions above FIRST before calling recommend_pro
       type: 'function',
       function: {
         name: 'recommend_products',
-        description: '⚠️ MANDATORY FUNCTION ⚠️ You MUST call this function to get REAL products from the catalog. DO NOT describe or list products without calling this function first. Call this immediately when: users ask "do you have X?", mention product names, ask "what do you have?", or ask about any products. NEVER make up products - you can only know what products exist by calling this function. Extract category, keywords, and price range from the conversation to filter products.',
+        description: '⚠️ MANDATORY FUNCTION ⚠️ You MUST call this function to get REAL products from the catalog. DO NOT describe or list products without calling this function first. Call this immediately when: users ask "do you have X?", mention product names, ask "what do you have?", or ask about any products. NEVER make up products - you can only know what products exist by calling this function. Extract category, keywords, and price range from the conversation to filter products. IMPORTANT: If this function returns no products, you MUST respond with a helpful message like "I couldn\'t find any [search term] in our catalog right now. Please try a different search term or browse other categories."',
         parameters: {
           type: 'object',
           properties: {

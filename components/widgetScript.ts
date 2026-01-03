@@ -2255,6 +2255,33 @@ export const generateWidgetJS = (): string => {
           // For now, we'll rely on the data attribute in the carousel container
         }
       }
+    } else {
+      // No products found - update bot message to show a helpful response
+      if (botMsg) {
+        const keywords = args.keywords && args.keywords.length > 0 ? args.keywords.join(', ') : 'that';
+        const searchTerm = keywords || (args.category || 'products');
+        const noProductsMessage = 'I couldn\'t find any ' + searchTerm + ' in our catalog right now. Please try a different search term or browse other categories.';
+        
+        // Update the message text if it's still the default placeholder
+        const currentText = botMsg.textContent || '';
+        if (currentText === 'Here are some products I found for you:' || !currentText.trim()) {
+          botMsg.textContent = noProductsMessage;
+          botMsg.innerHTML = parseMarkdown(noProductsMessage);
+          
+          // Update message history
+          const historyIndex = messageHistory.length - 1;
+          if (historyIndex >= 0 && messageHistory[historyIndex].role === 'model') {
+            messageHistory[historyIndex].text = noProductsMessage;
+          }
+          
+          // Save updated message
+          if (conversationId) {
+            saveMessage(conversationId, 'model', noProductsMessage).catch(function(err) {
+              console.error('Failed to save no products message:', err);
+            });
+          }
+        }
+      }
     }
   };
 

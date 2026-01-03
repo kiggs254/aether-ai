@@ -2186,19 +2186,9 @@ export const generateWidgetJS = (): string => {
       carouselWrapper.appendChild(nextBtn);
     } else {
       // Single product: still use wrapper for consistent styling, just without navigation buttons
-      // Ensure carousel is visible for single product by setting explicit styles and adding class
-      carousel.style.overflowX = 'visible';
-      carousel.style.overflowY = 'visible';
-      carousel.style.width = '100%';
-      carousel.style.display = 'block';
+      // Add class for single product styling
       carouselInner.classList.add('aether-single-product');
-      carouselInner.style.width = '100%';
-      carouselInner.style.display = 'flex';
       carouselWrapper.classList.add('aether-single-product-wrapper');
-      carouselWrapper.style.width = '100%';
-      carouselWrapper.style.display = 'block';
-      carouselWrapper.style.visibility = 'visible';
-      carouselWrapper.style.opacity = '1';
       // Make the single product card take full width
       const singleCard = carouselInner.querySelector('.aether-product-card');
       if (singleCard) {

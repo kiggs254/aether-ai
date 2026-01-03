@@ -1609,37 +1609,23 @@ body.aether-chat-open #aether-launcher {
     scrollbar-width: thin;
     scrollbar-color: rgba(99,102,241,0.3) transparent;
     scroll-behavior: smooth;
-    min-height: 200px; /* Ensure minimum height for visibility */
   }
   
-  /* Ensure single product carousel is visible */
-  .aether-product-carousel-wrapper:has(.aether-product-carousel-inner:only-child) .aether-product-carousel,
-  .aether-product-carousel-wrapper:has(.aether-product-card:only-child) .aether-product-carousel,
-  .aether-single-product-wrapper .aether-product-carousel {
-    overflow-x: visible !important;
-    overflow-y: visible !important;
-  }
-  
-  /* Single product specific styles */
+  /* Single product specific styles - keep overflow but ensure visibility */
   .aether-single-product-wrapper {
-    width: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    width: 100%;
+    display: block;
   }
   
   .aether-single-product-wrapper .aether-product-carousel {
-    width: 100% !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    width: 100%;
+    overflow-x: hidden; /* No scrolling needed for single product */
+    overflow-y: hidden;
   }
   
   .aether-single-product-wrapper .aether-product-carousel-inner {
-    width: 100% !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
+    width: 100%;
+    display: flex;
   }
   
   .aether-single-product-wrapper .aether-product-card {
@@ -1647,9 +1633,6 @@ body.aether-chat-open #aether-launcher {
     max-width: 100% !important;
     min-width: auto !important;
     flex: 1 1 100% !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    display: block !important;
   }
   
   .aether-carousel-btn {

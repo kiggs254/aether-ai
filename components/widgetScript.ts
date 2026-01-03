@@ -2260,7 +2260,7 @@ export const generateWidgetJS = (): string => {
       if (botMsg) {
         const keywords = args.keywords && args.keywords.length > 0 ? args.keywords.join(', ') : 'that';
         const searchTerm = keywords || (args.category || 'products');
-        const noProductsMessage = 'I couldn\'t find any ' + searchTerm + ' in our catalog right now. Please try a different search term or browse other categories.';
+        const noProductsMessage = 'I could not find any ' + searchTerm + ' in our catalog right now. Please try a different search term or browse other categories.';
         
         // Update the message text if it's still the default placeholder
         const currentText = botMsg.textContent || '';

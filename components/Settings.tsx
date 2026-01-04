@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle } from 'lucide-react';
+import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle, Settings as SettingsIcon, Server } from 'lucide-react';
 import { useNotification } from './Notification';
 import { supabase } from '../lib/supabase';
 import PaymentFlow from './PaymentFlow';
+import { useAdminStatus } from '../lib/useAdminStatus';
 
 interface SettingsProps {
   user: any;
   onSignOut: () => void;
 }
 
-type SettingsSection = 'account' | 'billing' | 'security' | 'notifications';
+type SettingsSection = 'account' | 'billing' | 'security' | 'notifications' | 'smtp' | 'site';
 
 const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
   const { showSuccess, showError } = useNotification();
+  const { isAdmin } = useAdminStatus();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   
   // Account state
@@ -765,6 +767,214 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     </div>
   );
 
+  const renderSmtpSection = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white mb-2">SMTP Configuration</h2>
+        <p className="text-slate-400 text-sm">Configure SMTP server settings for sending emails.</p>
+      </div>
+
+      {loadingSettings ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+        </div>
+      ) : (
+        <div className="glass-card p-6 rounded-2xl space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">SMTP Host</label>
+              <input
+                type="text"
+                value={smtpConfig.host}
+                onChange={(e) => setSmtpConfig({ ...smtpConfig, host: e.target.value })}
+                className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                placeholder="smtp.gmail.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">SMTP Port</label>
+              <input
+                type="number"
+                value={smtpConfig.port}
+                onChange={(e) => setSmtpConfig({ ...smtpConfig, port: parseInt(e.target.value) || 587 })}
+                className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                placeholder="587"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">SMTP Username</label>
+              <input
+                type="text"
+                value={smtpConfig.auth.user}
+                onChange={(e) => setSmtpConfig({ ...smtpConfig, auth: { ...smtpConfig.auth, user: e.target.value } })}
+                className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                placeholder="your-email@gmail.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">SMTP Password</label>
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? 'text' : 'password'}
+                  value={smtpConfig.auth.pass}
+                  onChange={(e) => setSmtpConfig({ ...smtpConfig, auth: { ...smtpConfig.auth, pass: e.target.value } })}
+                  className="w-full px-4 py-2 pr-10 rounded-xl glass-input text-white placeholder-slate-500"
+                  placeholder="Your SMTP password"
+                />
+                <button
+                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">From Email</label>
+              <input
+                type="email"
+                value={smtpConfig.from_email}
+                onChange={(e) => setSmtpConfig({ ...smtpConfig, from_email: e.target.value })}
+                className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                placeholder="noreply@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">From Name</label>
+              <input
+                type="text"
+                value={smtpConfig.from_name}
+                onChange={(e) => setSmtpConfig({ ...smtpConfig, from_name: e.target.value })}
+                className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                placeholder="Aether AI"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="smtp_secure"
+              checked={smtpConfig.secure}
+              onChange={(e) => setSmtpConfig({ ...smtpConfig, secure: e.target.checked })}
+              className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600"
+            />
+            <label htmlFor="smtp_secure" className="text-sm text-slate-300">
+              Use secure connection (TLS/SSL)
+            </label>
+          </div>
+          <button
+            onClick={saveSmtpConfig}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium"
+          >
+            <Save className="w-5 h-5" />
+            Save SMTP Settings
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderSiteSection = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white mb-2">Site Settings</h2>
+        <p className="text-slate-400 text-sm">Configure general site-wide settings.</p>
+      </div>
+
+      {loadingSettings ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="glass-card p-6 rounded-2xl space-y-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Globe className="w-5 h-5 text-indigo-400" /> General Settings
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Site Name</label>
+                <input
+                  type="text"
+                  value={siteConfig.site_name}
+                  onChange={(e) => setSiteConfig({ ...siteConfig, site_name: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                  placeholder="Aether AI"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Site URL</label>
+                <input
+                  type="url"
+                  value={siteConfig.site_url}
+                  onChange={(e) => setSiteConfig({ ...siteConfig, site_url: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                  placeholder="https://example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Support Email</label>
+                <input
+                  type="email"
+                  value={siteConfig.support_email}
+                  onChange={(e) => setSiteConfig({ ...siteConfig, support_email: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
+                  placeholder="support@example.com"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl space-y-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Server className="w-5 h-5 text-indigo-400" /> System Settings
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium">Maintenance Mode</h4>
+                  <p className="text-slate-400 text-sm">Enable maintenance mode to restrict access</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={siteConfig.maintenance_mode}
+                    onChange={(e) => setSiteConfig({ ...siteConfig, maintenance_mode: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-white font-medium">Allow Registration</h4>
+                  <p className="text-slate-400 text-sm">Allow new users to sign up</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={siteConfig.allow_registration}
+                    onChange={(e) => setSiteConfig({ ...siteConfig, allow_registration: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={saveSiteConfig}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium"
+          >
+            <Save className="w-5 h-5" />
+            Save Site Settings
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)] gap-6 max-w-7xl mx-auto animate-fade-in">
       {/* Settings Sidebar */}
@@ -795,9 +1005,11 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       {/* Settings Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {activeSection === 'account' && renderAccountSection()}
-        {activeSection === 'billing' && renderBillingSection()}
+        {!isAdmin && activeSection === 'billing' && renderBillingSection()}
         {activeSection === 'security' && renderSecuritySection()}
         {activeSection === 'notifications' && renderNotificationsSection()}
+        {isAdmin && activeSection === 'smtp' && renderSmtpSection()}
+        {isAdmin && activeSection === 'site' && renderSiteSection()}
       </div>
     </div>
   );

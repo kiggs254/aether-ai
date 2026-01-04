@@ -44,13 +44,37 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
   const [showPaymentFlow, setShowPaymentFlow] = useState(false);
   const [usage, setUsage] = useState({ bots: 0, messages: 0, storage: 0 });
 
+  // Admin settings state
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [smtpConfig, setSmtpConfig] = useState({
+    host: '',
+    port: 587,
+    secure: false,
+    auth: {
+      user: '',
+      pass: '',
+    },
+    from_email: '',
+    from_name: '',
+  });
+  const [siteConfig, setSiteConfig] = useState({
+    site_name: 'Aether AI',
+    site_url: '',
+    support_email: '',
+    maintenance_mode: false,
+    allow_registration: true,
+  });
+
   useEffect(() => {
     if (user) {
       loadSubscription();
       loadTransactions();
       loadUsage();
+      if (isAdmin) {
+        loadSettings();
+      }
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   const loadSubscription = async () => {
     try {
@@ -237,6 +261,122 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       showError('Account deletion', 'Account deletion is not yet implemented. Please contact support.');
     } catch (error: any) {
       showError('Deletion failed', error.message || 'Failed to delete account.');
+    }
+  };
+
+  // Load settings for admin
+  const loadSettings = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setLoadingSettings(true);
+      
+      // Load SMTP config
+      const { data: smtpData, error: smtpError } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'smtp_config')
+        .single();
+
+      if (smtpError && smtpError.code !== 'PGRST116') {
+        throw smtpError;
+      }
+
+      if (smtpData?.value) {
+        setSmtpConfig(smtpData.value as any);
+      }
+
+      // Load site config
+      const { data: siteData, error: siteError } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'site_config')
+        .single();
+
+      if (siteError && siteError.code !== 'PGRST116') {
+        throw siteError;
+      }
+
+      if (siteData?.value) {
+        setSiteConfig(siteData.value as any);
+      }
+    } catch (error: any) {
+      console.error('Error loading settings:', error);
+      showError('Failed to load settings', error.message || 'Could not load site settings.');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  // Save SMTP config
+  const saveSmtpConfig = async () => {
+    try {
+      setLoadingSettings(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showError('Authentication required', 'Please sign in to continue');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          smtp_config: smtpConfig,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save SMTP settings');
+      }
+
+      showSuccess('SMTP settings saved', 'Your SMTP configuration has been updated successfully.');
+    } catch (error: any) {
+      console.error('Error saving SMTP config:', error);
+      showError('Failed to save SMTP settings', error.message || 'Could not save SMTP configuration.');
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  // Save site config
+  const saveSiteConfig = async () => {
+    try {
+      setLoadingSettings(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showError('Authentication required', 'Please sign in to continue');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          site_config: siteConfig,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save site settings');
+      }
+
+      showSuccess('Site settings saved', 'Your site configuration has been updated successfully.');
+    } catch (error: any) {
+      console.error('Error saving site config:', error);
+      showError('Failed to save site settings', error.message || 'Could not save site configuration.');
+    } finally {
+      setLoadingSettings(false);
     }
   };
 

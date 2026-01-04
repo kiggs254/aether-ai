@@ -818,6 +818,8 @@ const AppContent: React.FC = () => {
         isOpen={mobileMenuOpen}
         isAdmin={isAdmin}
         onClose={() => setMobileMenuOpen(false)}
+        user={user}
+        onSignOut={handleSignOut}
       />
       
       <main className="flex-1 relative z-10 h-screen overflow-y-auto overflow-x-hidden">

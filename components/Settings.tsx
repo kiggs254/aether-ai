@@ -381,6 +381,21 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
         </div>
       </div>
 
+      {/* Sign Out */}
+      <div className="glass-card p-6 rounded-2xl space-y-4">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          <LogOut className="w-5 h-5 text-indigo-400" /> Sign Out
+        </h3>
+        <p className="text-slate-400 text-sm">Sign out of your account. You can sign back in anytime.</p>
+        <button
+          onClick={onSignOut}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </button>
+      </div>
+
       {/* Danger Zone */}
       <div className="glass-card p-6 rounded-2xl border border-red-500/20 space-y-4">
         <h3 className="text-lg font-semibold text-red-400 flex items-center gap-2">

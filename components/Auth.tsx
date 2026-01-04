@@ -4,11 +4,12 @@ import { useNotification } from './Notification';
 
 interface AuthProps {
   onAuthSuccess: () => void;
+  initialMode?: 'login' | 'signup';
 }
 
-const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
+const Auth: React.FC<AuthProps> = ({ onAuthSuccess, initialMode = 'login' }) => {
   const { showError, showSuccess } = useNotification();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

@@ -7,6 +7,7 @@ import EmbedCode from './components/EmbedCode';
 import Inbox from './components/Inbox';
 import Settings from './components/Settings';
 import Auth from './components/Auth';
+import Landing from './components/Landing';
 import AdminPlans from './components/AdminPlans';
 import AdminSubscriptions from './components/AdminSubscriptions';
 import { Bot, ViewState, Conversation } from './types';
@@ -781,7 +782,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Auth onAuthSuccess={handleAuthSuccess} />;
+    return <Landing onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (

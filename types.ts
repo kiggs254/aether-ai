@@ -67,6 +67,8 @@ export enum ViewState {
   INTEGRATION = 'INTEGRATION',
   INBOX = 'INBOX',
   SETTINGS = 'SETTINGS',
+  ADMIN_PLANS = 'ADMIN_PLANS',
+  ADMIN_SUBSCRIPTIONS = 'ADMIN_SUBSCRIPTIONS',
 }
 
 export interface DashboardStats {

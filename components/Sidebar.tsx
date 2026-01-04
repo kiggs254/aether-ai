@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Bot, MessageSquare, Code, Settings, Zap, Plus, Layers, Inbox as InboxIcon, X, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Bot, MessageSquare, Code, Settings, Zap, Plus, Layers, Inbox as InboxIcon, X, LogOut, User, Shield, CreditCard } from 'lucide-react';
 import { ViewState, Bot as BotType } from '../types';
 
 interface SidebarProps {
@@ -27,7 +27,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen = false,
   onClose,
   user,
-  onSignOut
+  onSignOut,
+  isAdmin = false
 }) => {
   const navItems = [
     { id: ViewState.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,6 +37,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewState.PLAYGROUND, icon: MessageSquare, label: 'Playground' },
     { id: ViewState.INTEGRATION, icon: Code, label: 'Integration' },
     { id: ViewState.SETTINGS, icon: Settings, label: 'Settings' },
+    ...(isAdmin ? [
+      { id: ViewState.ADMIN_PLANS, icon: CreditCard, label: 'Manage Plans' },
+      { id: ViewState.ADMIN_SUBSCRIPTIONS, icon: Shield, label: 'Subscriptions' },
+    ] : []),
   ];
 
   return (

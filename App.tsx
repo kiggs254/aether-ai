@@ -13,6 +13,7 @@ import { botService, conversationService } from './services/database';
 import { NotificationProvider, useNotification } from './components/Notification';
 import { Modal } from './components/Modal';
 import { Menu, X } from 'lucide-react';
+import { useAdminStatus } from './lib/useAdminStatus';
 
 // Mock data removed - now loading from Supabase
 
@@ -741,6 +742,10 @@ const AppContent: React.FC = () => {
         return (
           <Settings user={user} onSignOut={handleSignOut} />
         );
+      case ViewState.ADMIN_PLANS:
+        return <AdminPlans />;
+      case ViewState.ADMIN_SUBSCRIPTIONS:
+        return <AdminSubscriptions />;
       default:
         return <div>Not found</div>;
     }
@@ -806,6 +811,7 @@ const AppContent: React.FC = () => {
         onCreateNew={handleCreateNew}
         unreadCount={Array.from(unreadConversations.values()).reduce((sum, count) => sum + count, 0)}
         isOpen={mobileMenuOpen}
+        isAdmin={isAdmin}
         onClose={() => setMobileMenuOpen(false)}
       />
       

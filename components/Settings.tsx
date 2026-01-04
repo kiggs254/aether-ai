@@ -242,9 +242,13 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
 
   const sections = [
     { id: 'account' as SettingsSection, label: 'Account', icon: User },
-    { id: 'billing' as SettingsSection, label: 'Billing', icon: CreditCard },
+    ...(!isAdmin ? [{ id: 'billing' as SettingsSection, label: 'Billing', icon: CreditCard }] : []),
     { id: 'security' as SettingsSection, label: 'Security', icon: Shield },
     { id: 'notifications' as SettingsSection, label: 'Notifications', icon: Bell },
+    ...(isAdmin ? [
+      { id: 'smtp' as SettingsSection, label: 'SMTP Settings', icon: Mail },
+      { id: 'site' as SettingsSection, label: 'Site Settings', icon: SettingsIcon },
+    ] : []),
   ];
 
   const renderAccountSection = () => (

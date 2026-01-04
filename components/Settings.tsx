@@ -299,7 +299,12 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       }
 
       if (siteData?.value) {
-        setSiteConfig(siteData.value as any);
+        const config = siteData.value as any;
+        // Ensure header_scripts exists, default to empty string if not present
+        setSiteConfig({
+          ...config,
+          header_scripts: config.header_scripts || '',
+        });
       }
     } catch (error: any) {
       console.error('Error loading settings:', error);
@@ -368,8 +373,9 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save site settings');
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Site settings save error:', error);
+        throw new Error(error.error || error.message || 'Failed to save site settings');
       }
 
       showSuccess('Site settings saved', 'Your site configuration has been updated successfully.');

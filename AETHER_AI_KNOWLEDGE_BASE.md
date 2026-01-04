@@ -1,0 +1,442 @@
+# Aether AI - Complete Knowledge Base
+
+## About Aether AI
+
+Aether AI is a powerful, no-code platform for building intelligent AI chatbots. Our platform enables businesses of all sizes to create, deploy, and manage AI-powered conversational assistants without any coding knowledge. Whether you're a small business owner, a growing startup, or an enterprise organization, Aether AI provides the tools you need to transform customer engagement through intelligent automation.
+
+## Core Features
+
+### AI-Powered Intelligence
+- **Multiple AI Models**: Choose between Gemini (Google) and OpenAI models
+- **Model Selection**: Select the best AI model for your specific use case
+- **Temperature Control**: Fine-tune response creativity and accuracy
+- **Context-Aware**: Bots understand conversation context and maintain continuity
+- **Natural Language Processing**: Advanced NLP for human-like conversations
+
+### Visual Bot Builder
+- **No Coding Required**: Create bots using our intuitive visual interface
+- **Easy Configuration**: Set up bots in minutes, not weeks
+- **Knowledge Base Training**: Upload documents, add system instructions, and train your bot with your own content
+- **Custom Actions**: Configure buttons for links, phone calls, WhatsApp, human handoff, and custom actions
+- **Real-time Preview**: Test your bot before going live
+
+### Conversation Management
+- **Unified Inbox**: Manage all conversations in one central location
+- **Real-time Messaging**: Receive and respond to messages instantly
+- **Lead Collection**: Automatically capture customer emails and phone numbers
+- **Conversation History**: Full conversation logs for every interaction
+- **Analytics Dashboard**: Track messages, conversations, leads, and engagement metrics
+
+### E-commerce Integration
+- **Product Catalog**: Connect your product catalog via URL
+- **Smart Recommendations**: AI-powered product suggestions based on user queries
+- **Visual Product Cards**: Display products with images directly in chat
+- **Shopping Cart**: Enable customers to add products to cart from chat
+- **Inventory Management**: Real-time product availability
+
+### Customization & Branding
+- **Custom Branding**: Add your own "Powered by" text
+- **Header Images**: Upload custom header images for chat widgets
+- **Avatar Colors**: Customize bot avatar with gradient colors
+- **Widget Styling**: Match your brand's look and feel
+
+### Widget & Embedding
+- **One-Line Embed**: Copy and paste embed code to add chatbot to any website
+- **Responsive Design**: Works perfectly on desktop, tablet, and mobile
+- **Customizable Appearance**: Match your website's design
+- **Multiple Deployment**: Deploy the same bot across multiple websites
+
+### Analytics & Insights
+- **Message Statistics**: Track total messages, conversations, and engagement
+- **Lead Metrics**: Monitor lead collection and conversion rates
+- **Response Times**: Analyze bot performance and response quality
+- **Usage Tracking**: Monitor bot usage and identify peak times
+- **Dashboard Visualizations**: Charts and graphs for easy data interpretation
+
+## Subscription Plans
+
+### Free Plan
+- **Price**: $0/month
+- **Features**:
+  - Basic chatbot functionality
+  - Up to 3 bots
+  - 1,000 messages per month
+  - 1 GB storage
+  - Email support
+- **Best For**: Individuals and small projects getting started
+
+### Basic Plan
+- **Price**: $9/month (monthly) or $90/year (save $18/year)
+- **Features**:
+  - All Free plan features
+  - Up to 10 bots
+  - 10,000 messages per month
+  - 10 GB storage
+  - Priority email support
+  - Custom branding
+- **Best For**: Small businesses and personal projects
+
+### Pro Plan (Most Popular)
+- **Price**: $29/month (monthly) or $290/year (save $58/year)
+- **Features**:
+  - All Basic plan features
+  - Unlimited bots
+  - 100,000 messages per month
+  - 100 GB storage
+  - Priority support
+  - Advanced analytics
+  - API access
+  - Custom integrations
+- **Best For**: Growing businesses with advanced needs
+
+### Enterprise Plan
+- **Price**: $99/month (monthly) or $990/year (save $198/year)
+- **Features**:
+  - All Pro plan features
+  - Unlimited everything (bots, messages, storage)
+  - Dedicated support
+  - Custom SLA
+  - On-premise deployment option
+  - Custom integrations
+  - Account manager
+- **Best For**: Large organizations with custom requirements
+
+## Getting Started
+
+### Step 1: Create an Account
+1. Visit our website and click "Get Started Free"
+2. Sign up with your email address
+3. Verify your email (check your inbox)
+4. You'll start on the Free plan automatically
+
+### Step 2: Create Your First Bot
+1. Log in to your dashboard
+2. Click "Create New Bot" or "New Bot"
+3. Fill in basic information:
+   - Bot name (e.g., "Customer Support Bot")
+   - Description
+   - Website URL (optional)
+4. Click "Save" to create your bot
+
+### Step 3: Train Your Bot
+1. Go to the "Knowledge Base" section in bot settings
+2. Add system instructions (how your bot should behave)
+3. Upload training documents or paste knowledge base content
+4. Configure custom actions (buttons, links, etc.)
+5. Test your bot in the Playground
+
+### Step 4: Deploy Your Bot
+1. Go to the "Integration" tab
+2. Copy the embed code
+3. Paste it into your website's HTML (before closing </body> tag)
+4. Your bot is now live!
+
+## Bot Configuration
+
+### System Instructions
+System instructions define your bot's personality and behavior. Examples:
+- "You are a friendly customer support assistant for [Company Name]"
+- "Always be professional and helpful"
+- "If you don't know something, offer to connect the user with a human agent"
+
+### Knowledge Base
+Your knowledge base is the training data for your bot. Include:
+- Company information
+- Product details
+- FAQs
+- Policies and procedures
+- Common questions and answers
+- Any information you want your bot to know
+
+### Custom Actions
+Configure interactive buttons:
+- **Link**: Open a URL (e.g., product page, contact form)
+- **Phone**: Initiate a phone call
+- **WhatsApp**: Open WhatsApp chat
+- **Handoff**: Transfer to human agent
+- **Custom**: Custom JavaScript actions
+
+### Advanced Settings
+- **Temperature**: Control creativity (0.0 = focused, 1.0 = creative)
+- **Model Selection**: Choose Gemini or OpenAI
+- **Provider**: Select AI provider (Gemini or OpenAI)
+- **Status**: Active, Maintenance, or Training mode
+
+## E-commerce Setup
+
+### Enable E-commerce
+1. Go to bot settings
+2. Enable "E-commerce Mode"
+3. Add your product feed URL (JSON format)
+4. Configure e-commerce settings
+
+### Product Feed Format
+Your product feed should be a JSON array with products containing:
+- id
+- name
+- description
+- price
+- image_url
+- category
+- availability
+
+### Product Recommendations
+The bot automatically recommends products when users ask about:
+- Product names
+- Categories
+- Features
+- Prices
+- Availability
+
+## Lead Collection
+
+### Automatic Lead Capture
+- Bots automatically collect email addresses when users provide them
+- Phone numbers are captured when shared
+- All leads are stored in the Inbox section
+- Export leads for your CRM or email marketing
+
+### Lead Management
+- View all collected leads in the Inbox
+- See conversation history for each lead
+- Filter and search leads
+- Export lead data
+
+## Widget Customization
+
+### Appearance
+- Upload header image
+- Customize avatar colors
+- Set custom "Powered by" text
+- Match your brand colors
+
+### Behavior
+- Set welcome message
+- Configure initial greeting
+- Customize button styles
+- Set widget position (bottom-right, bottom-left, etc.)
+
+## Analytics & Reporting
+
+### Dashboard Metrics
+- **Total Messages**: All messages across all bots
+- **New Conversations**: Conversations started today
+- **Leads Collected**: Total email/phone captures
+- **Unread Messages**: Messages requiring attention
+
+### Conversation Analytics
+- Response times
+- Conversation duration
+- Message count per conversation
+- Peak usage times
+- Most active bots
+
+## API & Integrations
+
+### API Access (Pro & Enterprise)
+- RESTful API for bot management
+- Webhook support for real-time events
+- Custom integrations
+- Third-party platform connections
+
+### Webhooks
+Receive notifications for:
+- New conversations
+- New messages
+- Lead captures
+- Bot events
+
+## Support & Resources
+
+### Support Channels
+- **Email Support**: Available for all plans
+- **Priority Support**: Basic, Pro, and Enterprise plans
+- **Dedicated Support**: Enterprise plan only
+- **Documentation**: Comprehensive guides and tutorials
+
+### Common Questions
+
+**Q: Do I need coding knowledge?**
+A: No! Aether AI is designed for non-technical users. The visual builder makes it easy to create bots without any coding.
+
+**Q: Can I use my own AI model?**
+A: Currently, we support Gemini and OpenAI models. Enterprise customers can discuss custom model integration.
+
+**Q: How many bots can I create?**
+A: Free plan: 3 bots, Basic: 10 bots, Pro & Enterprise: Unlimited bots.
+
+**Q: Can I embed the bot on multiple websites?**
+A: Yes! You can use the same bot on multiple websites by adding the embed code to each site.
+
+**Q: How do I train my bot?**
+A: Add knowledge base content in the bot settings. You can paste text, upload documents, or add system instructions.
+
+**Q: Can the bot handle multiple languages?**
+A: Yes, the AI models support multiple languages. Your bot will respond in the language the user uses.
+
+**Q: What happens if I exceed my message limit?**
+A: You'll be notified and can upgrade your plan. Free plan users can continue with limited functionality.
+
+**Q: Can I customize the bot's appearance?**
+A: Yes! You can customize colors, add header images, and match your brand.
+
+**Q: How do I collect leads?**
+A: Leads are automatically collected when users provide their email or phone number in conversations.
+
+**Q: Can I integrate with my CRM?**
+A: Yes, Pro and Enterprise plans include API access for CRM integrations.
+
+**Q: Is there a mobile app?**
+A: The dashboard is fully responsive and works on mobile browsers. We're working on native mobile apps.
+
+**Q: How secure is my data?**
+A: We use enterprise-grade security, encryption, and comply with data protection regulations.
+
+**Q: Can I export conversation data?**
+A: Yes, you can export conversations and leads from the Inbox section.
+
+**Q: What payment methods do you accept?**
+A: We accept all major credit cards and process payments securely through Paystack.
+
+**Q: Can I cancel my subscription?**
+A: Yes, you can cancel anytime. Your subscription remains active until the end of the billing period.
+
+**Q: Do you offer refunds?**
+A: We offer a 30-day money-back guarantee for annual subscriptions.
+
+**Q: How do I upgrade my plan?**
+A: Go to Settings > Billing, select a plan, and complete the payment. Your upgrade takes effect immediately.
+
+**Q: Can I downgrade my plan?**
+A: Yes, you can downgrade at any time. Changes take effect at the end of your current billing period.
+
+## Use Cases
+
+### Customer Support
+- 24/7 automated support
+- Instant responses to common questions
+- Escalate complex issues to human agents
+- Reduce support ticket volume
+
+### E-commerce
+- Product recommendations
+- Order tracking
+- Shopping assistance
+- Cart abandonment recovery
+
+### Lead Generation
+- Qualify prospects
+- Collect contact information
+- Schedule appointments
+- Route leads to sales team
+
+### Information & FAQs
+- Answer frequently asked questions
+- Provide product information
+- Share company policies
+- Guide users through processes
+
+### Appointment Booking
+- Schedule consultations
+- Check availability
+- Send reminders
+- Manage bookings
+
+## Technical Requirements
+
+### Browser Support
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
+- Mobile browsers (iOS Safari, Chrome Mobile)
+
+### Website Integration
+- Works with any website
+- No server-side requirements
+- Just add embed code
+- Compatible with WordPress, Shopify, Wix, and more
+
+### Performance
+- Fast response times
+- 99.9% uptime SLA (Enterprise)
+- Global CDN
+- Optimized for speed
+
+## Best Practices
+
+### Bot Training
+1. Start with clear system instructions
+2. Add comprehensive knowledge base content
+3. Include common questions and answers
+4. Test thoroughly before going live
+5. Continuously improve based on conversations
+
+### Conversation Design
+1. Keep responses concise and helpful
+2. Use custom actions for complex tasks
+3. Offer human handoff when needed
+4. Personalize responses when possible
+5. Set clear expectations
+
+### Lead Collection
+1. Make it natural and conversational
+2. Explain why you need the information
+3. Offer value in exchange (e.g., discount, resource)
+4. Follow up promptly with collected leads
+
+### E-commerce
+1. Keep product information up to date
+2. Use clear product descriptions
+3. Include pricing information
+4. Make checkout process easy
+
+## Troubleshooting
+
+### Bot Not Responding
+- Check bot status (should be "Active")
+- Verify knowledge base is populated
+- Test in Playground
+- Check system instructions
+
+### Widget Not Appearing
+- Verify embed code is correct
+- Check for JavaScript errors
+- Ensure code is before </body> tag
+- Clear browser cache
+
+### Poor Responses
+- Add more training data
+- Refine system instructions
+- Adjust temperature settings
+- Review conversation logs
+
+### Integration Issues
+- Verify API credentials
+- Check webhook URLs
+- Review API documentation
+- Contact support if needed
+
+## Company Information
+
+**Aether AI** - Transforming customer engagement through intelligent AI chatbots.
+
+Our mission is to make AI-powered customer engagement accessible to businesses of all sizes. We believe that every business deserves intelligent automation tools that were once only available to large enterprises.
+
+## Contact Information
+
+- **Support Email**: Check your site settings for support email
+- **Website**: Visit your configured site URL
+- **Documentation**: Available in your dashboard
+
+## Terms & Policies
+
+- All plans include our standard terms of service
+- Data is processed according to our privacy policy
+- Enterprise customers receive custom SLA agreements
+- Refund policy: 30-day money-back guarantee for annual plans
+
+---
+
+*This knowledge base is comprehensive and covers all aspects of Aether AI. Use this content to train your bot to answer questions about the platform, features, pricing, setup, and support.*
+

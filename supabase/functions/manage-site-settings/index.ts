@@ -25,6 +25,7 @@ interface SiteSettings {
     support_email: string;
     maintenance_mode: boolean;
     allow_registration: boolean;
+    header_scripts?: string;
   };
 }
 

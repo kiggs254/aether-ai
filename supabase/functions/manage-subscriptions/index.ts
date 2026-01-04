@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
 
 // Check if user is super admin
@@ -106,10 +107,6 @@ serve(async (req) => {
                 price_monthly,
                 price_yearly,
                 features
-              ),
-              auth.users:user_id (
-                id,
-                email
               )
             `)
             .eq('id', subscriptionId)
@@ -122,8 +119,17 @@ serve(async (req) => {
             );
           }
 
+          // Fetch user email separately
+          let userEmail = null;
+          try {
+            const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
+            userEmail = userData?.user?.email || null;
+          } catch (err) {
+            console.error('Error fetching user:', err);
+          }
+
           return new Response(
-            JSON.stringify(data),
+            JSON.stringify({ ...data, user_email: userEmail }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
@@ -145,10 +151,6 @@ serve(async (req) => {
                 description,
                 price_monthly,
                 price_yearly
-              ),
-              auth.users:user_id (
-                id,
-                email
               )
             `, { count: 'exact' })
             .order('created_at', { ascending: false })
@@ -167,14 +169,34 @@ serve(async (req) => {
           const { data, error, count } = await query;
 
           if (error) {
+            console.error('Database error:', error);
             return new Response(
               JSON.stringify({ error: 'Database Error', message: error.message }),
               { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
 
+          // Fetch user emails separately since we can't join auth.users directly
+          const subscriptionsWithUsers = await Promise.all(
+            (data || []).map(async (sub: any) => {
+              try {
+                const { data: userData } = await supabase.auth.admin.getUserById(sub.user_id);
+                return {
+                  ...sub,
+                  user_email: userData?.user?.email || null,
+                };
+              } catch (err) {
+                console.error('Error fetching user:', err);
+                return {
+                  ...sub,
+                  user_email: null,
+                };
+              }
+            })
+          );
+
           return new Response(
-            JSON.stringify({ data, count }),
+            JSON.stringify({ data: subscriptionsWithUsers, count }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -250,6 +272,7 @@ serve(async (req) => {
           .single();
 
         if (error) {
+          console.error('Database error:', error);
           return new Response(
             JSON.stringify({ error: 'Database Error', message: error.message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -263,8 +286,17 @@ serve(async (req) => {
           );
         }
 
+        // Fetch user email separately
+        let userEmail = null;
+        try {
+          const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
+          userEmail = userData?.user?.email || null;
+        } catch (err) {
+          console.error('Error fetching user:', err);
+        }
+
         return new Response(
-          JSON.stringify(data),
+          JSON.stringify({ ...data, user_email: userEmail }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

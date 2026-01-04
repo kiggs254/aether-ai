@@ -315,7 +315,7 @@ const AdminSubscriptions: React.FC = () => {
                   <tr key={subscription.id} className="hover:bg-white/5">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-white">
-                        {subscription.auth?.users?.email || subscription.user_id}
+                        {subscription.user_email || subscription.user_id}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

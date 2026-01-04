@@ -1,0 +1,323 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+interface PlanData {
+  name: string;
+  description?: string;
+  price_monthly: number;
+  price_yearly: number;
+  features?: any[];
+  max_bots?: number | null;
+  max_messages?: number | null;
+  max_storage_gb?: number | null;
+  is_active?: boolean;
+}
+
+// Check if user is super admin
+async function isSuperAdmin(supabase: any, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('admin_users')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('role', 'super_admin')
+    .single();
+
+  return !error && !!data;
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', message: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify JWT and get user
+    const token = authHeader.replace('Bearer ', '').trim();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', message: 'Invalid or expired token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is super admin
+    const adminCheck = await isSuperAdmin(supabase, user.id);
+    if (!adminCheck) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden', message: 'Super admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const planId = pathParts[pathParts.length - 1];
+
+    // Handle different HTTP methods
+    switch (req.method) {
+      case 'GET': {
+        if (planId && planId !== 'manage-plans') {
+          // Get single plan
+          const { data, error } = await supabase
+            .from('subscription_plans')
+            .select('*')
+            .eq('id', planId)
+            .single();
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: 'Not Found', message: 'Plan not found' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          return new Response(
+            JSON.stringify(data),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          // List all plans
+          const { data, error } = await supabase
+            .from('subscription_plans')
+            .select('*')
+            .order('price_monthly', { ascending: true });
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: 'Database Error', message: error.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          return new Response(
+            JSON.stringify(data),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      case 'POST': {
+        // Create new plan
+        const planData: PlanData = await req.json();
+
+        // Validate required fields
+        if (!planData.name || planData.price_monthly === undefined || planData.price_yearly === undefined) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'name, price_monthly, and price_yearly are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate prices
+        if (planData.price_monthly < 0 || planData.price_yearly < 0) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Prices must be non-negative' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .insert({
+            name: planData.name,
+            description: planData.description || null,
+            price_monthly: planData.price_monthly,
+            price_yearly: planData.price_yearly,
+            features: planData.features || [],
+            max_bots: planData.max_bots ?? null,
+            max_messages: planData.max_messages ?? null,
+            max_storage_gb: planData.max_storage_gb ?? null,
+            is_active: planData.is_active !== undefined ? planData.is_active : true,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: 'Database Error', message: error.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify(data),
+          { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'PUT': {
+        // Update plan
+        if (!planId || planId === 'manage-plans') {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Plan ID is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const planData: Partial<PlanData> = await req.json();
+
+        // Check if plan has active subscriptions
+        const { data: activeSubscriptions } = await supabase
+          .from('user_subscriptions')
+          .select('id')
+          .eq('plan_id', planId)
+          .eq('status', 'active')
+          .limit(1);
+
+        // If trying to deactivate and has active subscriptions, prevent it
+        if (planData.is_active === false && activeSubscriptions && activeSubscriptions.length > 0) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Bad Request', 
+              message: 'Cannot deactivate plan with active subscriptions' 
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate prices if provided
+        if (planData.price_monthly !== undefined && planData.price_monthly < 0) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'price_monthly must be non-negative' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (planData.price_yearly !== undefined && planData.price_yearly < 0) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'price_yearly must be non-negative' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const updateData: any = {};
+        if (planData.name !== undefined) updateData.name = planData.name;
+        if (planData.description !== undefined) updateData.description = planData.description;
+        if (planData.price_monthly !== undefined) updateData.price_monthly = planData.price_monthly;
+        if (planData.price_yearly !== undefined) updateData.price_yearly = planData.price_yearly;
+        if (planData.features !== undefined) updateData.features = planData.features;
+        if (planData.max_bots !== undefined) updateData.max_bots = planData.max_bots;
+        if (planData.max_messages !== undefined) updateData.max_messages = planData.max_messages;
+        if (planData.max_storage_gb !== undefined) updateData.max_storage_gb = planData.max_storage_gb;
+        if (planData.is_active !== undefined) updateData.is_active = planData.is_active;
+
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .update(updateData)
+          .eq('id', planId)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: 'Database Error', message: error.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!data) {
+          return new Response(
+            JSON.stringify({ error: 'Not Found', message: 'Plan not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify(data),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'DELETE': {
+        // Soft delete plan (set is_active = false)
+        if (!planId || planId === 'manage-plans') {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Plan ID is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if plan has active subscriptions
+        const { data: activeSubscriptions } = await supabase
+          .from('user_subscriptions')
+          .select('id')
+          .eq('plan_id', planId)
+          .eq('status', 'active')
+          .limit(1);
+
+        if (activeSubscriptions && activeSubscriptions.length > 0) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Bad Request', 
+              message: 'Cannot delete plan with active subscriptions' 
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data, error } = await supabase
+          .from('subscription_plans')
+          .update({ is_active: false })
+          .eq('id', planId)
+          .select()
+          .single();
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: 'Database Error', message: error.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!data) {
+          return new Response(
+            JSON.stringify({ error: 'Not Found', message: 'Plan not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ message: 'Plan deactivated successfully', data }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      default: {
+        return new Response(
+          JSON.stringify({ error: 'Method Not Allowed' }),
+          { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+  } catch (error) {
+    console.error('Error in manage-plans:', error);
+    return new Response(
+      JSON.stringify({ error: 'Internal Server Error', message: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+

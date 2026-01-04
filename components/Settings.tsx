@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle } from 'lucide-react';
 import { useNotification } from './Notification';
 import { supabase } from '../lib/supabase';
+import PaymentFlow from './PaymentFlow';
 
 interface SettingsProps {
   user: any;
@@ -33,6 +34,154 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
   const [inAppNotifications, setInAppNotifications] = useState(true);
   const [newMessageAlerts, setNewMessageAlerts] = useState(true);
   const [botUpdateAlerts, setBotUpdateAlerts] = useState(false);
+
+  // Subscription state
+  const [subscription, setSubscription] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const [showPaymentFlow, setShowPaymentFlow] = useState(false);
+  const [usage, setUsage] = useState({ bots: 0, messages: 0, storage: 0 });
+
+  useEffect(() => {
+    if (user) {
+      loadSubscription();
+      loadTransactions();
+      loadUsage();
+    }
+  }, [user]);
+
+  const loadSubscription = async () => {
+    try {
+      setLoadingSubscription(true);
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          *,
+          subscription_plans (
+            id,
+            name,
+            description,
+            price_monthly,
+            price_yearly,
+            features,
+            max_bots,
+            max_messages,
+            max_storage_gb
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw error;
+      }
+
+      setSubscription(data);
+    } catch (error: any) {
+      console.error('Error loading subscription:', error);
+    } finally {
+      setLoadingSubscription(false);
+    }
+  };
+
+  const loadTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select(`
+          *,
+          subscription_plans (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (error: any) {
+      console.error('Error loading transactions:', error);
+    }
+  };
+
+  const loadUsage = async () => {
+    try {
+      // Count bots
+      const { count: botCount } = await supabase
+        .from('bots')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      // Count messages (approximate from conversations)
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('message_count')
+        .eq('user_id', user.id);
+
+      const messageCount = conversations?.reduce((sum, conv) => sum + (conv.message_count || 0), 0) || 0;
+
+      setUsage({
+        bots: botCount || 0,
+        messages: messageCount,
+        storage: 0, // TODO: Calculate actual storage usage
+      });
+    } catch (error: any) {
+      console.error('Error loading usage:', error);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.')) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showError('Authentication required', 'Please sign in to continue');
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-subscriptions/${subscription.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cancel_at_period_end: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to cancel subscription');
+      }
+
+      showSuccess('Subscription cancelled', 'Your subscription will remain active until the end of the current billing period.');
+      loadSubscription();
+    } catch (error: any) {
+      showError('Failed to cancel subscription', error.message);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
 
   const handleUpdateProfile = async () => {
     try {
@@ -248,60 +397,219 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     </div>
   );
 
-  const renderBillingSection = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white mb-2">Billing & Subscription</h2>
-        <p className="text-slate-400 text-sm">Manage your subscription and billing information.</p>
-      </div>
+  const renderBillingSection = () => {
+    if (showPaymentFlow) {
+      return (
+        <div>
+          <button
+            onClick={() => setShowPaymentFlow(false)}
+            className="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+            Back to Billing
+          </button>
+          <PaymentFlow
+            onSuccess={() => {
+              setShowPaymentFlow(false);
+              loadSubscription();
+            }}
+            onCancel={() => setShowPaymentFlow(false)}
+          />
+        </div>
+      );
+    }
 
-      {/* Current Plan */}
-      <div className="glass-card p-6 rounded-2xl space-y-4">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <CreditCard className="w-5 h-5 text-indigo-400" /> Current Plan
-        </h3>
-        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-semibold text-lg">Pro Plan</p>
-              <p className="text-slate-400 text-sm">Unlimited bots, messages, and features</p>
+    const plan = subscription?.subscription_plans;
+    const maxBots = plan?.max_bots ?? 'Unlimited';
+    const maxMessages = plan?.max_messages ?? 'Unlimited';
+    const maxStorage = plan?.max_storage_gb ?? 'Unlimited';
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-2">Billing & Subscription</h2>
+          <p className="text-slate-400 text-sm">Manage your subscription and billing information.</p>
+        </div>
+
+        {loadingSubscription ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Current Plan */}
+            <div className="glass-card p-6 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-indigo-400" /> Current Plan
+                </h3>
+                {subscription && (
+                  <button
+                    onClick={() => setShowPaymentFlow(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    Change Plan
+                  </button>
+                )}
+              </div>
+              {subscription ? (
+                <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-white font-semibold text-lg">{plan?.name || 'Unknown Plan'}</p>
+                      <p className="text-slate-400 text-sm">{plan?.description || 'No description'}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      subscription.status === 'active'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : subscription.status === 'past_due'
+                        ? 'bg-orange-500/20 text-orange-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>
+                        {subscription.billing_cycle === 'monthly' ? 'Monthly' : 'Yearly'} billing
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span>Renews: {formatDate(subscription.current_period_end)}</span>
+                    </div>
+                  </div>
+                  {subscription.cancel_at_period_end && (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-amber-400 text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Subscription will cancel at period end
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-slate-400 mb-4">You don't have an active subscription.</p>
+                  <button
+                    onClick={() => setShowPaymentFlow(true)}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+                  >
+                    Choose a Plan
+                  </button>
+                </div>
+              )}
             </div>
-            <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">Active</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Usage Statistics */}
-      <div className="glass-card p-6 rounded-2xl space-y-4">
-        <h3 className="text-lg font-semibold text-white">Usage This Month</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 rounded-xl bg-white/5">
-            <p className="text-slate-400 text-xs mb-1">Messages</p>
-            <p className="text-white font-bold text-2xl">12,543</p>
-            <p className="text-slate-500 text-xs mt-1">Unlimited</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white/5">
-            <p className="text-slate-400 text-xs mb-1">Bots</p>
-            <p className="text-white font-bold text-2xl">8</p>
-            <p className="text-slate-500 text-xs mt-1">Unlimited</p>
-          </div>
-          <div className="p-4 rounded-xl bg-white/5">
-            <p className="text-slate-400 text-xs mb-1">Storage</p>
-            <p className="text-white font-bold text-2xl">2.4 GB</p>
-            <p className="text-slate-500 text-xs mt-1">of 100 GB</p>
-          </div>
-        </div>
-      </div>
+            {/* Usage Statistics */}
+            {subscription && (
+              <div className="glass-card p-6 rounded-2xl space-y-4">
+                <h3 className="text-lg font-semibold text-white">Usage This Month</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-slate-400 text-xs mb-1">Messages</p>
+                    <p className="text-white font-bold text-2xl">{usage.messages.toLocaleString()}</p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      {maxMessages === 'Unlimited' ? 'Unlimited' : `of ${maxMessages.toLocaleString()}`}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-slate-400 text-xs mb-1">Bots</p>
+                    <p className="text-white font-bold text-2xl">{usage.bots}</p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      {maxBots === 'Unlimited' ? 'Unlimited' : `of ${maxBots}`}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-slate-400 text-xs mb-1">Storage</p>
+                    <p className="text-white font-bold text-2xl">{usage.storage.toFixed(1)} GB</p>
+                    <p className="text-slate-500 text-xs mt-1">
+                      {maxStorage === 'Unlimited' ? 'Unlimited' : `of ${maxStorage} GB`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
-      {/* Billing History */}
-      <div className="glass-card p-6 rounded-2xl space-y-4">
-        <h3 className="text-lg font-semibold text-white">Billing History</h3>
-        <div className="text-center py-8 text-slate-400 text-sm">
-          No billing history available yet.
-        </div>
+            {/* Plan Features */}
+            {subscription && plan?.features && plan.features.length > 0 && (
+              <div className="glass-card p-6 rounded-2xl space-y-4">
+                <h3 className="text-lg font-semibold text-white">Plan Features</h3>
+                <ul className="space-y-2">
+                  {plan.features.map((feature: string, idx: number) => (
+                    <li key={idx} className="text-sm text-slate-300 flex items-center gap-2">
+                      <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Cancel Subscription */}
+            {subscription && subscription.status === 'active' && !subscription.cancel_at_period_end && (
+              <div className="glass-card p-6 rounded-2xl border border-red-500/20 space-y-4">
+                <h3 className="text-lg font-semibold text-red-400">Cancel Subscription</h3>
+                <p className="text-slate-400 text-sm">
+                  Cancel your subscription. You'll continue to have access until the end of your billing period.
+                </p>
+                <button
+                  onClick={handleCancelSubscription}
+                  className="px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 transition-colors"
+                >
+                  Cancel Subscription
+                </button>
+              </div>
+            )}
+
+            {/* Billing History */}
+            <div className="glass-card p-6 rounded-2xl space-y-4">
+              <h3 className="text-lg font-semibold text-white">Billing History</h3>
+              {transactions.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  No billing history available yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {transactions.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5"
+                    >
+                      <div>
+                        <p className="text-white font-medium">
+                          {transaction.subscription_plans?.name || 'Subscription'}
+                        </p>
+                        <p className="text-slate-400 text-sm">
+                          {formatDate(transaction.created_at)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white font-semibold">
+                          {formatCurrency(transaction.amount)}
+                        </p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          transaction.status === 'success'
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : transaction.status === 'pending'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {transaction.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderSecuritySection = () => (
     <div className="space-y-6">

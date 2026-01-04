@@ -397,24 +397,17 @@ serve(async (req) => {
           );
         }
         
-        // Build request body - some models may not support systemInstruction/tools at top level
-        // Try putting system instruction in contents first, then add tools if supported
-        const contents: any[] = [];
-        
-        // Add system instruction as first content if model supports it, otherwise include in first user message
-        // For now, include it in the first user message to ensure compatibility
-        const systemMessage = systemInstructionText ? `System: ${systemInstructionText}\n\n` : '';
-        
-        contents.push(
+        // Build request body - use top-level systemInstruction only (no duplication in message)
+        const contents: any[] = [
           ...(history || []).map((h: any) => ({
             role: h.role === 'model' ? 'model' : 'user',
             parts: [{ text: String(h.text || '') }],
           })),
           {
             role: 'user',
-            parts: [{ text: systemMessage + message }],
+            parts: [{ text: message }], // Don't prepend system instruction here
           }
-        );
+        ];
         
         const requestBody: any = {
           contents: contents,
@@ -423,7 +416,7 @@ serve(async (req) => {
           },
         };
         
-        // Try adding systemInstruction as top-level field (works better for function calling)
+        // Add systemInstruction as top-level field only (no duplication)
         if (systemInstructionText) {
           requestBody.systemInstruction = {
             parts: [{ text: systemInstructionText }]
@@ -435,15 +428,15 @@ serve(async (req) => {
         // Try adding tools, but if it fails, we'll handle it in error response
         if (tools && tools.length > 0) {
           requestBody.tools = tools;
-          // Add toolConfig to force function calling when appropriate
-          // Use ANY mode to encourage function calls when tools are available
-          requestBody.toolConfig = {
-            functionCallingConfig: {
-              mode: 'ANY', // ANY mode encourages function calls when tools are available
+          // Add toolConfig with AUTO mode (more reliable than ANY)
+          // Use snake_case for REST API compliance
+          requestBody.tool_config = {
+            function_calling_config: {
+              mode: 'AUTO', // AUTO mode is more reliable - relies on system instruction to encourage function use
             }
           };
-          console.log('Added tools and toolConfig to Gemini streaming request. Tools count:', tools.length);
-          console.log('ToolConfig:', JSON.stringify(requestBody.toolConfig));
+          console.log('Added tools and tool_config to Gemini streaming request. Tools count:', tools.length);
+          console.log('ToolConfig:', JSON.stringify(requestBody.tool_config));
           console.log('Full tools structure:', JSON.stringify(tools, null, 2));
         } else {
           console.log('No tools to add to Gemini streaming request');
@@ -1143,10 +1136,7 @@ serve(async (req) => {
           );
         }
         
-        // Build request body - include system instruction in message content for compatibility
-        // Some models may not support systemInstruction/tools as top-level fields
-        const systemMessage = systemInstruction ? `System: ${systemInstruction}\n\n` : '';
-        
+        // Build request body - use top-level systemInstruction only (no duplication in message)
         const contents: any[] = [
           ...(history || []).map((h: any) => ({
             role: h.role === 'model' ? 'model' : 'user',
@@ -1154,7 +1144,7 @@ serve(async (req) => {
           })),
           {
             role: 'user',
-            parts: [{ text: systemMessage + message }],
+            parts: [{ text: message }], // Don't prepend system instruction here
           },
         ];
         
@@ -1165,7 +1155,7 @@ serve(async (req) => {
           },
         };
         
-        // Try adding systemInstruction as top-level field (works better for function calling)
+        // Add systemInstruction as top-level field only (no duplication)
         if (systemInstruction) {
           requestBody.systemInstruction = {
             parts: [{ text: systemInstruction }]
@@ -1176,15 +1166,15 @@ serve(async (req) => {
         // Only add tools if we have them - some models may not support tools
         if (tools && tools.length > 0) {
           requestBody.tools = tools;
-          // Add toolConfig to force function calling when appropriate
-          // Use ANY mode to encourage function calls when tools are available
-          requestBody.toolConfig = {
-            functionCallingConfig: {
-              mode: 'ANY', // ANY mode encourages function calls when tools are available
+          // Add toolConfig with AUTO mode (more reliable than ANY)
+          // Use snake_case for REST API compliance
+          requestBody.tool_config = {
+            function_calling_config: {
+              mode: 'AUTO', // AUTO mode is more reliable - relies on system instruction to encourage function use
             }
           };
-          console.log('Added tools and toolConfig to Gemini non-streaming request. Tools count:', tools.length);
-          console.log('ToolConfig:', JSON.stringify(requestBody.toolConfig));
+          console.log('Added tools and tool_config to Gemini non-streaming request. Tools count:', tools.length);
+          console.log('ToolConfig:', JSON.stringify(requestBody.tool_config));
           console.log('Full tools structure:', JSON.stringify(tools, null, 2));
         } else {
           console.log('No tools to add to Gemini non-streaming request');
@@ -1595,9 +1585,10 @@ CRITICAL: Check the action descriptions above FIRST before calling recommend_pro
     });
   }
 
-  // Gemini API v1 expects tools in format: [{ functionDeclarations: [...] }]
+  // Gemini API v1 expects tools in format: [{ function_declarations: [...] }]
+  // CRITICAL: Must use snake_case 'function_declarations', not camelCase
   if (functionDeclarations.length > 0) {
-    const tools = [{ functionDeclarations }];
+    const tools = [{ function_declarations: functionDeclarations }];
     console.log('Built Gemini tools:', JSON.stringify(tools, null, 2));
     return tools;
   }

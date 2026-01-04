@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle, Settings as SettingsIcon, Server } from 'lucide-react';
+import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle, Settings as SettingsIcon, Server, Code } from 'lucide-react';
 import { useNotification } from './Notification';
 import { supabase } from '../lib/supabase';
 import PaymentFlow from './PaymentFlow';
@@ -63,6 +63,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     support_email: '',
     maintenance_mode: false,
     allow_registration: true,
+    header_scripts: '',
   });
 
   useEffect(() => {
@@ -1103,6 +1104,32 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
                   />
                   <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                 </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl space-y-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Code className="w-5 h-5 text-indigo-400" /> Header Scripts
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Custom Header Scripts
+                </label>
+                <p className="text-xs text-slate-500 mb-3">
+                  Add custom scripts (e.g., Google Analytics, Facebook Pixel) that will be injected into the &lt;head&gt; section of your site.
+                </p>
+                <textarea
+                  value={siteConfig.header_scripts || ''}
+                  onChange={(e) => setSiteConfig({ ...siteConfig, header_scripts: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl glass-input text-white placeholder-slate-500 font-mono text-sm min-h-[200px] resize-y"
+                  placeholder='<!-- Example: Google Analytics -->&#10;&lt;script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"&gt;&lt;/script&gt;&#10;&lt;script&gt;&#10;  window.dataLayer = window.dataLayer || [];&#10;  function gtag(){dataLayer.push(arguments);}&#10;  gtag("js", new Date());&#10;  gtag("config", "GA_MEASUREMENT_ID");&#10;&lt;/script&gt;'
+                  spellCheck={false}
+                />
+                <p className="text-xs text-slate-500 mt-2">
+                  Paste your script tags here. They will be added to the &lt;head&gt; section of all pages.
+                </p>
               </div>
             </div>
           </div>

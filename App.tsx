@@ -8,6 +8,7 @@ import Inbox from './components/Inbox';
 import Settings from './components/Settings';
 import Auth from './components/Auth';
 import Landing from './components/Landing';
+import HeaderScripts from './components/HeaderScripts';
 import AdminPlans from './components/AdminPlans';
 import AdminSubscriptions from './components/AdminSubscriptions';
 import { Bot, ViewState, Conversation } from './types';
@@ -782,11 +783,18 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <Landing onAuthSuccess={handleAuthSuccess} />;
+    return (
+      <>
+        <HeaderScripts />
+        <Landing onAuthSuccess={handleAuthSuccess} />
+      </>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-slate-100 overflow-hidden relative font-sans selection:bg-indigo-500/30">
+    <>
+      <HeaderScripts />
+      <div className="flex min-h-screen bg-[#050505] text-slate-100 overflow-hidden relative font-sans selection:bg-indigo-500/30">
       {/* Dynamic Background Gradients */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-900/20 blur-[150px] animate-pulse" style={{animationDuration: '8s'}} />
@@ -869,6 +877,7 @@ const AppContent: React.FC = () => {
         cancelText="Cancel"
       />
     </div>
+    </>
   );
 };
 

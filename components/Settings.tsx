@@ -265,6 +265,23 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     }
   };
 
+  // Helper function to get a fresh session token
+  const getFreshSession = async () => {
+    // Use getUser() which automatically refreshes the token if needed
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Authentication required. Please sign in again.');
+    }
+    
+    // Get the session after getUser (which may have refreshed the token)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      throw new Error('Authentication required. Please sign in again.');
+    }
+    
+    return session;
+  };
+
   // Load settings for admin
   const loadSettings = async () => {
     if (!isAdmin) return;
@@ -319,11 +336,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     try {
       setLoadingSettings(true);
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        showError('Authentication required', 'Please sign in to continue');
-        return;
-      }
+      const session = await getFreshSession();
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',
@@ -337,8 +350,9 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save SMTP settings');
+        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('SMTP settings save error:', error);
+        throw new Error(error.error || error.message || 'Failed to save SMTP settings');
       }
 
       showSuccess('SMTP settings saved', 'Your SMTP configuration has been updated successfully.');
@@ -355,11 +369,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     try {
       setLoadingSettings(true);
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        showError('Authentication required', 'Please sign in to continue');
-        return;
-      }
+      const session = await getFreshSession();
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',

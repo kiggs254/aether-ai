@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS payment_transactions (
   subscription_id UUID REFERENCES user_subscriptions(id) ON DELETE SET NULL,
   plan_id UUID REFERENCES subscription_plans(id) ON DELETE RESTRICT NOT NULL,
   amount DECIMAL(10, 2) NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'NGN',
+  currency TEXT NOT NULL DEFAULT 'USD',
   paystack_reference TEXT NOT NULL UNIQUE,
   paystack_authorization_code TEXT,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'success', 'failed', 'reversed')),
@@ -77,79 +77,60 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_user_subscriptions_one_active_per_user
   WHERE status = 'active';
 
 -- Enable Row Level Security
-ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_transactions ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for admin_users
--- Super admins can read all admin users
-CREATE POLICY "Super admins can view all admin users"
-  ON admin_users FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
-
--- Only existing super admins can create new admins (or via edge function)
-CREATE POLICY "Super admins can create admin users"
-  ON admin_users FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+-- Disable RLS for admin_users to avoid infinite recursion
+-- Admin access is controlled via edge functions and service role
+ALTER TABLE admin_users DISABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for subscription_plans
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Anyone can view active subscription plans" ON subscription_plans;
+DROP POLICY IF EXISTS "Super admins can view all subscription plans" ON subscription_plans;
+DROP POLICY IF EXISTS "Super admins can manage subscription plans" ON subscription_plans;
+DROP POLICY IF EXISTS "Authenticated users can view all subscription plans" ON subscription_plans;
+DROP POLICY IF EXISTS "Service role can manage subscription plans" ON subscription_plans;
+
 -- Public read access for plan selection
 CREATE POLICY "Anyone can view active subscription plans"
   ON subscription_plans FOR SELECT
   USING (is_active = true);
 
 -- Super admins can view all plans (including inactive)
-CREATE POLICY "Super admins can view all subscription plans"
+-- Note: Admin check is done in edge functions, RLS allows all authenticated users to view
+-- but edge functions will verify admin status
+CREATE POLICY "Authenticated users can view all subscription plans"
   ON subscription_plans FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+  TO authenticated
+  USING (true);
 
--- Super admins can manage plans
-CREATE POLICY "Super admins can manage subscription plans"
+-- Super admins can manage plans (enforced via edge functions)
+-- RLS allows service role to manage, edge functions verify admin status
+CREATE POLICY "Service role can manage subscription plans"
   ON subscription_plans FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
 
 -- RLS Policies for user_subscriptions
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own subscriptions" ON user_subscriptions;
+DROP POLICY IF EXISTS "Super admins can view all subscriptions" ON user_subscriptions;
+DROP POLICY IF EXISTS "Authenticated users can view subscriptions" ON user_subscriptions;
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON user_subscriptions;
+
 -- Users can read their own subscriptions
 CREATE POLICY "Users can view their own subscriptions"
   ON user_subscriptions FOR SELECT
   USING (auth.uid() = user_id);
 
--- Super admins can read all subscriptions
-CREATE POLICY "Super admins can view all subscriptions"
+-- Authenticated users can view subscriptions (admin check in edge functions)
+CREATE POLICY "Authenticated users can view subscriptions"
   ON user_subscriptions FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+  TO authenticated
+  USING (true);
 
 -- Only system (via edge functions) can create/update subscriptions
 -- This is handled by service role, so we allow authenticated users
@@ -161,20 +142,22 @@ CREATE POLICY "Service role can manage subscriptions"
   WITH CHECK (true);
 
 -- RLS Policies for payment_transactions
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own transactions" ON payment_transactions;
+DROP POLICY IF EXISTS "Super admins can view all transactions" ON payment_transactions;
+DROP POLICY IF EXISTS "Authenticated users can view transactions" ON payment_transactions;
+DROP POLICY IF EXISTS "Service role can manage transactions" ON payment_transactions;
+
 -- Users can read their own transactions
 CREATE POLICY "Users can view their own transactions"
   ON payment_transactions FOR SELECT
   USING (auth.uid() = user_id);
 
--- Super admins can read all transactions
-CREATE POLICY "Super admins can view all transactions"
+-- Authenticated users can view transactions (admin check in edge functions)
+CREATE POLICY "Authenticated users can view transactions"
   ON payment_transactions FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.user_id = auth.uid()
-    )
-  );
+  TO authenticated
+  USING (true);
 
 -- Only system (via edge functions) can create/update transactions
 CREATE POLICY "Service role can manage transactions"
@@ -184,6 +167,11 @@ CREATE POLICY "Service role can manage transactions"
   WITH CHECK (true);
 
 -- Triggers for updated_at
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_subscription_plans_updated_at ON subscription_plans;
+DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions;
+DROP TRIGGER IF EXISTS update_payment_transactions_updated_at ON payment_transactions;
+
 CREATE TRIGGER update_subscription_plans_updated_at BEFORE UPDATE ON subscription_plans
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

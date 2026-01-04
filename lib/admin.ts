@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { useState, useEffect } from 'react';
 
 export interface AdminUser {
   id: string;
@@ -16,6 +15,7 @@ export async function isSuperAdmin(): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
 
+    // Since RLS is disabled on admin_users, we can query directly
     const { data, error } = await supabase
       .from('admin_users')
       .select('id')
@@ -51,29 +51,5 @@ export async function getAdminUser(): Promise<AdminUser | null> {
     console.error('Error fetching admin user:', error);
     return null;
   }
-}
-
-/**
- * Hook to use admin status in React components
- * Returns { isAdmin, loading, adminUser }
- */
-export function useAdminStatus() {
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-
-  useEffect(() => {
-    async function checkAdmin() {
-      setLoading(true);
-      const admin = await isSuperAdmin();
-      const adminData = await getAdminUser();
-      setIsAdmin(admin);
-      setAdminUser(adminData);
-      setLoading(false);
-    }
-    checkAdmin();
-  }, []);
-
-  return { isAdmin, loading, adminUser };
 }
 

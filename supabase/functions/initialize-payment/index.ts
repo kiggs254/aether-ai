@@ -120,9 +120,9 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         email,
-        amount: Math.round(amount * 100), // Convert to kobo (smallest currency unit)
+        amount: Math.round(amount * 100), // Convert to cents (smallest currency unit for USD)
         reference,
-        currency: 'NGN',
+        currency: 'USD',
         callback_url: callback_url || `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/payment/callback`,
         metadata: {
           user_id: user.id,
@@ -150,7 +150,7 @@ serve(async (req) => {
         user_id: user.id,
         plan_id: plan_id,
         amount: amount,
-        currency: 'NGN',
+        currency: 'USD',
         paystack_reference: reference,
         status: 'pending',
         metadata: {

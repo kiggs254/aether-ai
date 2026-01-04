@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CreditCard, Plus, Edit2, Trash2, Save, X, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNotification } from './Notification';
-import { useAdminStatus } from '../lib/admin';
+import { useAdminStatus } from '../lib/useAdminStatus';
 
 interface SubscriptionPlan {
   id: string;
@@ -209,9 +209,9 @@ const AdminPlans: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'NGN',
+      currency: 'USD',
     }).format(amount);
   };
 
@@ -423,7 +423,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ formData, setFormData, onSave, onCa
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Monthly Price (NGN)</label>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Monthly Price (USD)</label>
           <input
             type="number"
             value={formData.price_monthly || 0}
@@ -434,7 +434,7 @@ const PlanForm: React.FC<PlanFormProps> = ({ formData, setFormData, onSave, onCa
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Yearly Price (NGN)</label>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Yearly Price (USD)</label>
           <input
             type="number"
             value={formData.price_yearly || 0}

@@ -17,8 +17,8 @@ VALUES
   (
     'Basic',
     'Ideal for small businesses and personal projects',
-    5000,
-    50000,
+    9.00,
+    90.00,
     '["All Free features", "Up to 10 bots", "10,000 messages/month", "10 GB storage", "Priority email support", "Custom branding"]'::jsonb,
     10,
     10000,
@@ -28,8 +28,8 @@ VALUES
   (
     'Pro',
     'For growing businesses with advanced needs',
-    15000,
-    150000,
+    29.00,
+    290.00,
     '["All Basic features", "Unlimited bots", "100,000 messages/month", "100 GB storage", "Priority support", "Advanced analytics", "API access", "Custom integrations"]'::jsonb,
     NULL,
     100000,
@@ -39,8 +39,8 @@ VALUES
   (
     'Enterprise',
     'For large organizations with custom requirements',
-    50000,
-    500000,
+    99.00,
+    990.00,
     '["All Pro features", "Unlimited everything", "Unlimited storage", "Dedicated support", "Custom SLA", "On-premise deployment option", "Custom integrations", "Account manager"]'::jsonb,
     NULL,
     NULL,

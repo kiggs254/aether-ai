@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, Edit2, X, Check, Calendar, CreditCard, Loader2, AlertCircle, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNotification } from './Notification';
-import { useAdminStatus } from '../lib/admin';
+import { useAdminStatus } from '../lib/useAdminStatus';
 
 interface Subscription {
   id: string;
@@ -194,9 +194,9 @@ const AdminSubscriptions: React.FC = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'NGN',
+      currency: 'USD',
     }).format(amount);
   };
 

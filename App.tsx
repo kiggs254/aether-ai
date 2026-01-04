@@ -7,6 +7,8 @@ import EmbedCode from './components/EmbedCode';
 import Inbox from './components/Inbox';
 import Settings from './components/Settings';
 import Auth from './components/Auth';
+import AdminPlans from './components/AdminPlans';
+import AdminSubscriptions from './components/AdminSubscriptions';
 import { Bot, ViewState, Conversation } from './types';
 import { supabase } from './lib/supabase';
 import { botService, conversationService } from './services/database';
@@ -32,6 +34,9 @@ const AppContent: React.FC = () => {
   
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // Admin status
+  const { isAdmin } = useAdminStatus();
   
   // Initialize ref with current value
   const viewedConversationIdRef = useRef<string | null>(viewedConversationId);

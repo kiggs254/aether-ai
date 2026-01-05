@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rateLimit.ts';
 
 // Get CORS headers with origin validation
 const getCorsHeaders = (origin: string | null) => {
@@ -87,6 +88,29 @@ serve(async (req) => {
       );
     }
 
+    // Rate limiting: 60 requests per minute for admin operations
+    const rateLimitResult = checkRateLimit(req, user.id, { maxRequests: 60, windowSeconds: 60 });
+    
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again in ${rateLimitResult.retryAfter} seconds.`,
+          retryAfter: rateLimitResult.retryAfter
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            ...getRateLimitHeaders(rateLimitResult),
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const planId = pathParts[pathParts.length - 1];
@@ -111,7 +135,7 @@ serve(async (req) => {
 
           return new Response(
             JSON.stringify(data),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
           // List all plans
@@ -129,7 +153,7 @@ serve(async (req) => {
 
           return new Response(
             JSON.stringify(data),
-            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
       }

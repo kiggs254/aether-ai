@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { checkRateLimit, getRateLimitHeaders } from '../_shared/rateLimit.ts';
 
 // Get CORS headers with origin validation
 const getCorsHeaders = (origin: string | null) => {
@@ -58,6 +59,29 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Rate limiting: 10 payment initializations per minute per user
+    const rateLimitResult = checkRateLimit(req, user.id, { maxRequests: 10, windowSeconds: 60 });
+    
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: 'Rate limit exceeded',
+          message: `Too many payment requests. Please try again in ${rateLimitResult.retryAfter} seconds.`,
+          retryAfter: rateLimitResult.retryAfter
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            ...getRateLimitHeaders(rateLimitResult),
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
 
     // Parse request body
     const body: InitializePaymentRequest = await req.json();
@@ -215,7 +239,7 @@ serve(async (req) => {
         access_code: paystackData.data.access_code,
         reference: reference,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {

@@ -27,6 +27,7 @@ const AppContent: React.FC = () => {
   const [bots, setBots] = useState<Bot[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeBot, setActiveBot] = useState<Bot | null>(null);
+  const [activeIntegrationId, setActiveIntegrationId] = useState<string | undefined>(undefined);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [botsLoading, setBotsLoading] = useState(true);
@@ -623,6 +624,7 @@ const AppContent: React.FC = () => {
           // Clear active bot if it was deleted
           if (activeBot?.id === botId) {
             setActiveBot(null);
+            setActiveIntegrationId(undefined);
             if (view === ViewState.BOT_BUILDER || view === ViewState.PLAYGROUND || view === ViewState.INTEGRATION) {
               setView(ViewState.DASHBOARD);
             }
@@ -722,7 +724,7 @@ const AppContent: React.FC = () => {
         );
       case ViewState.INTEGRATION:
         return activeBot ? (
-          <EmbedCode bot={activeBot} />
+          <EmbedCode bot={activeBot} integrationId={activeIntegrationId} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-slate-400 glass-card rounded-3xl m-8">
              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
@@ -733,7 +735,18 @@ const AppContent: React.FC = () => {
           </div>
         );
       case ViewState.INTEGRATIONS:
-        return <Integrations />;
+        return (
+          <Integrations 
+            onNavigateToIntegration={(botId, integrationId) => {
+              const bot = bots.find(b => b.id === botId);
+              if (bot) {
+                setActiveBot(bot);
+                setActiveIntegrationId(integrationId);
+                setView(ViewState.INTEGRATION);
+              }
+            }}
+          />
+        );
       case ViewState.SETTINGS:
         return (
           <Settings user={user} onSignOut={handleSignOut} />

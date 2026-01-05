@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNotification } from './Notification';
 import { Modal } from './Modal';
-import { Integration, Bot } from '../types';
+import { Integration, Bot, ViewState } from '../types';
 import { integrationService, botService } from '../services/database';
 import { Globe, Plus, Trash2, Edit, Eye, Code, Search, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface IntegrationWithBot extends Integration {
   botName?: string;
 }
 
-const Integrations: React.FC = () => {
+interface IntegrationsProps {
+  onNavigateToIntegration: (botId: string, integrationId?: string) => void;
+}
+
+const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) => {
   const { showSuccess, showError } = useNotification();
-  const navigate = useNavigate();
   const [integrations, setIntegrations] = useState<IntegrationWithBot[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,8 +85,8 @@ const Integrations: React.FC = () => {
   };
 
   const handleEditIntegration = (integration: IntegrationWithBot) => {
-    // Navigate to EmbedCode page with the bot ID
-    navigate(`/bot/${integration.botId}/integration/${integration.id}`);
+    // Navigate to EmbedCode page with the bot ID and integration ID
+    onNavigateToIntegration(integration.botId, integration.id);
   };
 
   const handleCreateIntegration = () => {
@@ -93,8 +95,8 @@ const Integrations: React.FC = () => {
       showError('No bots available', 'Please create a bot first.');
       return;
     }
-    // Navigate to the first bot's integration page, or let user select
-    navigate(`/bot/${bots[0].id}/integration/new`);
+    // Navigate to the first bot's integration page to create new integration
+    onNavigateToIntegration(bots[0].id);
   };
 
   // Filter integrations

@@ -56,21 +56,30 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify JWT and get user
+    // Verify JWT and get user using anon key (required for user JWT validation)
     const token = authHeader.replace('Bearer ', '').trim();
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    console.log('Validating JWT token, length:', token.length);
+    
+    const authClient = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
+      console.error('JWT validation failed:', authError?.message || 'No user');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', message: 'Invalid or expired token' }),
+        JSON.stringify({ error: 'Unauthorized', message: authError?.message || 'Invalid or expired token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('JWT validated successfully for user:', user.id);
+
+    // Use service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if user is super admin
     const admin = await isSuperAdmin(supabase, user.id);

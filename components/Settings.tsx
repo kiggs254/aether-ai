@@ -267,45 +267,30 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
 
   // Helper function to get a fresh session token
   const getFreshSession = async () => {
-    // First, get the current session
+    // Always refresh the session to ensure we have a valid token
     const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError || !currentSession) {
       throw new Error('Authentication required. Please sign in again.');
     }
     
-    // Check if token is expired or about to expire (within 5 minutes)
-    const expiresAt = currentSession.expires_at;
-    const now = Math.floor(Date.now() / 1000);
-    const bufferTime = 5 * 60; // 5 minutes buffer
-    
-    // If token is expired or about to expire, refresh it
-    if (expiresAt && (expiresAt - now) < bufferTime) {
-      if (currentSession.refresh_token) {
+    // Always refresh the session to get a fresh token
+    if (currentSession.refresh_token) {
+      try {
         const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession({
           refresh_token: currentSession.refresh_token
         });
         
-        if (refreshError || !refreshedSession) {
-          // If refresh fails, try getUser which might trigger auto-refresh
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          if (userError || !user) {
-            throw new Error('Authentication required. Please sign in again.');
-          }
-          
-          // Get session again after getUser
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          if (!newSession) {
-            throw new Error('Authentication required. Please sign in again.');
-          }
-          return newSession;
+        if (!refreshError && refreshedSession) {
+          console.log('Session refreshed successfully');
+          return refreshedSession;
         }
-        
-        return refreshedSession;
+      } catch (refreshErr) {
+        console.warn('Refresh failed, using current session:', refreshErr);
       }
     }
     
-    // Token is still valid, return current session
+    // Fallback to current session if refresh fails
     return currentSession;
   };
 
@@ -364,11 +349,13 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       setLoadingSettings(true);
       
       const session = await getFreshSession();
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -397,11 +384,15 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       setLoadingSettings(true);
       
       const session = await getFreshSession();
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+      console.log('Saving site config with token:', session.access_token?.substring(0, 20) + '...');
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': supabaseAnonKey || '',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

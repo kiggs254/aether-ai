@@ -21,5 +21,9 @@ supabase functions deploy manage-plans --no-verify-jwt
 echo "Deploying manage-subscriptions..."
 supabase functions deploy manage-subscriptions --no-verify-jwt
 
+# Deploy manage-site-settings
+echo "Deploying manage-site-settings..."
+supabase functions deploy manage-site-settings --no-verify-jwt
+
 echo "All edge functions deployed successfully!"
 

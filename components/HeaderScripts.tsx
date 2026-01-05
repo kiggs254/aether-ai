@@ -81,42 +81,79 @@ const HeaderScripts: React.FC = () => {
           const tagName = element.tagName.toLowerCase();
           
           if (tagName === 'script') {
-            // SECURITY: Only allow external scripts (with src attribute)
-            // Block inline scripts to prevent XSS
             const src = element.getAttribute('src');
-            
-            if (!src) {
-              // Inline scripts are blocked for security
-              return;
-            }
-            
-            // Validate src URL
-            if (!isValidUrl(src)) {
-              console.warn('HeaderScripts: Invalid script src URL:', src);
-              return;
-            }
-            
             const script = document.createElement('script');
             
-            // Only copy whitelisted attributes
-            Array.from(element.attributes).forEach((attr) => {
-              if (ALLOWED_SCRIPT_ATTRIBUTES.includes(attr.name.toLowerCase())) {
-                const sanitized = sanitizeAttribute(attr.name, attr.value);
-                if (sanitized) {
-                  script.setAttribute(attr.name, sanitized);
-                }
+            // Handle external scripts (with src attribute)
+            if (src) {
+              // Validate src URL
+              if (!isValidUrl(src)) {
+                console.warn('HeaderScripts: Invalid script src URL:', src);
+                return;
               }
-            });
-            
-            // CRITICAL: Never set textContent for scripts (blocks inline scripts)
-            // External scripts should only have src attribute
-            
-            // Handle async and defer attributes
-            if (element.hasAttribute('async')) {
-              script.async = true;
-            }
-            if (element.hasAttribute('defer')) {
-              script.defer = true;
+              
+              // Only copy whitelisted attributes
+              Array.from(element.attributes).forEach((attr) => {
+                if (ALLOWED_SCRIPT_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                  const sanitized = sanitizeAttribute(attr.name, attr.value);
+                  if (sanitized) {
+                    script.setAttribute(attr.name, sanitized);
+                  }
+                }
+              });
+              
+              // Handle async and defer attributes
+              if (element.hasAttribute('async')) {
+                script.async = true;
+              }
+              if (element.hasAttribute('defer')) {
+                script.defer = true;
+              }
+            } else {
+              // Handle inline scripts - allow but with validation
+              const inlineContent = element.textContent || '';
+              
+              // Security check: Only allow inline scripts that:
+              // 1. Set configuration objects (window.*Config = {...})
+              // 2. Don't contain dangerous patterns
+              const dangerousPatterns = [
+                /document\.write/i,
+                /eval\(/i,
+                /Function\(/i,
+                /setTimeout\(['"]/i,
+                /setInterval\(['"]/i,
+                /\.innerHTML\s*=/i,
+                /\.outerHTML\s*=/i,
+                /\.insertAdjacentHTML/i,
+                /<script/i,
+                /<iframe/i,
+              ];
+              
+              // Check if it's a configuration script (safe pattern)
+              const isConfigScript = /window\.\w+\s*=\s*\{/.test(inlineContent) || 
+                                     /window\.\w+\s*=\s*\[/.test(inlineContent) ||
+                                     /window\.\w+\s*=\s*['"]/.test(inlineContent);
+              
+              // Block if it contains dangerous patterns
+              const hasDangerousPattern = dangerousPatterns.some(pattern => pattern.test(inlineContent));
+              
+              if (hasDangerousPattern && !isConfigScript) {
+                console.warn('HeaderScripts: Inline script contains potentially dangerous patterns and is not a configuration script');
+                return;
+              }
+              
+              // Copy allowed attributes
+              Array.from(element.attributes).forEach((attr) => {
+                if (ALLOWED_SCRIPT_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                  const sanitized = sanitizeAttribute(attr.name, attr.value);
+                  if (sanitized) {
+                    script.setAttribute(attr.name, sanitized);
+                  }
+                }
+              });
+              
+              // Set inline content
+              script.textContent = inlineContent;
             }
             
             document.head.appendChild(script);

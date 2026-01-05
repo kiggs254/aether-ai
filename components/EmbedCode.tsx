@@ -587,6 +587,16 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                     </div>
                  </div>
               </>
+           ) : (
+              <div className="text-center py-8">
+                 <p className="text-slate-400 text-sm mb-4">No integration selected</p>
+                 <button
+                    onClick={() => setIsCreating(true)}
+                    className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition-all"
+                 >
+                    Create Integration
+                 </button>
+              </div>
            )}
 
            {(selectedIntegration || isCreating) && (

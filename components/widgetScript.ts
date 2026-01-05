@@ -2734,16 +2734,11 @@ export const generateWidgetJS = (): string => {
                   actionId = call.args?.action_id || null;
                   // Clean any accumulated text that contains triggeraction patterns
                   fullText = cleanTriggerActionText(fullText);
-                  // If no text from AI, show trigger message immediately
-                  if (!fullText || !fullText.trim()) {
-                    const action = bot.actions.find(a => a.id === actionId);
-                    if (action) {
-                      const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
-                      updateMessage(triggerMessage);
-                    }
-                  } else {
+                  // If there's text from AI, show it; otherwise don't show message bubble (action card will show trigger message)
+                  if (fullText && fullText.trim()) {
                     updateMessage(fullText);
                   }
+                  // If no text, don't create message bubble - action card will be created later
                 } else if (call.name === 'recommend_products') {
                   productRecommendationCall = call.args || {};
                   // Clean any accumulated text that contains triggeraction patterns
@@ -2772,16 +2767,11 @@ export const generateWidgetJS = (): string => {
                       actionId = part.functionCall.args?.action_id || null;
                       // Clean any accumulated text that contains triggeraction patterns
                       fullText = cleanTriggerActionText(fullText);
-                      // If no text from AI, show trigger message immediately
-                      if (!fullText || !fullText.trim()) {
-                        const action = bot.actions.find(a => a.id === actionId);
-                        if (action) {
-                          const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
-                          updateMessage(triggerMessage);
-                        }
-                      } else {
+                      // If there's text from AI, show it; otherwise don't show message bubble (action card will show trigger message)
+                      if (fullText && fullText.trim()) {
                         updateMessage(fullText);
                       }
+                      // If no text, don't create message bubble - action card will be created later
                     } else if (part.functionCall.name === 'recommend_products') {
                       productRecommendationCall = part.functionCall.args || {};
                       // Clean any accumulated text that contains triggeraction patterns
@@ -2883,18 +2873,11 @@ export const generateWidgetJS = (): string => {
             saveMessage(conversationId, 'model', fullText);
           }
         } else if (actionId) {
-          // For actions without text, show the trigger message in the message bubble
-          const action = bot.actions.find(a => a.id === actionId);
-          if (action) {
-            const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
-            updateMessage(triggerMessage);
-            messageHistory.push({ role: 'model', text: triggerMessage });
-            // Message will be saved below in the actionId handling section
-          } else {
-            // No action found, remove empty message bubble
-            if (botMsg && botMsg.parentNode) {
-              botMsg.parentNode.removeChild(botMsg);
-            }
+          // For actions without text, don't show message in bubble - it will be shown in the action card
+          // Remove empty message bubble - action card will be created below
+          if (botMsg && botMsg.parentNode) {
+            botMsg.parentNode.removeChild(botMsg);
+            botMsg = null; // Clear reference
           }
         } else {
           // No text content and no action - remove the empty message bubble
@@ -2919,6 +2902,9 @@ export const generateWidgetJS = (): string => {
         if (action) {
           // Get trigger message to save as message text
           const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
+          
+          // Add to message history for conversation context (even though we don't show it in bubble)
+          messageHistory.push({ role: 'model', text: triggerMessage });
           
           // Save action as a message with action_invoked field
           if (conversationId) {
@@ -3074,12 +3060,21 @@ export const generateWidgetJS = (): string => {
               btnClass = 'bg-indigo-600';
             }
             
+            const sanitizedTriggerMessage = escapeHtml(triggerMessage || '');
+            const sanitizedActionLabel = escapeHtml(action.label || '');
+            const sanitizedPayload = escapeHtml(action.payload || '');
+            // Validate payload URL is safe
+            const lowerPayload = sanitizedPayload.toLowerCase();
+            const isValidUrl = (lowerPayload.startsWith('http://') || lowerPayload.startsWith('https://') || lowerPayload.startsWith('tel:') || lowerPayload.startsWith('mailto:')) &&
+                              !lowerPayload.includes('javascript:') && !lowerPayload.includes('data:');
+            const safePayload = isValidUrl ? sanitizedPayload : '#';
+            
             actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-              triggerMessage +
+              sanitizedTriggerMessage +
               '</div>' +
-              '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
+              '<a href="' + safePayload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
                 iconSvg +
-                '<span>' + action.label + '</span>' +
+                '<span>' + sanitizedActionLabel + '</span>' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
               '</a>';
           }

@@ -147,12 +147,6 @@ const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations 
     return true;
   });
   
-  // Debug logging for archive filter
-  useEffect(() => {
-    const archivedInList = conversations.filter(c => c.archivedAt).length;
-    const filteredArchived = filteredConversations.filter(c => c.archivedAt).length;
-    console.log(`Inbox filter: showArchived=${showArchived}, total conversations=${conversations.length}, archived in list=${archivedInList}, filtered archived=${filteredArchived}, filtered total=${filteredConversations.length}`);
-  }, [showArchived, conversations.length, filteredConversations.length]);
 
   const getBotName = (botId: string | null | undefined) => {
     if (!botId) return 'Deleted Bot';

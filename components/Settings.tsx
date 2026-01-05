@@ -267,19 +267,46 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
 
   // Helper function to get a fresh session token
   const getFreshSession = async () => {
-    // Use getUser() which automatically refreshes the token if needed
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // First, get the current session
+    const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !currentSession) {
       throw new Error('Authentication required. Please sign in again.');
     }
     
-    // Get the session after getUser (which may have refreshed the token)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      throw new Error('Authentication required. Please sign in again.');
+    // Check if token is expired or about to expire (within 5 minutes)
+    const expiresAt = currentSession.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+    const bufferTime = 5 * 60; // 5 minutes buffer
+    
+    // If token is expired or about to expire, refresh it
+    if (expiresAt && (expiresAt - now) < bufferTime) {
+      if (currentSession.refresh_token) {
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession({
+          refresh_token: currentSession.refresh_token
+        });
+        
+        if (refreshError || !refreshedSession) {
+          // If refresh fails, try getUser which might trigger auto-refresh
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError || !user) {
+            throw new Error('Authentication required. Please sign in again.');
+          }
+          
+          // Get session again after getUser
+          const { data: { session: newSession } } = await supabase.auth.getSession();
+          if (!newSession) {
+            throw new Error('Authentication required. Please sign in again.');
+          }
+          return newSession;
+        }
+        
+        return refreshedSession;
+      }
     }
     
-    return session;
+    // Token is still valid, return current session
+    return currentSession;
   };
 
   // Load settings for admin

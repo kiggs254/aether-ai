@@ -14,6 +14,7 @@ interface SidebarProps {
   onClose?: () => void;
   user?: any;
   onSignOut?: () => void;
+  isAdmin?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -35,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewState.INBOX, icon: InboxIcon, label: 'Inbox & Leads' },
     { id: ViewState.BOT_BUILDER, icon: Bot, label: 'Bot Builder' },
     { id: ViewState.PLAYGROUND, icon: MessageSquare, label: 'Playground' },
+    { id: ViewState.INTEGRATIONS, icon: Layers, label: 'Integrations' },
     { id: ViewState.INTEGRATION, icon: Code, label: 'Integration' },
     { id: ViewState.SETTINGS, icon: Settings, label: 'Settings' },
     ...(isAdmin ? [

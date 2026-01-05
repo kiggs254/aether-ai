@@ -4,6 +4,7 @@ import Dashboard from './components/Dashboard';
 import BotBuilder from './components/BotBuilder';
 import ChatPlayground from './components/ChatPlayground';
 import EmbedCode from './components/EmbedCode';
+import Integrations from './components/Integrations';
 import Inbox from './components/Inbox';
 import Settings from './components/Settings';
 import Auth from './components/Auth';
@@ -731,6 +732,8 @@ const AppContent: React.FC = () => {
              <p className="text-sm text-slate-500 mt-1">Select a bot from the sidebar to generate its embed code.</p>
           </div>
         );
+      case ViewState.INTEGRATIONS:
+        return <Integrations />;
       case ViewState.SETTINGS:
         return (
           <Settings user={user} onSignOut={handleSignOut} />

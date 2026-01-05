@@ -2,23 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useNotification } from './Notification';
 import { Modal } from './Modal';
 import { Bot, Integration, DepartmentBot } from '../types';
-import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2, Bot as BotIcon } from 'lucide-react';
+import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2, Bot as BotIcon, Lock } from 'lucide-react';
 import { integrationService, botService } from '../services/database';
+import { getUserSubscriptionInfo } from '../lib/subscription';
 
 interface EmbedCodeProps {
   bot: Bot;
+  integrationId?: string; // Optional: for editing existing integration
 }
 
-const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
+const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
   const { showSuccess, showError } = useNotification();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   
   // Integration Management State
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(!integrationId);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Subscription info
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{
+    planName: string;
+    isFree: boolean;
+    canCreateMultipleIntegrations: boolean;
+    canUseDepartmentalBots: boolean;
+    canCollectLeads: boolean;
+  } | null>(null);
   
   // Widget Customization State (for new integration or editing)
   const [integrationName, setIntegrationName] = useState('');
@@ -51,11 +61,34 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
     message: '',
   });
 
-  // Load integrations for this bot
+  // Load subscription info and integration
   useEffect(() => {
-    loadIntegrations();
+    loadSubscriptionInfo();
     loadAvailableBots();
-  }, [bot.id]);
+    if (integrationId) {
+      loadIntegration(integrationId);
+    } else {
+      setIsCreating(true);
+      setIsLoading(false);
+    }
+  }, [bot.id, integrationId]);
+
+  const loadSubscriptionInfo = async () => {
+    try {
+      const info = await getUserSubscriptionInfo();
+      setSubscriptionInfo(info);
+    } catch (error) {
+      console.error('Failed to load subscription info:', error);
+      // Default to free plan on error
+      setSubscriptionInfo({
+        planName: 'Free',
+        isFree: true,
+        canCreateMultipleIntegrations: false,
+        canUseDepartmentalBots: false,
+        canCollectLeads: false,
+      });
+    }
+  };
 
   const loadAvailableBots = async () => {
     try {
@@ -69,34 +102,29 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
     }
   };
 
-  // Update selected integration when integrations change
-  useEffect(() => {
-    if (integrations.length > 0 && !selectedIntegration && !isCreating) {
-      setSelectedIntegration(integrations[0]);
-      loadIntegrationSettings(integrations[0]);
+  const loadIntegration = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const integration = await integrationService.getIntegrationById(id);
+      if (integration && integration.botId === bot.id) {
+        setSelectedIntegration(integration);
+        loadIntegrationSettings(integration);
+        setIsCreating(false);
+      } else {
+        showError('Integration not found', 'This integration does not belong to this bot.');
+      }
+    } catch (error) {
+      console.error('Failed to load integration:', error);
+      showError('Failed to load integration', 'Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [integrations]);
+  };
 
   // Reset preview state when bot config changes
   useEffect(() => {
     setHasSubmittedLead(!collectLeads);
   }, [collectLeads]);
-
-  const loadIntegrations = async () => {
-    try {
-      setIsLoading(true);
-      const data = await integrationService.getIntegrationsByBotId(bot.id);
-      setIntegrations(data);
-      if (data.length > 0 && !selectedIntegration) {
-        setSelectedIntegration(data[0]);
-        loadIntegrationSettings(data[0]);
-      }
-    } catch (error) {
-      console.error('Failed to load integrations:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadIntegrationSettings = (integration: Integration) => {
     setIntegrationName(integration.name || '');
@@ -111,43 +139,84 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
 
   const handleCreateIntegration = async () => {
     try {
+      // Check subscription limits
+      if (!subscriptionInfo) {
+        await loadSubscriptionInfo();
+      }
+
+      // Check if user can create multiple integrations (free users limited to 1)
+      if (subscriptionInfo?.isFree) {
+        const allIntegrations = await integrationService.getAllUserIntegrations();
+        if (allIntegrations.length >= 1) {
+          showError('Integration limit reached', 'Free plan allows only 1 integration. Please upgrade to create more.');
+          return;
+        }
+      }
+
+      // Validate free plan restrictions
+      if (subscriptionInfo?.isFree) {
+        if (collectLeads) {
+          showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
+          return;
+        }
+        if (departmentBots && departmentBots.length > 0) {
+          showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
+          return;
+        }
+      }
+
       const newIntegration = await integrationService.createIntegration(bot.id, {
         name: integrationName.trim() || undefined,
         theme,
         position,
         brandColor,
         welcomeMessage,
-        collectLeads,
-        departmentBots: departmentBots, // Always pass the array, even if empty
+        collectLeads: subscriptionInfo?.isFree ? false : collectLeads,
+        departmentBots: subscriptionInfo?.isFree ? [] : departmentBots,
       });
-      await loadIntegrations();
       setSelectedIntegration(newIntegration);
       setIsCreating(false);
       showSuccess('Integration created', 'Your integration has been created successfully.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create integration:', error);
-      showError('Failed to create integration', 'Please try again.');
+      showError('Failed to create integration', error.message || 'Please try again.');
     }
   };
 
   const handleUpdateIntegration = async () => {
     if (!selectedIntegration) return;
     try {
+      // Check subscription limits
+      if (!subscriptionInfo) {
+        await loadSubscriptionInfo();
+      }
+
+      // Validate free plan restrictions
+      if (subscriptionInfo?.isFree) {
+        if (collectLeads) {
+          showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
+          return;
+        }
+        if (departmentBots && departmentBots.length > 0) {
+          showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
+          return;
+        }
+      }
+
       const updated = await integrationService.updateIntegration(selectedIntegration.id, {
         name: integrationName.trim() || undefined,
         theme,
         position,
         brandColor,
         welcomeMessage,
-        collectLeads,
-        departmentBots: departmentBots, // Always pass the array, even if empty, to allow clearing
+        collectLeads: subscriptionInfo?.isFree ? false : collectLeads,
+        departmentBots: subscriptionInfo?.isFree ? [] : departmentBots,
       });
-      await loadIntegrations();
       setSelectedIntegration(updated);
       showSuccess('Integration updated', 'Your integration has been updated successfully.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update integration:', error);
-      showError('Failed to update integration', 'Please try again.');
+      showError('Failed to update integration', error.message || 'Please try again.');
     }
   };
 
@@ -160,9 +229,9 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
       onConfirm: async () => {
         try {
           await integrationService.deleteIntegration(integrationId);
-          await loadIntegrations();
           if (selectedIntegration?.id === integrationId) {
             setSelectedIntegration(null);
+            setIsCreating(true);
           }
           showSuccess('Integration deleted', 'The integration has been deleted successfully.');
         } catch (error) {
@@ -325,84 +394,29 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
         {/* Left Column: Configuration */}
         <div className="glass-card p-4 sm:p-6 rounded-3xl overflow-y-auto custom-scrollbar space-y-6 sm:space-y-8">
            
-           {/* Integration Management */}
-           <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                 <h3 className="text-white font-semibold flex items-center gap-2">
-                    <Globe className="w-5 h-5 text-indigo-400" /> Integrations
-                 </h3>
-                 <button
-                    onClick={() => {
-                      setIsCreating(true);
-                      setSelectedIntegration(null);
-                      setIntegrationName('');
-                      setWelcomeMessage(`Hi there! I'm ${bot.name}. How can I help you?`);
-                      setBrandColor('#6366f1');
-                      setPosition('right');
-                      setTheme('dark');
-                      setCollectLeads(bot.collectLeads || false);
-                    }}
-                    className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all"
-                 >
-                    <Plus className="w-4 h-4" />
-                 </button>
-              </div>
-              
-              {isLoading ? (
-                 <div className="text-slate-400 text-sm">Loading integrations...</div>
-              ) : integrations.length === 0 && !isCreating ? (
-                 <div className="text-center py-8">
-                    <p className="text-slate-400 text-sm mb-4">No integrations yet</p>
-                    <button
-                       onClick={() => setIsCreating(true)}
-                       className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition-all"
-                    >
-                       Create Integration
-                    </button>
-                 </div>
-              ) : (
-                 <div className="space-y-2">
-                    {integrations.map((integration) => (
-                       <div
-                          key={integration.id}
-                          className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                             selectedIntegration?.id === integration.id
-                                ? 'bg-indigo-600/20 border-indigo-500'
-                                : 'bg-white/5 border-white/10 hover:border-white/20'
-                          }`}
-                          onClick={() => {
-                             setSelectedIntegration(integration);
-                             loadIntegrationSettings(integration);
-                             setIsCreating(false);
-                          }}
-                       >
-                          <div className="flex items-center justify-between">
-                             <div className="flex-1 min-w-0">
-                                <div className="text-white text-sm font-medium truncate">
-                                   {integration.name || `Integration ${integrations.indexOf(integration) + 1}`}
-                                </div>
-                                <div className="text-slate-400 text-xs mt-0.5">
-                                   {integration.theme} • {integration.position}
-                                </div>
-                             </div>
-                             <button
-                                onClick={(e) => {
-                                   e.stopPropagation();
-                                   handleDeleteIntegration(integration.id);
-                                }}
-                                className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all"
-                             >
-                                <Trash2 className="w-3.5 h-3.5" />
-                             </button>
-                          </div>
-                       </div>
-                    ))}
-                 </div>
-              )}
-           </div>
-
-           {(selectedIntegration || isCreating) && (
+           {isLoading ? (
+              <div className="text-slate-400 text-sm">Loading integration...</div>
+           ) : (selectedIntegration || isCreating) ? (
               <>
+                 {selectedIntegration && (
+                    <div className="flex items-center justify-between mb-4">
+                       <div>
+                          <h3 className="text-white font-semibold">
+                             {selectedIntegration.name || 'Unnamed Integration'}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                             Editing integration
+                          </p>
+                       </div>
+                       <button
+                          onClick={() => handleDeleteIntegration(selectedIntegration.id)}
+                          className="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                          title="Delete integration"
+                       >
+                          <Trash2 className="w-4 h-4" />
+                       </button>
+                    </div>
+                 )}
                  <div className="w-full h-px bg-white/5"></div>
 
                  {/* Integration Name */}
@@ -447,12 +461,22 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                                 type="checkbox"
                                 checked={collectLeads}
                                 onChange={(e) => setCollectLeads(e.target.checked)}
-                                className="rounded"
+                                disabled={subscriptionInfo?.isFree}
+                                className="rounded disabled:opacity-50 disabled:cursor-not-allowed"
                              />
                              Collect Leads
+                             {subscriptionInfo?.isFree && (
+                                <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                                   <Lock className="w-3 h-3" />
+                                   Premium
+                                </span>
+                             )}
                           </label>
+                          {subscriptionInfo?.isFree && (
+                             <p className="text-xs text-slate-500">Upgrade to enable lead collection</p>
+                          )}
                        </div>
-                       <div className="space-y-3 pt-3 border-t border-white/10">
+                       <div className={`space-y-3 pt-3 border-t border-white/10 ${subscriptionInfo?.isFree ? 'opacity-50' : ''}`}>
                           <div className="flex items-center justify-between">
                              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
                                 <BotIcon className="w-4 h-4 text-indigo-400" />
@@ -461,6 +485,15 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                              </label>
                           </div>
                           <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
+                          {subscriptionInfo?.isFree && (
+                             <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
+                                <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                   <p className="text-xs font-medium text-orange-400">Premium Feature</p>
+                                   <p className="text-xs text-slate-400 mt-0.5">Upgrade your plan to use departmental bots</p>
+                                </div>
+                             </div>
+                          )}
                           <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
                              {departmentBots.length === 0 ? (
                                 <div className="text-center py-6 text-slate-500 text-sm">
@@ -538,9 +571,14 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot }) => {
                           </div>
                           <button
                              onClick={() => {
+                                if (subscriptionInfo?.isFree) {
+                                  showError('Premium feature', 'Upgrade your plan to use departmental bots.');
+                                  return;
+                                }
                                 setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
                              }}
-                             className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10"
+                             disabled={subscriptionInfo?.isFree}
+                             className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                              <Plus className="w-4 h-4" />
                              Add Department

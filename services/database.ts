@@ -809,6 +809,55 @@ export const integrationService = {
     });
   },
 
+  // Get all integrations for the current user
+  async getAllUserIntegrations(): Promise<Integration[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('integrations')
+      .select(`
+        *,
+        bots (
+          id,
+          name
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((integration: any) => {
+      // Parse department_bots JSON
+      let departmentBots = undefined;
+      if (integration.department_bots) {
+        try {
+          departmentBots = typeof integration.department_bots === 'string' 
+            ? JSON.parse(integration.department_bots) 
+            : integration.department_bots;
+        } catch (e) {
+          console.warn('Failed to parse department_bots:', e);
+        }
+      }
+
+      return {
+        id: integration.id,
+        botId: integration.bot_id,
+        userId: integration.user_id,
+        name: integration.name || undefined,
+        theme: integration.theme,
+        position: integration.position,
+        brandColor: integration.brand_color,
+        welcomeMessage: integration.welcome_message || undefined,
+        collectLeads: integration.collect_leads,
+        departmentBots,
+        createdAt: new Date(integration.created_at).getTime(),
+        updatedAt: new Date(integration.updated_at).getTime(),
+      };
+    });
+  },
+
   // Update an integration
   async updateIntegration(integrationId: string, settings: {
     name?: string;

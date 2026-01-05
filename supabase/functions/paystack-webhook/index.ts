@@ -129,7 +129,6 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Processing Paystack event:', event.event);
 
     // Handle different event types
     switch (event.event) {
@@ -150,7 +149,6 @@ serve(async (req) => {
         break;
       }
       default: {
-        console.log('Unhandled event type:', event.event);
       }
     }
 
@@ -190,7 +188,6 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     .single();
 
   if (existingTransaction && existingTransaction.status === 'success') {
-    console.log('Transaction already processed:', reference);
     return;
   }
 
@@ -265,7 +262,6 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   if (subError) {
     console.error('Error creating subscription:', subError);
   } else {
-    console.log('Subscription created/updated:', subscription?.id);
   }
 }
 

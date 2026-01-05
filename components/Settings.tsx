@@ -98,9 +98,9 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
         `)
         .eq('user_id', user.id)
         .eq('status', 'active')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error) {
         throw error;
       }
 
@@ -282,11 +282,10 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
         });
         
         if (!refreshError && refreshedSession) {
-          console.log('Session refreshed successfully');
           return refreshedSession;
         }
       } catch (refreshErr) {
-        console.warn('Refresh failed, using current session:', refreshErr);
+        // Refresh failed, will use current session
       }
     }
     
@@ -349,13 +348,17 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       setLoadingSettings(true);
       
       const session = await getFreshSession();
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key is not configured');
+      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseAnonKey || '',
+          'apikey': supabaseAnonKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -384,15 +387,17 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
       setLoadingSettings(true);
       
       const session = await getFreshSession();
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-      console.log('Saving site config with token:', session.access_token?.substring(0, 20) + '...');
+      if (!supabaseAnonKey) {
+        throw new Error('Supabase anon key is not configured');
+      }
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-site-settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': supabaseAnonKey || '',
+          'apikey': supabaseAnonKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

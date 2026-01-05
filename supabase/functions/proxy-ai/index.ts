@@ -25,7 +25,6 @@ serve(async (req) => {
           if (parts.length === 3) {
             const payload = JSON.parse(atob(parts[1]));
             userId = payload.sub || null;
-            console.log('Extracted user ID from JWT:', userId);
           }
         }
       } catch (e) {
@@ -34,7 +33,6 @@ serve(async (req) => {
     }
     
     // Proceed with request - no auth blocking
-    console.log('Processing request, userId:', userId);
 
     // Parse request body
     let body;
@@ -59,16 +57,7 @@ serve(async (req) => {
       );
     }
 
-    // Validate and log bot structure
-    console.log('Bot configuration:', {
-      id: bot.id,
-      name: bot.name,
-      provider: bot.provider,
-      actionsCount: Array.isArray(bot.actions) ? bot.actions.length : 0,
-      ecommerceEnabled: !!bot.ecommerceEnabled,
-      hasActions: Array.isArray(bot.actions) && bot.actions.length > 0,
-      actions: Array.isArray(bot.actions) ? bot.actions.map((a: any) => ({ id: a.id, type: a.type, description: a.description })) : []
-    });
+    // Validate bot structure
 
     // Validate bot.actions is an array if present
     if (bot.actions !== undefined && !Array.isArray(bot.actions)) {
@@ -115,10 +104,6 @@ serve(async (req) => {
         ];
 
         const tools = buildOpenAITools(bot);
-        console.log('DeepSeek tools built:', tools ? `${tools.length} tools` : 'no tools');
-        if (tools) {
-          console.log('DeepSeek tools structure:', JSON.stringify(tools, null, 2));
-        }
         const requestBody: any = {
           model: bot.model || 'deepseek-chat',
           messages: messages,
@@ -128,10 +113,6 @@ serve(async (req) => {
         if (tools) {
           requestBody.tools = tools;
           requestBody.tool_choice = 'auto';
-          console.log('Added tools to DeepSeek request with tool_choice: auto');
-        } else {
-          console.log('No tools to add to DeepSeek request');
-        }
 
         const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
           method: 'POST',
@@ -253,10 +234,6 @@ serve(async (req) => {
         ];
 
         const tools = buildOpenAITools(bot);
-        console.log('OpenAI streaming tools built:', tools ? `${tools.length} tools` : 'no tools');
-        if (tools) {
-          console.log('OpenAI streaming tools structure:', JSON.stringify(tools, null, 2));
-        }
         const requestBody: any = {
           model: bot.model || 'gpt-4',
           messages: messages,
@@ -266,10 +243,6 @@ serve(async (req) => {
         if (tools) {
           requestBody.tools = tools;
           requestBody.tool_choice = 'auto';
-          console.log('Added tools to OpenAI streaming request with tool_choice: auto');
-        } else {
-          console.log('No tools to add to OpenAI streaming request');
-        }
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -382,12 +355,7 @@ serve(async (req) => {
         }
 
         const tools = buildGeminiTools(bot);
-        console.log('Gemini tools built:', tools ? `${tools.length} tool groups` : 'no tools');
-        if (tools) {
-          console.log('Gemini tools structure:', JSON.stringify(tools, null, 2));
-        }
         const systemInstructionText = buildSystemInstruction(bot);
-        console.log('System instruction length:', systemInstructionText.length, 'chars');
         
         // Validate inputs
         if (!message || typeof message !== 'string' || message.trim() === '') {
@@ -421,7 +389,6 @@ serve(async (req) => {
           requestBody.systemInstruction = {
             parts: [{ text: systemInstructionText }]
           };
-          console.log('Added systemInstruction as top-level field for streaming');
         }
         
         // Only add tools if we have them - some models may not support tools
@@ -435,12 +402,6 @@ serve(async (req) => {
               mode: 'AUTO', // AUTO mode is more reliable - relies on system instruction to encourage function use
             }
           };
-          console.log('Added tools and tool_config to Gemini streaming request. Tools count:', tools.length);
-          console.log('ToolConfig:', JSON.stringify(requestBody.tool_config));
-          console.log('Full tools structure:', JSON.stringify(tools, null, 2));
-        } else {
-          console.log('No tools to add to Gemini streaming request');
-        }
         
         console.log('Gemini request body (first 2000 chars):', JSON.stringify(requestBody).substring(0, 2000));
 

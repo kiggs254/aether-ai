@@ -63,20 +63,16 @@ serve(async (req) => {
 
     // Verify JWT and get user using anon key (required for user JWT validation)
     const token = authHeader.replace('Bearer ', '').trim();
-    console.log('Validating JWT token, length:', token.length);
     
     const authClient = createClient(supabaseUrl, supabaseAnonKey);
     const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     
     if (authError || !user) {
-      console.error('JWT validation failed:', authError?.message || 'No user');
       return new Response(
         JSON.stringify({ error: 'Unauthorized', message: authError?.message || 'Invalid or expired token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('JWT validated successfully for user:', user.id);
 
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);

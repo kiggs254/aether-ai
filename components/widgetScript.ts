@@ -36,7 +36,6 @@ export const generateWidgetJS = (): string => {
         const data = await response.json();
         if (data && data.length > 0) {
           const integration = data[0];
-          console.log('Fetched integration config for:', integrationId);
           // Parse department_bots JSON
           let departmentBots = null;
           if (integration.department_bots) {
@@ -115,7 +114,6 @@ export const generateWidgetJS = (): string => {
         const hasBotActions = cachedData.config && cachedData.config.bot_actions && Array.isArray(cachedData.config.bot_actions) && cachedData.config.bot_actions.length > 0;
         
         if (cacheAge < cacheExpiry && (hasActions || hasBotActions)) {
-          console.log('Using cached bot config for:', botId);
           // Ensure actions are mapped if we have bot_actions but not actions
           if (hasBotActions && !hasActions) {
             cachedData.config.actions = cachedData.config.bot_actions.map(function(action) {
@@ -136,7 +134,6 @@ export const generateWidgetJS = (): string => {
           return cachedData.config;
         } else if (cacheAge < cacheExpiry && !hasActions && !hasBotActions) {
           // Cache exists but no actions - clear it and fetch fresh
-          console.log('Cached config has no actions, clearing cache and fetching fresh');
           sessionStorage.removeItem(cacheKey);
         }
       }
@@ -157,7 +154,6 @@ export const generateWidgetJS = (): string => {
       
       // Query bot with bot_actions - using proper PostgREST syntax
       const queryUrl = supabaseUrl + '/rest/v1/bots?id=eq.' + botId + '&select=*,bot_actions(*)';
-      console.log('Fetching bot config from URL:', queryUrl);
       const response = await fetch(queryUrl, {
         method: 'GET',
         headers: headers,
@@ -167,13 +163,9 @@ export const generateWidgetJS = (): string => {
         const data = await response.json();
         if (data && data.length > 0) {
           const botConfig = data[0];
-          console.log('Fetched bot config for:', botId);
-          console.log('Raw bot config response:', botConfig);
-          console.log('bot_actions in response:', botConfig.bot_actions);
           
           // Map bot_actions to actions format
           if (botConfig.bot_actions && Array.isArray(botConfig.bot_actions) && botConfig.bot_actions.length > 0) {
-            console.log('Mapping', botConfig.bot_actions.length, 'bot_actions to actions');
             botConfig.actions = botConfig.bot_actions.map(function(action) {
               return {
                 id: action.id,
@@ -186,7 +178,6 @@ export const generateWidgetJS = (): string => {
                 fileSize: action.file_size || undefined
               };
             });
-            console.log('Mapped actions:', botConfig.actions);
           } else {
             console.warn('No bot_actions found in response. bot_actions value:', botConfig.bot_actions);
             botConfig.actions = [];
@@ -294,11 +285,8 @@ export const generateWidgetJS = (): string => {
     brandColor = config.brandColor || '#6366f1';
     welcomeMessage = config.welcomeMessage || ('Hello! I am ' + bot.name + '. How can I assist you?');
     collectLeads = config.collectLeads !== undefined ? config.collectLeads : bot.collectLeads;
-    console.log('Using bot config from embed code (old format)');
-    console.log('Bot actions from config:', bot.actions ? bot.actions.length : 0, 'actions:', bot.actions);
   } else if (config.integrationId) {
     // New format: fetch integration config (UI settings) and bot config (AI settings)
-    console.log('Fetching integration config from Supabase for integrationId:', config.integrationId);
     const integrationConfig = await fetchIntegrationConfig(config.integrationId, config.supabaseUrl, config.supabaseAnonKey);
     
     if (!integrationConfig) {
@@ -323,7 +311,6 @@ export const generateWidgetJS = (): string => {
     config.departmentBots = departmentBots;
     
     // Fetch bot config using botId from integration
-    console.log('Fetching bot config from Supabase for botId:', integrationConfig.botId);
     const fetchedBot = await fetchBotConfig(integrationConfig.botId, config.supabaseUrl, config.supabaseAnonKey);
     
     if (!fetchedBot) {
@@ -372,11 +359,8 @@ export const generateWidgetJS = (): string => {
       ecommerceSettings: fetchedBot.ecommerce_settings || fetchedBot.ecommerceSettings || undefined
     };
     
-    console.log('Integration and bot configs loaded successfully');
-    console.log('Bot actions loaded:', actions.length, 'actions:', actions);
   } else if (config.botId) {
     // Intermediate format: fetch bot config from Supabase (UI settings from config)
-    console.log('Fetching bot config from Supabase for botId:', config.botId);
     const fetchedBot = await fetchBotConfig(config.botId, config.supabaseUrl, config.supabaseAnonKey);
     
     if (!fetchedBot) {
@@ -431,8 +415,6 @@ export const generateWidgetJS = (): string => {
       ecommerceSettings: fetchedBot.ecommerce_settings || fetchedBot.ecommerceSettings || undefined
     };
     
-    console.log('Bot config loaded and merged with UI overrides');
-    console.log('Bot actions loaded:', actions.length, 'actions:', actions);
   } else {
     console.error('No bot configuration found. Please provide config.bot, config.botId, or config.integrationId');
     return;
@@ -645,7 +627,6 @@ export const generateWidgetJS = (): string => {
         leadData: leadDataToSave || null
       };
       localStorage.setItem('aether_widget_session_' + botId, JSON.stringify(sessionData));
-      console.log('Session saved for bot:', botId, 'conversation:', convId);
     } catch (err) {
       console.warn('Failed to save session to localStorage:', err);
     }
@@ -663,12 +644,10 @@ export const generateWidgetJS = (): string => {
       
       // Check if session is expired
       if (isSessionExpired(sessionData.timestamp)) {
-        console.log('Session expired for bot:', botId);
         clearSession(botId);
         return null;
       }
       
-      console.log('Session loaded for bot:', botId, 'conversation:', sessionData.conversationId);
       return sessionData;
     } catch (err) {
       console.warn('Failed to load session from localStorage:', err);
@@ -679,7 +658,6 @@ export const generateWidgetJS = (): string => {
   const clearSession = (botId) => {
     try {
       localStorage.removeItem('aether_widget_session_' + botId);
-      console.log('Session cleared for bot:', botId);
     } catch (err) {
       console.warn('Failed to clear session from localStorage:', err);
     }
@@ -1103,7 +1081,6 @@ export const generateWidgetJS = (): string => {
       if (email) payload.user_email = email;
       if (phone) payload.user_phone = phone;
       
-      console.log('Creating conversation with payload:', payload);
       
       const response = await fetch(supabaseUrl + '/rest/v1/conversations', {
         method: 'POST',
@@ -1115,7 +1092,6 @@ export const generateWidgetJS = (): string => {
         const data = await response.json();
         // Supabase returns array when using Prefer: return=representation
         const conv = Array.isArray(data) ? data[0] : data;
-        console.log('Conversation created successfully:', conv.id);
         
         // Save session
         saveSession(botToUse.id, conv.id, email || phone ? { email: email || null, phone: phone || null } : null);
@@ -1181,7 +1157,6 @@ export const generateWidgetJS = (): string => {
         const data = await response.json();
         if (data && data.length > 0) {
           const existingConvId = data[0].id;
-          console.log('Found existing conversation:', existingConvId);
           
           // Save session for existing conversation
           saveSession(botToUse.id, existingConvId, email || phone ? { email: email || null, phone: phone || null } : null);
@@ -1207,12 +1182,10 @@ export const generateWidgetJS = (): string => {
     // First, try to find existing conversation
     const existingConvId = await findExistingConversation(email, phone, botToUse);
     if (existingConvId) {
-      console.log('Using existing conversation:', existingConvId);
       return existingConvId;
     }
     
     // No existing conversation found, create new one
-    console.log('No existing conversation found, creating new one');
     return await createConversation(email, phone, botToUse);
   };
   
@@ -1244,7 +1217,6 @@ export const generateWidgetJS = (): string => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Loaded', data.length, 'messages from conversation:', convId);
         return data || [];
       } else {
         const errorText = await response.text();
@@ -1314,7 +1286,6 @@ export const generateWidgetJS = (): string => {
         const errorText = await response.text();
         console.error('Failed to save message:', response.status, errorText);
       } else {
-        console.log('Message saved successfully:', { convId, role, textLength: text.length });
       }
     } catch (err) {
       console.error('Error saving message:', err);

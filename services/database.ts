@@ -331,13 +331,6 @@ export const conversationService = {
     
     if (allError) {
       console.error('Error fetching all conversations:', allError);
-    } else {
-      console.log(`Total conversations for user's bots: ${allConvs?.length || 0}`);
-      const playgroundCount = allConvs?.filter(c => c.user_id === user.id).length || 0;
-      const widgetCount = allConvs?.filter(c => !c.user_id || c.user_id === null).length || 0;
-      console.log(`  - Playground (user_id = ${user.id}): ${playgroundCount}`);
-      console.log(`  - Widget (user_id = null): ${widgetCount}`);
-      console.log(`  - Other: ${(allConvs?.length || 0) - playgroundCount - widgetCount}`);
     }
     
     // Build query for widget conversations
@@ -402,20 +395,8 @@ export const conversationService = {
       index === self.findIndex(c => c.id === conv.id)
     );
     
-    // Debug: Log archived conversations
     const archivedCount = uniqueData.filter(c => c.archived_at).length;
     const activeCount = uniqueData.filter(c => !c.archived_at).length;
-    const withBotId = uniqueData.filter(c => c.bot_id).length;
-    const withNullBotId = uniqueData.filter(c => !c.bot_id && c.archived_bot_id).length;
-    console.log(`getAllConversations: Found ${uniqueData.length} total conversations (${activeCount} active, ${archivedCount} archived), includeArchived=${includeArchived}`);
-    console.log(`  - Conversations with bot_id: ${withBotId}`);
-    console.log(`  - Conversations with NULL bot_id (from deleted bots): ${withNullBotId}`);
-    if (archivedCount > 0) {
-      const archivedWithBotId = uniqueData.filter(c => c.archived_at && c.bot_id).length;
-      const archivedWithNullBotId = uniqueData.filter(c => c.archived_at && !c.bot_id && c.archived_bot_id).length;
-      console.log(`  - Archived with bot_id (manually archived): ${archivedWithBotId}`);
-      console.log(`  - Archived with NULL bot_id (from deleted bot): ${archivedWithNullBotId}`);
-    }
     
     // Sort by started_at descending
     uniqueData.sort((a, b) => {
@@ -437,7 +418,6 @@ export const conversationService = {
     const filtered = (data || []).filter((conv: any) => {
       // Exclude if user_id is set (playground conversations)
       if (conv.user_id) {
-        console.warn('Filtered out conversation with user_id:', conv.id, 'user_id:', conv.user_id);
         return false;
       }
       
@@ -450,7 +430,6 @@ export const conversationService = {
       const isOld = convDate.getTime() < cutoffDate;
       
       if (!conv.user_email && !conv.user_phone && isOld) {
-        console.warn('Filtered out old playground conversation (no user_email/user_phone, created before today):', conv.id, 'created:', convDate);
         return false;
       }
       
@@ -460,8 +439,6 @@ export const conversationService = {
 
     const filteredArchivedCount = filtered.filter(c => c.archived_at).length;
     const filteredActiveCount = filtered.filter(c => !c.archived_at).length;
-    console.log(`Loaded ${filtered.length} widget conversations (filtered from ${data?.length || 0} total, excluded ${(data?.length || 0) - filtered.length} playground conversations)`);
-    console.log(`  - After filtering: ${filteredActiveCount} active, ${filteredArchivedCount} archived`);
 
     return filtered.map((conv: any) => {
       const messages = (conv.messages || [])

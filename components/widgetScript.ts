@@ -6,7 +6,6 @@ export const generateWidgetJS = (): string => {
   return `(function() {
   const config = window.AetherBotConfig;
   if (!config) {
-    console.warn('AetherBotConfig not found');
     return;
   }
   
@@ -1295,12 +1294,10 @@ export const generateWidgetJS = (): string => {
   // Validation functions
   const validateEmail = (email) => {
     if (!email || typeof email !== 'string') {
-      console.log('Email validation: invalid input type', typeof email);
       return false;
     }
     const trimmedEmail = email.trim();
     if (trimmedEmail.length === 0) {
-      console.log('Email validation: empty after trim');
       return false;
     }
     // Standard email validation - allows most common email formats
@@ -1312,27 +1309,22 @@ export const generateWidgetJS = (): string => {
     const tabChar = String.fromCharCode(9);
     const newlineChar = String.fromCharCode(10);
     if (trimmedEmail.includes(spaceChar) || trimmedEmail.includes(tabChar) || trimmedEmail.includes(newlineChar)) {
-      console.log('Email validation: contains whitespace');
       return false;
     }
     const atIndex = trimmedEmail.indexOf('@');
     if (atIndex <= 0 || atIndex >= trimmedEmail.length - 1) {
-      console.log('Email validation: invalid @ position');
       return false;
     }
     const localPart = trimmedEmail.substring(0, atIndex);
     const domainPart = trimmedEmail.substring(atIndex + 1);
     if (localPart.length === 0 || domainPart.length === 0) {
-      console.log('Email validation: empty local or domain part');
       return false;
     }
     if (!domainPart.includes('.')) {
-      console.log('Email validation: domain missing dot');
       return false;
     }
     const lastDotIndex = domainPart.lastIndexOf('.');
     if (lastDotIndex === 0 || lastDotIndex === domainPart.length - 1) {
-      console.log('Email validation: invalid dot position in domain');
       return false;
     }
     // All validation checks passed

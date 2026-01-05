@@ -155,7 +155,6 @@ const AppContent: React.FC = () => {
       });
       
       setUnreadConversations(unreadCounts);
-      console.log('Loaded unread counts:', Array.from(unreadCounts.entries()));
     } catch (error: any) {
       // Silently fail for conversations - not critical
       console.error('Error loading conversations:', error);
@@ -171,14 +170,12 @@ const AppContent: React.FC = () => {
   // This works from any page and doesn't require bots to be loaded first
   const setupRealtimeSubscriptions = useCallback(() => {
     if (!user) {
-      console.log('No user, skipping real-time setup');
       return () => {};
     }
     
     // Get current bot IDs for filtering (use ref to get latest)
     // This will be empty initially but will update when bots load
     const userBotIds = botsRef.current.map(b => b.id);
-    console.log('Setting up real-time subscriptions for user:', user.id, 'with', botsRef.current.length, 'bots', 'Bot IDs:', userBotIds);
     
     // Note: Even if userBotIds is empty, subscriptions will be set up
     // When bots load, the ref will update and new events will be processed correctly
@@ -338,9 +335,7 @@ const AppContent: React.FC = () => {
         }
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Conversations channel subscribed successfully');
-        } else if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR') {
           console.error('❌ Conversations channel error');
         } else if (status === 'TIMED_OUT') {
           console.warn('⏱️ Conversations channel timed out');
@@ -517,9 +512,7 @@ const AppContent: React.FC = () => {
         }
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Messages channel subscribed successfully');
-        } else if (status === 'CHANNEL_ERROR') {
+        if (status === 'CHANNEL_ERROR') {
           console.error('❌ Messages channel error');
         } else if (status === 'TIMED_OUT') {
           console.warn('⏱️ Messages channel timed out');
@@ -564,15 +557,8 @@ const AppContent: React.FC = () => {
     
     // Only set up once per user session
     if (subscriptionsSetupRef.current) {
-      console.log('Subscriptions already set up for user:', user.id);
       return;
     }
-    
-    console.log('Setting up real-time subscriptions...', { 
-      userId: user.id, 
-      botCount: botsRef.current.length, 
-      botIds: botsRef.current.map(b => b.id) 
-    });
     
     subscriptionsSetupRef.current = true;
     const cleanup = setupRealtimeSubscriptions();

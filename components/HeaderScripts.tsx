@@ -87,7 +87,6 @@ const HeaderScripts: React.FC = () => {
             
             if (!src) {
               // Inline scripts are blocked for security
-              console.warn('HeaderScripts: Inline scripts are not allowed for security. Use external scripts with src attribute.');
               return;
             }
             

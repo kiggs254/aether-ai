@@ -218,7 +218,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* Conversations by Bot */}
-        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 flex flex-col items-center justify-center relative">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 md:row-span-2 flex flex-col items-center justify-center relative">
           <h3 className="absolute top-4 sm:top-6 left-4 sm:left-6 text-xs sm:text-sm font-bold text-white">By Bot</h3>
           <div className="h-[100px] sm:h-[120px] w-full mt-4">
              <ResponsiveContainer width="100%" height="100%">
@@ -282,7 +282,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
           </div>
         </div>
 
-        {/* Bot List - Spans 2 cols */}
+        {/* Bot List - Spans 2 cols, aligned with Recent Conversations */}
         <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 md:row-span-2">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
              <h3 className="text-base sm:text-lg font-bold text-white">Your Bots</h3>

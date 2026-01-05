@@ -98,13 +98,12 @@ CREATE POLICY "Anyone can view active subscription plans"
   ON subscription_plans FOR SELECT
   USING (is_active = true);
 
--- Super admins can view all plans (including inactive)
--- Note: Admin check is done in edge functions, RLS allows all authenticated users to view
--- but edge functions will verify admin status
-CREATE POLICY "Authenticated users can view all subscription plans"
+-- Authenticated users can view all active plans (same as public)
+-- Inactive plans are only accessible via service role (admin functions)
+CREATE POLICY "Authenticated users can view active subscription plans"
   ON subscription_plans FOR SELECT
   TO authenticated
-  USING (true);
+  USING (is_active = true);
 
 -- Super admins can manage plans (enforced via edge functions)
 -- RLS allows service role to manage, edge functions verify admin status
@@ -121,16 +120,10 @@ DROP POLICY IF EXISTS "Super admins can view all subscriptions" ON user_subscrip
 DROP POLICY IF EXISTS "Authenticated users can view subscriptions" ON user_subscriptions;
 DROP POLICY IF EXISTS "Service role can manage subscriptions" ON user_subscriptions;
 
--- Users can read their own subscriptions
+-- Users can read their own subscriptions only
 CREATE POLICY "Users can view their own subscriptions"
   ON user_subscriptions FOR SELECT
   USING (auth.uid() = user_id);
-
--- Authenticated users can view subscriptions (admin check in edge functions)
-CREATE POLICY "Authenticated users can view subscriptions"
-  ON user_subscriptions FOR SELECT
-  TO authenticated
-  USING (true);
 
 -- Only system (via edge functions) can create/update subscriptions
 -- This is handled by service role, so we allow authenticated users
@@ -148,16 +141,10 @@ DROP POLICY IF EXISTS "Super admins can view all transactions" ON payment_transa
 DROP POLICY IF EXISTS "Authenticated users can view transactions" ON payment_transactions;
 DROP POLICY IF EXISTS "Service role can manage transactions" ON payment_transactions;
 
--- Users can read their own transactions
+-- Users can read their own transactions only
 CREATE POLICY "Users can view their own transactions"
   ON payment_transactions FOR SELECT
   USING (auth.uid() = user_id);
-
--- Authenticated users can view transactions (admin check in edge functions)
-CREATE POLICY "Authenticated users can view transactions"
-  ON payment_transactions FOR SELECT
-  TO authenticated
-  USING (true);
 
 -- Only system (via edge functions) can create/update transactions
 CREATE POLICY "Service role can manage transactions"

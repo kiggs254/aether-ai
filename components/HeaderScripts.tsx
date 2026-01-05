@@ -4,7 +4,46 @@ import { supabase } from '../lib/supabase';
 /**
  * HeaderScripts Component
  * Loads and injects custom header scripts from site settings into the document head
+ * SECURITY: Only allows external scripts with src attribute (no inline scripts)
  */
+
+// Whitelist of allowed attributes for script tags
+const ALLOWED_SCRIPT_ATTRIBUTES = ['src', 'async', 'defer', 'type', 'crossorigin', 'integrity'];
+// Whitelist of allowed attributes for link tags
+const ALLOWED_LINK_ATTRIBUTES = ['href', 'rel', 'type', 'media', 'crossorigin', 'integrity'];
+// Whitelist of allowed attributes for style tags
+const ALLOWED_STYLE_ATTRIBUTES = ['type', 'media'];
+// Allowed meta tag attributes
+const ALLOWED_META_ATTRIBUTES = ['name', 'content', 'property', 'http-equiv', 'charset'];
+
+// Validate URL is safe (https only, no javascript:, data:, etc.)
+const isValidUrl = (url: string): boolean => {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim().toLowerCase();
+  // Block dangerous protocols
+  if (trimmed.startsWith('javascript:') || 
+      trimmed.startsWith('data:') || 
+      trimmed.startsWith('vbscript:') ||
+      trimmed.startsWith('file:')) {
+    return false;
+  }
+  // Only allow http/https
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+};
+
+// Sanitize attribute value
+const sanitizeAttribute = (name: string, value: string): string => {
+  // Remove any script-like content from attribute values
+  const dangerous = ['javascript:', 'onerror', 'onload', 'onclick', 'onmouseover'];
+  const lowerValue = value.toLowerCase();
+  for (const danger of dangerous) {
+    if (lowerValue.includes(danger)) {
+      return '';
+    }
+  }
+  return value;
+};
+
 const HeaderScripts: React.FC = () => {
   useEffect(() => {
     let scriptElements: HTMLScriptElement[] = [];
@@ -42,17 +81,36 @@ const HeaderScripts: React.FC = () => {
           const tagName = element.tagName.toLowerCase();
           
           if (tagName === 'script') {
+            // SECURITY: Only allow external scripts (with src attribute)
+            // Block inline scripts to prevent XSS
+            const src = element.getAttribute('src');
+            
+            if (!src) {
+              // Inline scripts are blocked for security
+              console.warn('HeaderScripts: Inline scripts are not allowed for security. Use external scripts with src attribute.');
+              return;
+            }
+            
+            // Validate src URL
+            if (!isValidUrl(src)) {
+              console.warn('HeaderScripts: Invalid script src URL:', src);
+              return;
+            }
+            
             const script = document.createElement('script');
             
-            // Copy all attributes
+            // Only copy whitelisted attributes
             Array.from(element.attributes).forEach((attr) => {
-              script.setAttribute(attr.name, attr.value);
+              if (ALLOWED_SCRIPT_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                const sanitized = sanitizeAttribute(attr.name, attr.value);
+                if (sanitized) {
+                  script.setAttribute(attr.name, sanitized);
+                }
+              }
             });
             
-            // Copy inner text/content
-            if (element.textContent) {
-              script.textContent = element.textContent;
-            }
+            // CRITICAL: Never set textContent for scripts (blocks inline scripts)
+            // External scripts should only have src attribute
             
             // Handle async and defer attributes
             if (element.hasAttribute('async')) {
@@ -66,34 +124,77 @@ const HeaderScripts: React.FC = () => {
             scriptElements.push(script);
           } else if (tagName === 'link') {
             const link = document.createElement('link');
+            const href = element.getAttribute('href');
             
-            // Copy all attributes
+            // Validate href URL if present
+            if (href && !isValidUrl(href) && !href.startsWith('/') && !href.startsWith('./')) {
+              // Allow relative URLs but validate absolute ones
+              if (href.includes('://')) {
+                console.warn('HeaderScripts: Invalid link href URL:', href);
+                return;
+              }
+            }
+            
+            // Only copy whitelisted attributes
             Array.from(element.attributes).forEach((attr) => {
-              link.setAttribute(attr.name, attr.value);
+              if (ALLOWED_LINK_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                const sanitized = sanitizeAttribute(attr.name, attr.value);
+                if (sanitized) {
+                  link.setAttribute(attr.name, sanitized);
+                }
+              }
             });
             
             document.head.appendChild(link);
             styleElements.push(link);
           } else if (tagName === 'style') {
+            // Allow style tags but sanitize content
             const style = document.createElement('style');
             
-            // Copy all attributes
+            // Only copy whitelisted attributes
             Array.from(element.attributes).forEach((attr) => {
-              style.setAttribute(attr.name, attr.value);
+              if (ALLOWED_STYLE_ATTRIBUTES.includes(attr.name.toLowerCase())) {
+                const sanitized = sanitizeAttribute(attr.name, attr.value);
+                if (sanitized) {
+                  style.setAttribute(attr.name, sanitized);
+                }
+              }
             });
             
-            // Copy inner text/content
+            // Copy inner text/content (CSS is generally safe, but we'll validate)
             if (element.textContent) {
-              style.textContent = element.textContent;
+              // Basic check for script tags in CSS (shouldn't happen but be safe)
+              const cssContent = element.textContent;
+              if (!cssContent.toLowerCase().includes('<script') && 
+                  !cssContent.toLowerCase().includes('javascript:')) {
+                style.textContent = cssContent;
+              } else {
+                console.warn('HeaderScripts: Potentially unsafe CSS content detected');
+                return;
+              }
             }
             
             document.head.appendChild(style);
             otherElements.push(style);
+          } else if (tagName === 'meta') {
+            // Allow meta tags with sanitization
+            const meta = document.createElement('meta');
+            
+            Array.from(element.attributes).forEach((attr) => {
+              if (ALLOWED_META_ATTRIBUTES.includes(attr.name.toLowerCase()) || 
+                  attr.name.toLowerCase() === 'content') {
+                const sanitized = sanitizeAttribute(attr.name, attr.value);
+                if (sanitized) {
+                  meta.setAttribute(attr.name, sanitized);
+                }
+              }
+            });
+            
+            document.head.appendChild(meta);
+            otherElements.push(meta);
           } else {
-            // For other elements (meta, noscript, etc.), clone and append
-            const cloned = element.cloneNode(true) as HTMLElement;
-            document.head.appendChild(cloned);
-            otherElements.push(cloned);
+            // Block other potentially dangerous elements
+            console.warn('HeaderScripts: Unsupported element type:', tagName);
           }
         });
       } catch (error) {

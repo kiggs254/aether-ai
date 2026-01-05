@@ -1,10 +1,22 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+// Get CORS headers with origin validation
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
+  // Allow all origins in development, restrict in production
+  const env = Deno.env.get('ENVIRONMENT') || 'development';
+  const allowAll = env === 'development' || allowedOrigins.length === 0;
+  
+  const originHeader = allowAll || (origin && allowedOrigins.includes(origin))
+    ? (origin || '*')
+    : allowedOrigins[0] || '*';
+  
+  return {
+    'Access-Control-Allow-Origin': originHeader,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  };
 };
 
 interface PlanData {
@@ -32,6 +44,9 @@ async function isSuperAdmin(supabase: any, userId: string): Promise<boolean> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -131,26 +146,73 @@ serve(async (req) => {
           );
         }
 
+        // Sanitize and validate name
+        const sanitizedName = planData.name.trim();
+        if (sanitizedName.length === 0 || sanitizedName.length > 100) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Name must be between 1 and 100 characters' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // Validate prices
+        if (typeof planData.price_monthly !== 'number' || typeof planData.price_yearly !== 'number') {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Prices must be numbers' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         if (planData.price_monthly < 0 || planData.price_yearly < 0) {
           return new Response(
             JSON.stringify({ error: 'Bad Request', message: 'Prices must be non-negative' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
+        if (planData.price_monthly > 1000000 || planData.price_yearly > 10000000) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'Prices exceed maximum allowed value' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Validate limits
+        if (planData.max_bots !== null && planData.max_bots !== undefined) {
+          if (typeof planData.max_bots !== 'number' || planData.max_bots < 0 || planData.max_bots > 1000000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_bots must be a number between 0 and 1,000,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        if (planData.max_messages !== null && planData.max_messages !== undefined) {
+          if (typeof planData.max_messages !== 'number' || planData.max_messages < 0 || planData.max_messages > 1000000000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_messages must be a number between 0 and 1,000,000,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        if (planData.max_storage_gb !== null && planData.max_storage_gb !== undefined) {
+          if (typeof planData.max_storage_gb !== 'number' || planData.max_storage_gb < 0 || planData.max_storage_gb > 100000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_storage_gb must be a number between 0 and 100,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
 
         const { data, error } = await supabase
           .from('subscription_plans')
           .insert({
-            name: planData.name,
-            description: planData.description || null,
+            name: sanitizedName,
+            description: planData.description?.trim() || null,
             price_monthly: planData.price_monthly,
             price_yearly: planData.price_yearly,
-            features: planData.features || [],
+            features: Array.isArray(planData.features) ? planData.features : [],
             max_bots: planData.max_bots ?? null,
             max_messages: planData.max_messages ?? null,
             max_storage_gb: planData.max_storage_gb ?? null,
-            is_active: planData.is_active !== undefined ? planData.is_active : true,
+            is_active: planData.is_active !== undefined ? Boolean(planData.is_active) : true,
           })
           .select()
           .single();

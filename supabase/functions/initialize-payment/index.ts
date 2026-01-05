@@ -1,10 +1,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+// Get CORS headers with origin validation
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
+  const env = Deno.env.get('ENVIRONMENT') || 'development';
+  const allowAll = env === 'development' || allowedOrigins.length === 0;
+  
+  const originHeader = allowAll || (origin && allowedOrigins.includes(origin))
+    ? (origin || '*')
+    : allowedOrigins[0] || '*';
+  
+  return {
+    'Access-Control-Allow-Origin': originHeader,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  };
 };
 
 interface InitializePaymentRequest {
@@ -14,6 +25,9 @@ interface InitializePaymentRequest {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -57,11 +71,39 @@ serve(async (req) => {
       );
     }
 
+    // Validate UUID format for plan_id
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(plan_id)) {
+      return new Response(
+        JSON.stringify({ error: 'Bad Request', message: 'Invalid plan_id format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate billing cycle
     if (billing_cycle !== 'monthly' && billing_cycle !== 'yearly') {
       return new Response(
         JSON.stringify({ error: 'Bad Request', message: 'billing_cycle must be "monthly" or "yearly"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate callback URL if provided
+    if (callback_url) {
+      try {
+        const url = new URL(callback_url);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'callback_url must use http or https protocol' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'Bad Request', message: 'Invalid callback_url format' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Fetch plan details

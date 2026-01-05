@@ -2308,18 +2308,32 @@ export const generateWidgetJS = (): string => {
       
       let content = '';
       if (imageUrl) {
-        content += '<img src="' + imageUrl + '" alt="Uploaded image" class="aether-clickable-image" data-image-src="' + imageUrl + '" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
+        // Sanitize image URL to prevent XSS
+        const sanitizedImageUrl = escapeHtml(imageUrl);
+        // Validate URL is safe (http/https only, no javascript:, data:, etc.)
+        const lowerUrl = sanitizedImageUrl.toLowerCase();
+        if ((lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')) &&
+            !lowerUrl.includes('javascript:') && !lowerUrl.includes('data:')) {
+          content += '<img src="' + sanitizedImageUrl + '" alt="Uploaded image" class="aether-clickable-image" data-image-src="' + sanitizedImageUrl + '" style="max-width: 100%; border-radius: 12px; margin-bottom: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
+        }
       }
       if (text && text.trim()) {
         // Apply markdown parsing for bot messages, plain text for user messages
         if (type === 'bot') {
           content += parseMarkdown(text);
         } else {
-          // User messages: just convert newlines and auto-link URLs
-          let processedText = text.split(String.fromCharCode(10)).join('<br>');
-          const urlRegex = new RegExp('(https?:\\/\\/[^\\s]+)', 'g');
+          // User messages: escape HTML first, then convert newlines and auto-link URLs
+          const escapedText = escapeHtml(text);
+          let processedText = escapedText.split(String.fromCharCode(10)).join('<br>');
+          // Auto-link URLs (text is already escaped, so URLs are safe)
+          const urlRegex = new RegExp('(https?:\\/\\/[^\\s<]+)', 'g');
           processedText = processedText.replace(urlRegex, function(match) {
-            return '<a href="' + match + '" target="_blank" rel="noopener" style="color: inherit; text-decoration: underline;">' + match + '</a>';
+            // Double-check URL is safe
+            const lowerMatch = match.toLowerCase();
+            if (lowerMatch.startsWith('http://') || lowerMatch.startsWith('https://')) {
+              return '<a href="' + escapeHtml(match) + '" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">' + escapeHtml(match) + '</a>';
+            }
+            return match;
           });
           content += processedText;
         }
@@ -2454,24 +2468,33 @@ export const generateWidgetJS = (): string => {
           const mediaType = action.mediaType || 'image';
           let mediaHTML = '';
           
-          if (mediaType === 'image') {
-            mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
-          } else if (mediaType === 'video') {
-            mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
-          } else if (mediaType === 'audio') {
-            mediaHTML = '<audio src="' + action.payload + '" controls style="width: 100%; margin-top: 8px; display: block;" />';
-          } else if (mediaType === 'pdf') {
+          // Sanitize payload URL
+          const sanitizedPayload = escapeHtml(action.payload || '');
+          const lowerPayload = sanitizedPayload.toLowerCase();
+          const isValidMediaUrl = (lowerPayload.startsWith('http://') || lowerPayload.startsWith('https://')) &&
+                                  !lowerPayload.includes('javascript:') && !lowerPayload.includes('data:');
+          
+          if (mediaType === 'image' && isValidMediaUrl) {
+            const sanitizedLabel = escapeHtml(action.label || 'Media');
+            mediaHTML = '<img src="' + sanitizedPayload + '" alt="' + sanitizedLabel + '" class="aether-clickable-image" data-image-src="' + sanitizedPayload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
+          } else if (mediaType === 'video' && isValidMediaUrl) {
+            mediaHTML = '<video src="' + sanitizedPayload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
+          } else if (mediaType === 'audio' && isValidMediaUrl) {
+            mediaHTML = '<audio src="' + sanitizedPayload + '" controls style="width: 100%; margin-top: 8px; display: block;" />';
+          } else if (mediaType === 'pdf' && isValidMediaUrl) {
             // PDF as download link
             const pdfIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
-            mediaHTML = '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn bg-red-600" style="background: var(--aether-brand-color); margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; text-decoration: none; color: white; font-weight: 500; font-size: 14px;">' +
+            const sanitizedLabel = escapeHtml(action.label || 'Download');
+            mediaHTML = '<a href="' + sanitizedPayload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn bg-red-600" style="background: var(--aether-brand-color); margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; text-decoration: none; color: white; font-weight: 500; font-size: 14px;">' +
               pdfIcon +
-              '<span>' + action.label + '</span>' +
+              '<span>' + sanitizedLabel + '</span>' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
             '</a>';
           }
           
+          const sanitizedTriggerMessage = escapeHtml(triggerMessage || '');
           actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-            triggerMessage +
+            sanitizedTriggerMessage +
             '</div>' +
             mediaHTML;
         } else {
@@ -2492,12 +2515,21 @@ export const generateWidgetJS = (): string => {
             btnClass = 'bg-indigo-600';
           }
           
+          const sanitizedTriggerMessage = escapeHtml(triggerMessage || '');
+          const sanitizedActionLabel = escapeHtml(action.label || '');
+          const sanitizedPayload = escapeHtml(action.payload || '');
+          // Validate payload URL is safe
+          const lowerPayload = sanitizedPayload.toLowerCase();
+          const isValidUrl = (lowerPayload.startsWith('http://') || lowerPayload.startsWith('https://') || lowerPayload.startsWith('tel:') || lowerPayload.startsWith('mailto:')) &&
+                            !lowerPayload.includes('javascript:') && !lowerPayload.includes('data:');
+          const safePayload = isValidUrl ? sanitizedPayload : '#';
+          
           actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-            triggerMessage +
+            sanitizedTriggerMessage +
             '</div>' +
-            '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
+            '<a href="' + safePayload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn ' + btnClass + '" style="background: var(--aether-brand-color);">' +
               iconSvg +
-              '<span>' + action.label + '</span>' +
+              '<span>' + sanitizedActionLabel + '</span>' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
             '</a>';
         }
@@ -2658,7 +2690,7 @@ export const generateWidgetJS = (): string => {
 
       const updateMessage = (text) => {
         if (botMsg) {
-          // Apply markdown parsing for bot messages
+          // Apply markdown parsing for bot messages (parseMarkdown includes sanitization)
           const processedText = parseMarkdown(text);
           botMsg.innerHTML = processedText;
           if (messages) messages.scrollTop = messages.scrollHeight;
@@ -2995,24 +3027,33 @@ export const generateWidgetJS = (): string => {
             const mediaType = action.mediaType || 'image';
             let mediaHTML = '';
             
-            if (mediaType === 'image') {
-              mediaHTML = '<img src="' + action.payload + '" alt="' + (action.label || 'Media') + '" class="aether-clickable-image" data-image-src="' + action.payload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
-            } else if (mediaType === 'video') {
-              mediaHTML = '<video src="' + action.payload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
-            } else if (mediaType === 'audio') {
-              mediaHTML = '<audio src="' + action.payload + '" controls style="width: 100%; margin-top: 8px; display: block;" />';
-            } else if (mediaType === 'pdf') {
+            // Sanitize payload URL
+            const sanitizedPayload = escapeHtml(action.payload || '');
+            const lowerPayload = sanitizedPayload.toLowerCase();
+            const isValidMediaUrl = (lowerPayload.startsWith('http://') || lowerPayload.startsWith('https://')) &&
+                                    !lowerPayload.includes('javascript:') && !lowerPayload.includes('data:');
+            
+            if (mediaType === 'image' && isValidMediaUrl) {
+              const sanitizedLabel = escapeHtml(action.label || 'Media');
+              mediaHTML = '<img src="' + sanitizedPayload + '" alt="' + sanitizedLabel + '" class="aether-clickable-image" data-image-src="' + sanitizedPayload + '" style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block; cursor: pointer; -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation;" />';
+            } else if (mediaType === 'video' && isValidMediaUrl) {
+              mediaHTML = '<video src="' + sanitizedPayload + '" controls style="max-width: 100%; border-radius: 12px; margin-top: 8px; display: block;" />';
+            } else if (mediaType === 'audio' && isValidMediaUrl) {
+              mediaHTML = '<audio src="' + sanitizedPayload + '" controls style="width: 100%; margin-top: 8px; display: block;" />';
+            } else if (mediaType === 'pdf' && isValidMediaUrl) {
               // PDF as download link
               const pdfIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
-              mediaHTML = '<a href="' + action.payload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn bg-red-600" style="background: var(--aether-brand-color); margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; text-decoration: none; color: white; font-weight: 500; font-size: 14px;">' +
+              const sanitizedLabel = escapeHtml(action.label || 'Download');
+              mediaHTML = '<a href="' + sanitizedPayload + '" target="_blank" rel="noopener noreferrer" class="aether-action-btn bg-red-600" style="background: var(--aether-brand-color); margin-top: 8px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 12px; text-decoration: none; color: white; font-weight: 500; font-size: 14px;">' +
                 pdfIcon +
-                '<span>' + action.label + '</span>' +
+                '<span>' + sanitizedLabel + '</span>' +
                 '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: auto; opacity: 0.7;"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>' +
               '</a>';
             }
             
+            const sanitizedTriggerMessage = escapeHtml(triggerMessage || '');
             actionCard.innerHTML = '<div style="font-size: 13px; color: var(--aether-text-color); opacity: 0.8; margin-bottom: 8px;">' +
-              triggerMessage +
+              sanitizedTriggerMessage +
               '</div>' +
               mediaHTML;
           } else {

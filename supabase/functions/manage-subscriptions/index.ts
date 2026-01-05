@@ -1,10 +1,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+// Get CORS headers with origin validation
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
+  const env = Deno.env.get('ENVIRONMENT') || 'development';
+  const allowAll = env === 'development' || allowedOrigins.length === 0;
+  
+  const originHeader = allowAll || (origin && allowedOrigins.includes(origin))
+    ? (origin || '*')
+    : allowedOrigins[0] || '*';
+  
+  return {
+    'Access-Control-Allow-Origin': originHeader,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  };
 };
 
 // Check if user is super admin
@@ -20,6 +31,9 @@ async function isSuperAdmin(supabase: any, userId: string): Promise<boolean> {
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });

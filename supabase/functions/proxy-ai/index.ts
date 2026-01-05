@@ -1,38 +1,100 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+// Get CORS headers with origin validation
+// Note: proxy-ai needs to allow widget access, so we're more permissive
+const getCorsHeaders = (origin: string | null) => {
+  const allowedOrigins = Deno.env.get('ALLOWED_ORIGINS')?.split(',') || [];
+  const env = Deno.env.get('ENVIRONMENT') || 'development';
+  // Widget needs to work from any origin, so we allow all in development
+  // In production, can be restricted via ALLOWED_ORIGINS env var
+  const allowAll = env === 'development' || allowedOrigins.length === 0;
+  
+  const originHeader = allowAll || (origin && allowedOrigins.includes(origin))
+    ? (origin || '*')
+    : allowedOrigins[0] || '*';
+  
+  return {
+    'Access-Control-Allow-Origin': originHeader,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
 };
 
+// Validate bot exists and user has access (if authenticated)
+async function validateBotAccess(
+  supabase: any,
+  botId: string,
+  userId: string | null
+): Promise<{ valid: boolean; error?: string }> {
+  if (!botId) {
+    return { valid: false, error: 'Bot ID is required' };
+  }
+
+  try {
+    // Check if bot exists
+    const { data: botData, error: botError } = await supabase
+      .from('bots')
+      .select('id, user_id')
+      .eq('id', botId)
+      .single();
+
+    if (botError || !botData) {
+      return { valid: false, error: 'Bot not found' };
+    }
+
+    // If user is authenticated, verify ownership
+    if (userId) {
+      if (botData.user_id !== userId) {
+        return { valid: false, error: 'Access denied: You do not own this bot' };
+      }
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Error validating bot access' };
+  }
+}
+
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // SIMPLIFIED AUTH: Since verify_jwt = false, we skip all JWT validation
-    // Just extract user ID from JWT if present, but don't fail if it's missing
+    // Initialize Supabase client for validation
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    // Use service role for bot validation (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Extract and validate JWT if present (for authenticated requests)
     const authHeader = req.headers.get('Authorization');
     let userId: string | null = null;
+    let isAuthenticated = false;
     
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '').trim();
         if (token) {
-          const parts = token.split('.');
-          if (parts.length === 3) {
-            const payload = JSON.parse(atob(parts[1]));
-            userId = payload.sub || null;
+          // Validate JWT using anon key client
+          const authClient = createClient(supabaseUrl, supabaseAnonKey);
+          const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+          
+          if (!authError && user) {
+            userId = user.id;
+            isAuthenticated = true;
           }
         }
       } catch (e) {
-        console.warn('Could not extract user from JWT, continuing anyway:', e);
+        // JWT validation failed, continue as anonymous
       }
     }
-    
-    // Proceed with request - no auth blocking
 
     // Parse request body
     let body;
@@ -54,6 +116,23 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: action and bot are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate bot ID exists
+    if (!bot.id) {
+      return new Response(
+        JSON.stringify({ error: 'Bot ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate bot access
+    const botValidation = await validateBotAccess(supabase, bot.id, userId);
+    if (!botValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: botValidation.error || 'Invalid bot access' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

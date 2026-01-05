@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { checkRateLimit, getRateLimitHeaders } from '../_shared/rateLimit.ts';
+import { checkRateLimit, getRateLimitHeaders } from './rateLimit.ts';
 
 // Get allowed origins from environment or use default
 const getAllowedOrigin = (): string => {

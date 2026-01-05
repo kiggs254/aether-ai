@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { isSuperAdmin } from './admin';
 
 export interface SubscriptionInfo {
   planName: string;
@@ -11,6 +12,7 @@ export interface SubscriptionInfo {
 /**
  * Get user's subscription information
  * Returns default free plan if no active subscription
+ * Super admins get unlimited access regardless of subscription
  */
 export async function getUserSubscriptionInfo(): Promise<SubscriptionInfo> {
   try {
@@ -23,6 +25,18 @@ export async function getUserSubscriptionInfo(): Promise<SubscriptionInfo> {
         canCreateMultipleIntegrations: false,
         canUseDepartmentalBots: false,
         canCollectLeads: false,
+      };
+    }
+
+    // Check if user is super admin - super admins get unlimited access
+    const adminStatus = await isSuperAdmin();
+    if (adminStatus) {
+      return {
+        planName: 'Super Admin',
+        isFree: false,
+        canCreateMultipleIntegrations: true,
+        canUseDepartmentalBots: true,
+        canCollectLeads: true,
       };
     }
 

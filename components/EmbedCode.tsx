@@ -144,8 +144,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         await loadSubscriptionInfo();
       }
 
-      // Check if user can create multiple integrations (free users limited to 1)
-      if (subscriptionInfo?.isFree) {
+      // Check if user can create multiple integrations (free users limited to 1, super admins unlimited)
+      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCreateMultipleIntegrations) {
         const allIntegrations = await integrationService.getAllUserIntegrations();
         if (allIntegrations.length >= 1) {
           showError('Integration limit reached', 'Free plan allows only 1 integration. Please upgrade to create more.');
@@ -153,12 +153,14 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         }
       }
 
-      // Validate free plan restrictions
-      if (subscriptionInfo?.isFree) {
+      // Validate free plan restrictions (super admins bypass all restrictions)
+      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCollectLeads) {
         if (collectLeads) {
           showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
           return;
         }
+      }
+      if (subscriptionInfo?.isFree && !subscriptionInfo?.canUseDepartmentalBots) {
         if (departmentBots && departmentBots.length > 0) {
           showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
           return;
@@ -171,8 +173,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         position,
         brandColor,
         welcomeMessage,
-        collectLeads: subscriptionInfo?.isFree ? false : collectLeads,
-        departmentBots: subscriptionInfo?.isFree ? [] : departmentBots,
+        collectLeads: subscriptionInfo?.canCollectLeads ? collectLeads : false,
+        departmentBots: subscriptionInfo?.canUseDepartmentalBots ? departmentBots : [],
       });
       setSelectedIntegration(newIntegration);
       setIsCreating(false);
@@ -191,12 +193,14 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         await loadSubscriptionInfo();
       }
 
-      // Validate free plan restrictions
-      if (subscriptionInfo?.isFree) {
+      // Validate free plan restrictions (super admins bypass all restrictions)
+      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCollectLeads) {
         if (collectLeads) {
           showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
           return;
         }
+      }
+      if (subscriptionInfo?.isFree && !subscriptionInfo?.canUseDepartmentalBots) {
         if (departmentBots && departmentBots.length > 0) {
           showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
           return;
@@ -209,8 +213,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         position,
         brandColor,
         welcomeMessage,
-        collectLeads: subscriptionInfo?.isFree ? false : collectLeads,
-        departmentBots: subscriptionInfo?.isFree ? [] : departmentBots,
+        collectLeads: subscriptionInfo?.canCollectLeads ? collectLeads : false,
+        departmentBots: subscriptionInfo?.canUseDepartmentalBots ? departmentBots : [],
       });
       setSelectedIntegration(updated);
       showSuccess('Integration updated', 'Your integration has been updated successfully.');

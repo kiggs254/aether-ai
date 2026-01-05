@@ -44,7 +44,11 @@ const sanitizeAttribute = (name: string, value: string): string => {
   return value;
 };
 
-const HeaderScripts: React.FC = () => {
+interface HeaderScriptsProps {
+  skipWidget?: boolean; // If true, skip loading widget scripts (for landing page)
+}
+
+const HeaderScripts: React.FC<HeaderScriptsProps> = ({ skipWidget = false }) => {
   useEffect(() => {
     let scriptElements: HTMLScriptElement[] = [];
     let styleElements: HTMLLinkElement[] = [];
@@ -64,7 +68,7 @@ const HeaderScripts: React.FC = () => {
           return;
         }
 
-        const headerScripts = data?.value?.header_scripts || '';
+        let headerScripts = data?.value?.header_scripts || '';
         
         if (!headerScripts || typeof headerScripts !== 'string' || headerScripts.trim() === '') {
           return;
@@ -73,6 +77,30 @@ const HeaderScripts: React.FC = () => {
         // Create a temporary container to parse the HTML
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = headerScripts;
+
+        // If skipWidget is true, remove widget-related scripts (AetherBotConfig)
+        if (skipWidget) {
+          // Remove scripts that contain AetherBotConfig or widget.js/widget.css
+          const scripts = Array.from(tempDiv.querySelectorAll('script'));
+          scripts.forEach((script) => {
+            const src = script.getAttribute('src') || '';
+            const content = script.textContent || '';
+            if (src.includes('widget.js') || 
+                src.includes('widget.css') || 
+                content.includes('AetherBotConfig')) {
+              script.remove();
+            }
+          });
+          
+          // Also check for link tags with widget.css
+          const links = Array.from(tempDiv.querySelectorAll('link'));
+          links.forEach((link) => {
+            const href = link.getAttribute('href') || '';
+            if (href.includes('widget.css')) {
+              link.remove();
+            }
+          });
+        }
 
         // Process all elements
         const allElements = Array.from(tempDiv.children);
@@ -258,7 +286,7 @@ const HeaderScripts: React.FC = () => {
         }
       });
     };
-  }, []);
+  }, [skipWidget]);
 
   return null; // This component doesn't render anything
 };

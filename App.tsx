@@ -787,7 +787,7 @@ const AppContent: React.FC = () => {
   if (!user) {
     return (
       <>
-        <HeaderScripts />
+        <HeaderScripts skipWidget={true} />
         <Landing onAuthSuccess={handleAuthSuccess} />
       </>
     );

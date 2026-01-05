@@ -218,35 +218,37 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* Conversations by Bot */}
-        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 md:row-span-2 flex flex-col items-center justify-center relative">
-          <h3 className="absolute top-4 sm:top-6 left-4 sm:left-6 text-xs sm:text-sm font-bold text-white">By Bot</h3>
-          <div className="h-[100px] sm:h-[120px] w-full mt-4">
-             <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.botConversationStats}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={30}
-                    outerRadius={50}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {stats.botConversationStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{background: '#000', border:'none', borderRadius: '8px'}} />
-                </PieChart>
-             </ResponsiveContainer>
-          </div>
-          <div className="flex gap-4 text-xs text-slate-400 flex-wrap justify-center">
-             {stats.botConversationStats.slice(0, 3).map((entry, index) => (
-               <div key={index} className="flex items-center gap-1">
-                 <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                 {entry.name.length > 10 ? entry.name.substring(0, 10) + '...' : entry.name}
-               </div>
-             ))}
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 md:row-span-2 flex flex-col relative">
+          <h3 className="text-xs sm:text-sm font-bold text-white mb-4">By Bot</h3>
+          <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+            <div className="h-[140px] sm:h-[160px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.botConversationStats}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={35}
+                      outerRadius={60}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {stats.botConversationStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={{background: '#000', border:'none', borderRadius: '8px'}} />
+                  </PieChart>
+               </ResponsiveContainer>
+            </div>
+            <div className="flex gap-4 text-xs text-slate-400 flex-wrap justify-center mt-4">
+               {stats.botConversationStats.slice(0, 3).map((entry, index) => (
+                 <div key={index} className="flex items-center gap-1">
+                   <div className={`w-2 h-2 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                   {entry.name.length > 10 ? entry.name.substring(0, 10) + '...' : entry.name}
+                 </div>
+               ))}
+            </div>
           </div>
         </div>
 

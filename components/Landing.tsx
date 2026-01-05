@@ -541,7 +541,15 @@ const Landing: React.FC<LandingProps> = ({ onAuthSuccess }) => {
               <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className={`grid gap-6 ${
+              plans.length === 1 
+                ? 'grid-cols-1 max-w-md mx-auto' 
+                : plans.length === 2 
+                ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' 
+                : plans.length === 3 
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto' 
+                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+            }`}>
               {plans.map((plan, idx) => {
                 const isPopular = plan.name === 'Pro';
                 const price = getPrice(plan);

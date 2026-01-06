@@ -106,7 +106,9 @@ const AppContent: React.FC = () => {
   const loadBots = useCallback(async () => {
     try {
       setBotsLoading(true);
-      const loadedBots = await botService.getAllBots();
+      // Always load only user's own bots for sidebar/dashboard (even for super admin)
+      // Super admins can see all bots in the Bots table page instead
+      const loadedBots = await botService.getAllBots(false);
       setBots(loadedBots);
     } catch (error: any) {
       showError('Failed to load bots', error.message || 'Please try refreshing the page');

@@ -220,11 +220,11 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         {/* Conversations by Bot */}
         <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 md:row-span-2 flex flex-col">
           <h3 className="text-xs sm:text-sm font-bold text-white mb-4">By Bot</h3>
-          <div className="flex-1 flex flex-col justify-center items-center min-h-0">
+          <div className="flex-1 flex flex-col justify-center items-center" style={{ minHeight: '240px' }}>
             {stats.botConversationStats.length > 0 ? (
               <>
-                <div className="h-[160px] sm:h-[180px] w-full flex-shrink-0 min-h-[160px]">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={160}>
+                <div className="w-full flex-shrink-0" style={{ height: '180px', minHeight: '180px', maxHeight: '180px' }}>
+                  <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       <Pie
                         data={stats.botConversationStats}

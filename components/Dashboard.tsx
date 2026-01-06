@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Bot, TrendingUp, Users, MessageCircle, Plus, Activity, Zap, ArrowUpRight, Clock, Server, Globe, Trash2, Mail, Phone, Archive, Timer } from 'lucide-react';
 import { Bot as BotType, Conversation } from '../types';
@@ -19,23 +19,6 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
   // Calculate real statistics
   const stats = calculateDashboardStats(conversations, bots, unreadConversations);
   const recentConversations = getRecentConversations(conversations, bots);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 300, height: 180 });
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (chartContainerRef.current) {
-        const { width, height } = chartContainerRef.current.getBoundingClientRect();
-        if (width > 0 && height > 0) {
-          setChartDimensions({ width, height });
-        }
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
 
   // Format response time
   const formatResponseTime = (seconds: number): string => {
@@ -237,11 +220,11 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         {/* Conversations by Bot */}
         <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-1 md:row-span-2 flex flex-col">
           <h3 className="text-xs sm:text-sm font-bold text-white mb-4">By Bot</h3>
-          <div className="flex-1 flex flex-col justify-center items-center" style={{ minHeight: '240px' }}>
+          <div className="flex-1 flex flex-col justify-center items-center min-h-[240px]">
             {stats.botConversationStats.length > 0 ? (
               <>
-                <div ref={chartContainerRef} className="w-full flex-shrink-0" style={{ height: '180px', width: '100%' }}>
-                  <ResponsiveContainer width={chartDimensions.width} height={chartDimensions.height}>
+                <div className="w-full h-[180px] min-h-[180px] relative flex items-center justify-center">
+                  <ResponsiveContainer width={300} height={180}>
                     <PieChart>
                       <Pie
                         data={stats.botConversationStats}

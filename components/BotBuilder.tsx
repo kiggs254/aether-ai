@@ -1054,6 +1054,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                </div>
             </div>
           </div>
+          )
         ) : activeTab === 'ecommerce' ? (
           featureValidator && !featureValidator.canUseEcommerce() ? (
             <div className="flex items-center justify-center h-full">

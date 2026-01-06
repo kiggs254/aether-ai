@@ -26,6 +26,12 @@ supabase functions deploy paystack-webhook --no-verify-jwt
 echo "✅ paystack-webhook deployed"
 echo ""
 
+# Deploy verify-payment
+echo "📦 Deploying verify-payment..."
+supabase functions deploy verify-payment --no-verify-jwt
+echo "✅ verify-payment deployed"
+echo ""
+
 # Deploy manage-plans
 echo "📦 Deploying manage-plans..."
 supabase functions deploy manage-plans --no-verify-jwt

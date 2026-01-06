@@ -43,70 +43,115 @@ const PaymentCallback: React.FC<PaymentCallbackProps> = ({ onComplete }) => {
           return;
         }
 
-        // Verify payment by checking transaction in our database
-        // The webhook should have already processed the payment
-        const { data: transaction, error: transactionError } = await supabase
-          .from('payment_transactions')
-          .select('*, subscription_plans(name)')
-          .eq('paystack_reference', reference)
-          .single();
+        // Poll database multiple times with increasing intervals
+        const pollDatabase = async (attempt: number, maxAttempts: number = 5): Promise<boolean> => {
+          const { data: transaction, error: transactionError } = await supabase
+            .from('payment_transactions')
+            .select('*, subscription_plans(name)')
+            .eq('paystack_reference', reference)
+            .single();
 
-        if (transactionError || !transaction) {
+          if (transactionError || !transaction) {
+            if (attempt < maxAttempts) {
+              // Wait and retry
+              await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // 2s, 4s, 6s, 8s, 10s
+              return pollDatabase(attempt + 1, maxAttempts);
+            }
+            return false;
+          }
+
+          if (transaction.status === 'success') {
+            setStatus('success');
+            setMessage(`Payment successful! Your subscription to ${transaction.subscription_plans?.name || 'the plan'} is now active.`);
+            showSuccess('Payment successful!', 'Your subscription has been activated.');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
+            return true;
+          } else if (transaction.status === 'failed') {
+            setStatus('error');
+            setMessage('Payment failed. Please try again.');
+            showError('Payment failed', 'Your payment could not be processed. Please try again.');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
+            return true;
+          }
+
+          // Still pending
+          if (attempt < maxAttempts) {
+            setMessage(`Verifying payment... (${attempt}/${maxAttempts})`);
+            await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+            return pollDatabase(attempt + 1, maxAttempts);
+          }
+
+          return false;
+        };
+
+        // Try polling database first
+        const dbResult = await pollDatabase(1);
+        if (dbResult) {
+          return; // Success or failure already handled
+        }
+
+        // If database still shows pending, verify directly with Paystack
+        setMessage('Verifying payment with Paystack...');
+        
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!currentSession) {
           setStatus('error');
-          setMessage('Payment transaction not found. The webhook may still be processing.');
-          showError('Payment verification', 'Transaction not found. Please wait a moment and check your subscription status.');
+          setMessage('Session expired. Please sign in again.');
+          showError('Authentication required', 'Please sign in first');
           setTimeout(() => {
             window.location.href = '/';
-          }, 5000);
+          }, 3000);
           return;
         }
 
-        // Check transaction status
-        if (transaction.status === 'success') {
-          setStatus('success');
-          setMessage(`Payment successful! Your subscription to ${transaction.subscription_plans?.name || 'the plan'} is now active.`);
-          showSuccess('Payment successful!', 'Your subscription has been activated.');
-          
-          // Redirect to dashboard after 3 seconds
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 3000);
-        } else if (transaction.status === 'failed') {
-          setStatus('error');
-          setMessage('Payment failed. Please try again.');
-          showError('Payment failed', 'Your payment could not be processed. Please try again.');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 3000);
-        } else {
-          // Still pending - webhook may still be processing
-          setStatus('loading');
-          setMessage('Payment is being processed. Please wait...');
-          
-          // Wait a bit and check again
-          setTimeout(async () => {
-            const { data: updatedTransaction } = await supabase
-              .from('payment_transactions')
-              .select('*, subscription_plans(name)')
-              .eq('paystack_reference', reference)
-              .single();
+        // Call verify-payment edge function
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/verify-payment`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentSession.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reference }),
+        });
 
-            if (updatedTransaction?.status === 'success') {
-              setStatus('success');
-              setMessage(`Payment successful! Your subscription is now active.`);
-              showSuccess('Payment successful!', 'Your subscription has been activated.');
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 3000);
-            } else {
-              setStatus('error');
-              setMessage('Payment is still being processed. Please check your subscription status in a few moments.');
-              showError('Payment processing', 'Your payment is being processed. Please check back in a few moments.');
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 5000);
-            }
-          }, 3000);
+        const verifyResult = await response.json();
+
+        if (verifyResult.success) {
+          // Payment verified - poll database one more time to get updated transaction
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const { data: transaction } = await supabase
+            .from('payment_transactions')
+            .select('*, subscription_plans(name)')
+            .eq('paystack_reference', reference)
+            .single();
+
+          if (transaction?.status === 'success') {
+            setStatus('success');
+            setMessage(`Payment successful! Your subscription to ${transaction.subscription_plans?.name || 'the plan'} is now active.`);
+            showSuccess('Payment successful!', 'Your subscription has been activated.');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
+          } else {
+            setStatus('success');
+            setMessage('Payment verified successfully! Your subscription is being activated.');
+            showSuccess('Payment successful!', 'Your subscription has been activated.');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 3000);
+          }
+        } else {
+          setStatus('error');
+          setMessage('Payment verification failed. Please check your subscription status or contact support.');
+          showError('Payment verification', verifyResult.message || 'Could not verify payment. Please check your subscription status.');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 5000);
         }
       } catch (error: any) {
         console.error('Payment verification error:', error);

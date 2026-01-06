@@ -223,8 +223,8 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
           <div className="flex-1 flex flex-col justify-center items-center min-h-0">
             {stats.botConversationStats.length > 0 ? (
               <>
-                <div className="h-[160px] sm:h-[180px] w-full flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[160px] sm:h-[180px] w-full flex-shrink-0 min-h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={160}>
                     <PieChart>
                       <Pie
                         data={stats.botConversationStats}

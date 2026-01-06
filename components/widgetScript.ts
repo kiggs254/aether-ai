@@ -4,34 +4,10 @@
  */
 export const generateWidgetJS = (): string => {
   return `(function() {
-  // Wait for AetherBotConfig to be available (with retry mechanism)
-  let config = null;
-  const waitForConfig = (callback, maxAttempts = 50) => {
-    let attempts = 0;
-    const checkConfig = () => {
-      if (window.AetherBotConfig) {
-        config = window.AetherBotConfig;
-        console.log('AetherBotConfig found, initializing widget...');
-        callback();
-      } else if (attempts < maxAttempts) {
-        attempts++;
-        if (attempts % 10 === 0) {
-          console.log('AetherBotConfig: Waiting for config...', attempts, '/', maxAttempts);
-        }
-        setTimeout(checkConfig, 100);
-      } else {
-        console.error('AetherBotConfig: Config not found after', maxAttempts, 'attempts. Make sure the embed script is added to Header Scripts in Site Settings.');
-      }
-    };
-    checkConfig();
-  };
-  
-  // Initialize widget once config is available
-  waitForConfig(() => {
-    if (!config) {
-      console.error('AetherBotConfig: Config is null, cannot initialize widget');
-      return;
-    }
+  const config = window.AetherBotConfig;
+  if (!config) {
+    return;
+  }
   
   // Function to fetch integration configuration from Supabase
   const fetchIntegrationConfig = async (integrationId, supabaseUrl, supabaseAnonKey) => {
@@ -3578,8 +3554,8 @@ export const generateWidgetJS = (): string => {
     }
   }
   
-  // Start initialization (will be called from waitForConfig callback)
-  });
+  // Start initialization
+  initWidget();
 })();`;
 };
 

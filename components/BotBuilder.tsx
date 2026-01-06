@@ -1286,6 +1286,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
               </>
             )}
           </div>
+          )
         ) : (
           <div className="space-y-6 animate-fade-in h-full flex flex-col">
             <div className="flex items-start gap-4 p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">

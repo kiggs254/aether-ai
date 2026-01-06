@@ -343,14 +343,14 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
         </div>
 
         {/* Recent Conversations and Your Bots - Combined */}
-        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 flex flex-col">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-3 md:row-span-2 flex flex-col min-h-[500px]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 h-full">
             {/* Recent Conversations */}
-            <div className="flex flex-col">
+            <div className="flex flex-col h-full">
               <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-orange-400" /> Recent Conversations
               </h3>
-              <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
                  {recentConversations.length > 0 ? (
                    recentConversations.map((conv) => (
                     <div key={conv.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
@@ -378,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
             </div>
 
             {/* Your Bots */}
-            <div className="flex flex-col">
+            <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-3 sm:mb-4">
                  <h3 className="text-base sm:text-lg font-bold text-white">Your Bots</h3>
                  <button onClick={onCreateNew} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
@@ -386,7 +386,7 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
                  </button>
               </div>
               
-              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0">
                 {bots.map((bot) => (
                    <div 
                      key={bot.id} 

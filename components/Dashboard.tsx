@@ -342,96 +342,101 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
           </div>
         </div>
 
-        {/* Recent Conversations */}
-        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2">
-          <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-orange-400" /> Recent Conversations
-          </h3>
-          <div className="space-y-4">
-             {recentConversations.length > 0 ? (
-               recentConversations.map((conv) => (
-                 <div key={conv.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-white/5 text-xs text-slate-300">
-                          {conv.user[0].toUpperCase()}
+        {/* Recent Conversations and Your Bots - Combined */}
+        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+            {/* Recent Conversations */}
+            <div className="flex flex-col">
+              <h3 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-orange-400" /> Recent Conversations
+              </h3>
+              <div className="space-y-4 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                 {recentConversations.length > 0 ? (
+                   recentConversations.map((conv) => (
+                    <div key={conv.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-white/5 text-xs text-slate-300">
+                             {conv.user[0].toUpperCase()}
+                        </div>
+                        <div>
+                             <p className="text-sm text-white font-medium">{conv.user}</p>
+                             <p className="text-xs text-slate-500">{conv.botName} • {conv.timeAgo}</p>
+                             <p className="text-xs text-slate-400 mt-1 italic">{conv.preview}</p>
+                        </div>
                      </div>
-                     <div>
-                          <p className="text-sm text-white font-medium">{conv.user}</p>
-                          <p className="text-xs text-slate-500">{conv.botName} • {conv.timeAgo}</p>
-                          <p className="text-xs text-slate-400 mt-1 italic">{conv.preview}</p>
+                     <div className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                          {conv.id.substring(0, 8)}
+                       </div>
                      </div>
-                  </div>
-                  <div className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
-                       {conv.id.substring(0, 8)}
-                    </div>
-                  </div>
-               ))
-             ) : (
-               <div className="text-center text-slate-500 text-sm py-8">
-                 No conversations yet
-               </div>
-             )}
-          </div>
-        </div>
+                  ))
+                 ) : (
+                   <div className="text-center text-slate-500 text-sm py-8">
+                    No conversations yet
+                   </div>
+                 )}
+              </div>
+            </div>
 
-        {/* Bot List - Spans 2 cols, aligned with Recent Conversations */}
-        <div className="glass-card p-4 sm:p-6 rounded-3xl md:col-span-2 md:row-span-2">
-          <div className="flex justify-between items-center mb-3 sm:mb-4">
-             <h3 className="text-base sm:text-lg font-bold text-white">Your Bots</h3>
-             <button onClick={onCreateNew} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-                <Plus className="w-4 h-4 text-slate-400" />
-             </button>
-          </div>
-          
-          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-            {bots.map((bot) => (
-               <div 
-                 key={bot.id} 
-                 className="group p-4 rounded-2xl bg-white/5 hover:bg-indigo-600/20 border border-white/5 hover:border-indigo-500/30 transition-all flex items-center gap-4"
-               >
-                  <div 
-                 onClick={() => onSelectBot(bot)}
-                     className="flex-1 flex items-center gap-4 cursor-pointer min-w-0"
-               >
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${bot.avatarColor} flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform`}>
-                     <Bot className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                     <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-white truncate">{bot.name}</h4>
-                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${bot.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                           {bot.status}
-                        </span>
-                     </div>
-                     <a href={bot.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mt-0.5">
-                        <Globe className="w-3 h-3" /> {bot.website.replace('https://', '')}
-                     </a>
-                     <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {bot.model.split('-')[1]}</span>
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(bot.createdAt).toLocaleDateString()}</span>
-                     </div>
-                  </div>
-                  </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <button
-                        onClick={(e) => {
-                           e.stopPropagation();
-                           onDeleteBot(bot.id);
-                        }}
-                        className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
-                        title="Delete bot"
-                     >
-                        <Trash2 className="w-4 h-4" />
-                     </button>
-                     <div 
-                        onClick={() => onSelectBot(bot)}
-                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center cursor-pointer"
-                     >
-                        <ArrowUpRight className="w-4 h-4 text-white" />
-                     </div>
-                  </div>
-               </div>
-            ))}
+            {/* Your Bots */}
+            <div className="flex flex-col">
+              <div className="flex justify-between items-center mb-3 sm:mb-4">
+                 <h3 className="text-base sm:text-lg font-bold text-white">Your Bots</h3>
+                 <button onClick={onCreateNew} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                    <Plus className="w-4 h-4 text-slate-400" />
+                 </button>
+              </div>
+              
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                {bots.map((bot) => (
+                   <div 
+                     key={bot.id} 
+                     className="group p-4 rounded-2xl bg-white/5 hover:bg-indigo-600/20 border border-white/5 hover:border-indigo-500/30 transition-all flex items-center gap-4"
+                   >
+                      <div 
+                     onClick={() => onSelectBot(bot)}
+                         className="flex-1 flex items-center gap-4 cursor-pointer min-w-0"
+                   >
+                      <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${bot.avatarColor} flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform`}>
+                         <Bot className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-white truncate">{bot.name}</h4>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${bot.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                               {bot.status}
+                            </span>
+                         </div>
+                         <a href={bot.website} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mt-0.5">
+                            <Globe className="w-3 h-3" /> {bot.website.replace('https://', '')}
+                         </a>
+                         <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span className="flex items-center gap-1"><Zap className="w-3 h-3" /> {bot.model.split('-')[1]}</span>
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(bot.createdAt).toLocaleDateString()}</span>
+                         </div>
+                      </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                         <button
+                            onClick={(e) => {
+                               e.stopPropagation();
+                               onDeleteBot(bot.id);
+                            }}
+                            className="p-2 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                            title="Delete bot"
+                         >
+                            <Trash2 className="w-4 h-4" />
+                         </button>
+                         <div 
+                            onClick={() => onSelectBot(bot)}
+                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center cursor-pointer"
+                         >
+                            <ArrowUpRight className="w-4 h-4 text-white" />
+                         </div>
+                      </div>
+                   </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

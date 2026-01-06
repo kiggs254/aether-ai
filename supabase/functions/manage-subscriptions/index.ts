@@ -69,15 +69,12 @@ serve(async (req) => {
     // Check if user is super admin
     const adminCheck = await isSuperAdmin(supabase, user.id);
     console.log('Admin check for user:', user.id, 'Result:', adminCheck);
-    if (!adminCheck) {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden', message: 'Super admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Rate limiting: 60 requests per minute for admin operations
-    const rateLimitResult = checkRateLimit(req, user.id, { maxRequests: 60, windowSeconds: 60 });
+    
+    // Rate limiting: Different limits for admin vs regular users
+    const rateLimitResult = checkRateLimit(req, user.id, { 
+      maxRequests: adminCheck ? 60 : 20, 
+      windowSeconds: 60 
+    });
     
     if (!rateLimitResult.allowed) {
       return new Response(
@@ -108,8 +105,31 @@ serve(async (req) => {
     switch (req.method) {
       case 'GET': {
         if (isTransactionsEndpoint && pathParts.length >= 2) {
-          // Get transaction history for a subscription
+          // Get transaction history for a subscription - requires admin or own subscription
           const subId = pathParts[pathParts.length - 2];
+          
+          // First check if subscription exists and belongs to user
+          const { data: subCheck } = await supabase
+            .from('user_subscriptions')
+            .select('user_id')
+            .eq('id', subId)
+            .single();
+
+          if (!subCheck) {
+            return new Response(
+              JSON.stringify({ error: 'Not Found', message: 'Subscription not found' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Allow if admin or own subscription
+          if (!adminCheck && subCheck.user_id !== user.id) {
+            return new Response(
+              JSON.stringify({ error: 'Forbidden', message: 'Access denied' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
           const { data, error } = await supabase
             .from('payment_transactions')
             .select(`
@@ -134,7 +154,7 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         } else if (subscriptionId && subscriptionId !== 'manage-subscriptions') {
-          // Get single subscription
+          // Get single subscription - allow if admin or own subscription
           const { data, error } = await supabase
             .from('user_subscriptions')
             .select(`
@@ -158,13 +178,23 @@ serve(async (req) => {
             );
           }
 
-          // Fetch user email separately
+          // Allow if admin or own subscription
+          if (!adminCheck && data.user_id !== user.id) {
+            return new Response(
+              JSON.stringify({ error: 'Forbidden', message: 'Access denied' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Fetch user email separately (only for admin)
           let userEmail = null;
-          try {
-            const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
-            userEmail = userData?.user?.email || null;
-          } catch (err) {
-            console.error('Error fetching user:', err);
+          if (adminCheck) {
+            try {
+              const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
+              userEmail = userData?.user?.email || null;
+            } catch (err) {
+              console.error('Error fetching user:', err);
+            }
           }
 
           return new Response(
@@ -172,7 +202,14 @@ serve(async (req) => {
             { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         } else {
-          // List all subscriptions with filters
+          // List all subscriptions with filters - requires admin
+          if (!adminCheck) {
+            return new Response(
+              JSON.stringify({ error: 'Forbidden', message: 'Super admin access required' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
           const searchParams = url.searchParams;
           const status = searchParams.get('status');
           const planId = searchParams.get('plan_id');
@@ -252,6 +289,29 @@ serve(async (req) => {
           );
         }
 
+        // First, get the subscription to check ownership
+        const { data: existingSub, error: subError } = await supabase
+          .from('user_subscriptions')
+          .select('user_id')
+          .eq('id', subscriptionId)
+          .single();
+
+        if (subError || !existingSub) {
+          return new Response(
+            JSON.stringify({ error: 'Not Found', message: 'Subscription not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if user owns this subscription or is admin
+        const isOwner = existingSub.user_id === user.id;
+        if (!isOwner && !adminCheck) {
+          return new Response(
+            JSON.stringify({ error: 'Forbidden', message: 'Access denied' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const updateData: any = await req.json();
         const allowedFields = ['status', 'plan_id', 'billing_cycle', 'cancel_at_period_end'];
         const filteredData: any = {};
@@ -261,6 +321,14 @@ serve(async (req) => {
           if (updateData[field] !== undefined) {
             filteredData[field] = updateData[field];
           }
+        }
+
+        // Regular users can only update cancel_at_period_end
+        if (!adminCheck && Object.keys(filteredData).some(key => key !== 'cancel_at_period_end')) {
+          return new Response(
+            JSON.stringify({ error: 'Forbidden', message: 'You can only cancel your subscription. Contact support for other changes.' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
         // Validate status if provided
@@ -327,13 +395,15 @@ serve(async (req) => {
           );
         }
 
-        // Fetch user email separately
+        // Fetch user email separately (only for admin)
         let userEmail = null;
-        try {
-          const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
-          userEmail = userData?.user?.email || null;
-        } catch (err) {
-          console.error('Error fetching user:', err);
+        if (adminCheck) {
+          try {
+            const { data: userData } = await supabase.auth.admin.getUserById(data.user_id);
+            userEmail = userData?.user?.email || null;
+          } catch (err) {
+            console.error('Error fetching user:', err);
+          }
         }
 
         return new Response(

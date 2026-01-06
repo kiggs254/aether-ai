@@ -42,26 +42,29 @@ You need to set the following environment variables in your Supabase project:
 
 ```
 PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxxx  (or sk_live_... for production)
-PAYSTACK_WEBHOOK_SECRET=your_webhook_secret  (see Step 4)
 SITE_URL=https://your-domain.com  (or http://localhost:3000 for local)
 ```
+
+**Note**: `PAYSTACK_WEBHOOK_SECRET` is optional. If not set, the code will use `PAYSTACK_SECRET_KEY` for webhook signature verification (which is the correct approach for Paystack).
 
 ### Option B: Using Supabase CLI
 
 ```bash
-# Set Paystack secret key
+# Set Paystack secret key (used for both API calls and webhook verification)
 supabase secrets set PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxxx
-
-# Set webhook secret (after creating webhook in Step 4)
-supabase secrets set PAYSTACK_WEBHOOK_SECRET=your_webhook_secret
 
 # Set site URL
 supabase secrets set SITE_URL=https://your-domain.com
+
+# Optional: Set separate webhook secret (if not set, PAYSTACK_SECRET_KEY will be used)
+# supabase secrets set PAYSTACK_WEBHOOK_SECRET=sk_test_xxxxxxxxxxxxx
 ```
 
 ## Step 4: Set Up Paystack Webhook
 
 The webhook is crucial for receiving payment notifications from Paystack.
+
+**Important Note**: Paystack doesn't use a separate webhook secret. It uses your **Secret Key** (the same `PAYSTACK_SECRET_KEY`) to sign webhook events. The signature is sent in the `x-paystack-signature` header and verified using HMAC SHA512.
 
 ### 4.1 Get Your Webhook URL
 
@@ -76,24 +79,43 @@ To find your project reference:
 
 ### 4.2 Configure Webhook in Paystack
 
-1. In Paystack Dashboard, go to **Settings** → **API Keys & Webhooks**
-2. Scroll down to **Webhooks** section
-3. Click **Add Webhook URL**
-4. Enter your webhook URL: `https://[your-project-ref].supabase.co/functions/v1/paystack-webhook`
-5. Select the events you want to listen to:
-   - ✅ `charge.success` (Required - for successful payments)
-   - ✅ `subscription.create` (For subscription creation)
-   - ✅ `subscription.disable` (For subscription cancellation)
-   - ✅ `charge.failed` (For failed payments)
-6. Click **Save**
-7. **Copy the webhook secret** - you'll need this for `PAYSTACK_WEBHOOK_SECRET`
+1. Log in to your **Paystack Dashboard** at https://dashboard.paystack.com
+2. Navigate to **Settings** in the sidebar
+3. Click on **API Keys & Webhooks** tab
+4. Scroll down to find the **Webhook URL** section
+5. Enter your webhook URL in the **Webhook URL** field:
+   ```
+   https://[your-project-ref].supabase.co/functions/v1/paystack-webhook
+   ```
+6. Click **Save** to save your webhook URL
 
-### 4.3 Test Your Webhook
+**Note**: Paystack automatically sends webhook events for all transaction types. You don't need to manually select events - the system will receive:
+- `charge.success` - When a payment is successful
+- `charge.failed` - When a payment fails
+- `subscription.create` - When a subscription is created
+- `subscription.disable` - When a subscription is cancelled
 
-1. In Paystack Dashboard, go to your webhook settings
-2. Click **Send Test Event**
-3. Select `charge.success` event
-4. Check your Supabase Edge Function logs to verify it's receiving events
+### 4.3 Webhook Security
+
+Paystack secures webhooks by:
+- Including an `x-paystack-signature` header in each webhook request
+- The signature is an HMAC SHA512 hash of the payload, signed with your Secret Key
+- Your code already verifies this signature automatically
+
+**No separate webhook secret needed** - the code uses `PAYSTACK_SECRET_KEY` for verification (or `PAYSTACK_WEBHOOK_SECRET` if you set it, but it's optional).
+
+### 4.4 Test Your Webhook
+
+1. Make a test payment using Paystack test card: `4084084084084081`
+2. Check your Supabase Edge Function logs:
+   ```bash
+   supabase functions logs paystack-webhook
+   ```
+3. You should see logs showing:
+   - Webhook received
+   - Signature verification
+   - Event processing
+   - Database updates
 
 ## Step 5: Deploy Edge Functions
 
@@ -176,10 +198,11 @@ When ready for production:
 
 ### Webhook Not Receiving Events
 
-1. **Check webhook URL** is correct in Paystack dashboard
-2. **Verify webhook secret** matches in Supabase secrets
-3. **Check Supabase function logs** for errors
-4. **Test webhook** using Paystack's test event feature
+1. **Check webhook URL** is correct in Paystack dashboard (Settings → API Keys & Webhooks)
+2. **Verify PAYSTACK_SECRET_KEY** is set correctly in Supabase secrets
+3. **Check Supabase function logs** for errors: `supabase functions logs paystack-webhook`
+4. **Verify webhook URL is publicly accessible** (Supabase Edge Functions are public by default)
+5. **Test with a real payment** - Paystack doesn't have a "test event" feature, but you can use test cards
 
 ### Payment Initialization Fails
 
@@ -198,8 +221,9 @@ When ready for production:
 ### Common Errors
 
 - **"Paystack configuration missing"**: `PAYSTACK_SECRET_KEY` not set
-- **"Invalid signature"**: Webhook secret doesn't match
-- **"Missing required fields"**: Check metadata in webhook event
+- **"Invalid signature"**: Secret key doesn't match (check you're using the correct test/live key)
+- **"Missing signature"**: Paystack didn't send `x-paystack-signature` header (check webhook URL is correct)
+- **"Missing required fields"**: Check metadata in webhook event (user_id, plan_id, etc.)
 
 ## Security Best Practices
 

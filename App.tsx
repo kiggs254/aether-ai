@@ -13,6 +13,7 @@ import Landing from './components/Landing';
 import HeaderScripts from './components/HeaderScripts';
 import AdminPlans from './components/AdminPlans';
 import AdminSubscriptions from './components/AdminSubscriptions';
+import PaymentCallback from './components/PaymentCallback';
 import { Bot, ViewState, Conversation } from './types';
 import { supabase } from './lib/supabase';
 import { botService, conversationService } from './services/database';
@@ -801,6 +802,18 @@ const AppContent: React.FC = () => {
           <p className="text-slate-400">Loading...</p>
         </div>
       </div>
+    );
+  }
+
+  // Check if we're on payment callback page
+  const isPaymentCallback = window.location.pathname === '/payment/callback';
+  
+  if (isPaymentCallback) {
+    return (
+      <>
+        <HeaderScripts />
+        <PaymentCallback onComplete={() => window.location.href = '/'} />
+      </>
     );
   }
 

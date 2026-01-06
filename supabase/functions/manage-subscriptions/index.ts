@@ -68,6 +68,7 @@ serve(async (req) => {
 
     // Check if user is super admin
     const adminCheck = await isSuperAdmin(supabase, user.id);
+    console.log('Admin check for user:', user.id, 'Result:', adminCheck);
     if (!adminCheck) {
       return new Response(
         JSON.stringify({ error: 'Forbidden', message: 'Super admin access required' }),
@@ -213,6 +214,8 @@ serve(async (req) => {
               { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
+
+          console.log('Found subscriptions:', data?.length || 0, 'Total count:', count);
 
           // Fetch user emails separately since we can't join auth.users directly
           const subscriptionsWithUsers = await Promise.all(

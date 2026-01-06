@@ -92,11 +92,19 @@ const AdminSubscriptions: React.FC = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Failed to load subscriptions');
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Subscription fetch error:', errorData);
+        throw new Error(errorData.message || `Failed to load subscriptions: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('Subscriptions response:', result);
       let data = result.data || result;
+      
+      // Handle case where data might be an array directly
+      if (Array.isArray(result) && !result.data) {
+        data = result;
+      }
 
       // Apply search filter client-side
       if (filters.search) {
@@ -108,9 +116,14 @@ const AdminSubscriptions: React.FC = () => {
         });
       }
 
-      setSubscriptions(data);
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        console.log('No subscriptions data returned');
+      }
+      
+      setSubscriptions(Array.isArray(data) ? data : []);
     } catch (error: any) {
-      showError('Failed to load subscriptions', error.message);
+      console.error('Error loading subscriptions:', error);
+      showError('Failed to load subscriptions', error.message || 'Please check the console for details');
     } finally {
       setLoading(false);
     }
@@ -389,9 +402,12 @@ const AdminSubscriptions: React.FC = () => {
                 ))}
               </tbody>
             </table>
-            {subscriptions.length === 0 && (
+            {subscriptions.length === 0 && !loading && (
               <div className="text-center py-12 text-slate-400">
-                No subscriptions found
+                <p className="mb-2">No subscriptions found</p>
+                <p className="text-sm text-slate-500">
+                  {isAdmin ? 'There are no subscriptions in the system yet.' : 'You do not have access to view subscriptions.'}
+                </p>
               </div>
             )}
           </div>

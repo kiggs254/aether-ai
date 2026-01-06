@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Bot, TrendingUp, Users, MessageCircle, Plus, Activity, Zap, ArrowUpRight, Clock, Server, Globe, Trash2, Mail, Phone, Archive, Timer } from 'lucide-react';
 import { Bot as BotType, Conversation } from '../types';
@@ -19,6 +19,70 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
   // Calculate real statistics
   const stats = calculateDashboardStats(conversations, bots, unreadConversations);
   const recentConversations = getRecentConversations(conversations, bots);
+  
+  // Refs and state for chart dimensions
+  const pieChartContainerRef = useRef<HTMLDivElement>(null);
+  const [pieChartDimensions, setPieChartDimensions] = useState<{ width: number; height: number } | null>(null);
+  const areaChartContainerRef = useRef<HTMLDivElement>(null);
+  const [areaChartDimensions, setAreaChartDimensions] = useState<{ width: number; height: number } | null>(null);
+  
+  // Measure PieChart container dimensions
+  useEffect(() => {
+    const updatePieChartDimensions = () => {
+      if (pieChartContainerRef.current) {
+        const rect = pieChartContainerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setPieChartDimensions({ width: rect.width, height: rect.height });
+        }
+      }
+    };
+
+    // Initial measurement
+    requestAnimationFrame(() => {
+      updatePieChartDimensions();
+    });
+
+    // Observe resize
+    const resizeObserver = new ResizeObserver(updatePieChartDimensions);
+    if (pieChartContainerRef.current) {
+      resizeObserver.observe(pieChartContainerRef.current);
+    }
+
+    window.addEventListener('resize', updatePieChartDimensions);
+    return () => {
+      window.removeEventListener('resize', updatePieChartDimensions);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Measure AreaChart container dimensions
+  useEffect(() => {
+    const updateAreaChartDimensions = () => {
+      if (areaChartContainerRef.current) {
+        const rect = areaChartContainerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setAreaChartDimensions({ width: rect.width, height: rect.height });
+        }
+      }
+    };
+
+    // Initial measurement
+    requestAnimationFrame(() => {
+      updateAreaChartDimensions();
+    });
+
+    // Observe resize
+    const resizeObserver = new ResizeObserver(updateAreaChartDimensions);
+    if (areaChartContainerRef.current) {
+      resizeObserver.observe(areaChartContainerRef.current);
+    }
+
+    window.addEventListener('resize', updateAreaChartDimensions);
+    return () => {
+      window.removeEventListener('resize', updateAreaChartDimensions);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Format response time
   const formatResponseTime = (seconds: number): string => {
@@ -104,23 +168,33 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
             </div>
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none"></div>
-          <div className="h-[200px] sm:h-[250px] w-full relative z-10 min-h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.conversationsOverTime}>
-                <defs>
-                  <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'rgba(5, 5, 5, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
-                  cursor={{stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1}}
-                />
-                <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div 
+            ref={areaChartContainerRef}
+            className="h-[200px] sm:h-[250px] w-full relative z-10 min-h-[200px]" 
+            style={{ minWidth: '200px', minHeight: '200px' }}
+          >
+            {areaChartDimensions && areaChartDimensions.width > 0 && areaChartDimensions.height > 0 ? (
+              <ResponsiveContainer width={areaChartDimensions.width} height={areaChartDimensions.height} minWidth={0} minHeight={200}>
+                <AreaChart data={stats.conversationsOverTime}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'rgba(5, 5, 5, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                    itemStyle={{ color: '#fff' }}
+                    cursor={{stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1}}
+                  />
+                  <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm">
+                Loading chart...
+              </div>
+            )}
           </div>
         </div>
 
@@ -223,23 +297,33 @@ const Dashboard: React.FC<DashboardProps> = ({ bots, conversations, onCreateNew,
           <div className="flex-1 flex flex-col justify-center items-center min-h-[240px]">
             {stats.botConversationStats.length > 0 ? (
               <>
-                <div className="w-full h-[180px] min-h-[180px] flex items-center justify-center" style={{ width: '100%', height: '180px' }}>
-                  <PieChart width={280} height={180}>
-                    <Pie
-                      data={stats.botConversationStats}
-                      cx={140}
-                      cy={90}
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {stats.botConversationStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{background: '#000', border:'none', borderRadius: '8px'}} />
-                  </PieChart>
+                <div 
+                  ref={pieChartContainerRef}
+                  className="w-full h-[180px] min-h-[180px] flex items-center justify-center" 
+                  style={{ width: '100%', height: '180px', minWidth: '200px', minHeight: '180px' }}
+                >
+                  {pieChartDimensions && pieChartDimensions.width > 0 && pieChartDimensions.height > 0 ? (
+                    <PieChart width={pieChartDimensions.width} height={pieChartDimensions.height}>
+                      <Pie
+                        data={stats.botConversationStats}
+                        cx={pieChartDimensions.width / 2}
+                        cy={pieChartDimensions.height / 2}
+                        innerRadius={Math.min(pieChartDimensions.width, pieChartDimensions.height) * 0.22}
+                        outerRadius={Math.min(pieChartDimensions.width, pieChartDimensions.height) * 0.39}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {stats.botConversationStats.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{background: '#000', border:'none', borderRadius: '8px'}} />
+                    </PieChart>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm">
+                      Loading chart...
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-3 sm:gap-4 text-xs text-slate-400 flex-wrap justify-center mt-4 flex-shrink-0">
                   {stats.botConversationStats.slice(0, 3).map((entry, index) => (

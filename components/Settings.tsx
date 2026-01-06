@@ -58,7 +58,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
     from_name: '',
   });
   const [siteConfig, setSiteConfig] = useState({
-    site_name: 'Aether AI',
+    site_name: 'ChatFlow',
     site_url: '',
     support_email: '',
     maintenance_mode: false,
@@ -1060,7 +1060,7 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
                 value={smtpConfig.from_name}
                 onChange={(e) => setSmtpConfig({ ...smtpConfig, from_name: e.target.value })}
                 className="w-full px-4 py-2 rounded-xl glass-input text-white placeholder-slate-500"
-                placeholder="Aether AI"
+                placeholder="ChatFlow"
               />
             </div>
           </div>

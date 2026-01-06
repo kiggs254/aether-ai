@@ -693,7 +693,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                           type="text"
                           value={brandingText}
                           onChange={(e) => setBrandingText(e.target.value)}
-                          placeholder="Powered by Aether AI"
+                          placeholder="Powered by ChatFlow"
                           className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm"
                         />
                         <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>

@@ -186,11 +186,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="hidden lg:flex w-20 lg:w-64 flex-shrink-0 flex flex-col glass-panel h-screen sticky top-0 border-r border-white/10 z-20 transition-all duration-300">
       {/* Brand Header */}
       <div className="h-20 flex items-center justify-center lg:justify-start lg:px-6 border-b border-white/5 flex-shrink-0">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-          <Zap className="text-white w-6 h-6" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <Bot className="text-white w-6 h-6" />
         </div>
         <span className="ml-3 font-bold text-xl tracking-wide hidden lg:block bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-          Aether
+          ChatFlow
         </span>
       </div>
 

@@ -310,7 +310,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
       console.warn('Warning: VITE_SUPABASE_ANON_KEY is not set. Widget will not be able to fetch bot config, create conversations, or save messages.');
     }
     
-    const scriptContent = `<!-- Aether AI Widget -->
+    const scriptContent = `<!-- ChatFlow Widget -->
 <link rel="stylesheet" href="${widgetCssUrl}">
 
 <style>

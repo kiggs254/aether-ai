@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Bot } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useModal } from './ModalContext';
 
@@ -54,16 +55,19 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, initialMode = 'login' }) => 
       <div className="relative z-10 w-full max-w-md px-6">
         <div className="glass-card rounded-3xl p-8 backdrop-blur-xl bg-white/5 border border-white/10">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🤖</span>
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <Bot className="w-7 h-7 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-white">ChatFlow</span>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </h1>
             <p className="text-slate-400">
               {isLogin 
-                ? 'Sign in to your Aether AI account' 
-                : 'Get started with Aether AI'}
+                ? 'Sign in to your ChatFlow account' 
+                : 'Get started with ChatFlow'}
             </p>
           </div>
 

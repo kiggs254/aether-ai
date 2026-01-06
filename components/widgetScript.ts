@@ -419,8 +419,8 @@ export const generateWidgetJS = (): string => {
     return;
   }
 
-  // Determine branding text - use custom if provided, otherwise default to "Powered by Aether AI"
-  const brandingText = bot.brandingText || 'Powered by Aether AI';
+  // Determine branding text - use custom if provided, otherwise default to "Powered by ChatFlow"
+  const brandingText = bot.brandingText || 'Powered by ChatFlow';
   
   // Get header image URL if available
   const headerImageUrl = bot.headerImageUrl || null;

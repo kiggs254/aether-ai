@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: ViewState.INBOX, icon: InboxIcon, label: 'Inbox & Leads' },
     { id: ViewState.BOTS, icon: Bot, label: 'Bots' },
     { id: ViewState.PLAYGROUND, icon: MessageSquare, label: 'Playground' },
-    { id: ViewState.INTEGRATION, icon: Code, label: 'Integration' },
+    { id: ViewState.INTEGRATIONS, icon: Layers, label: 'Integrations' },
     { id: ViewState.SETTINGS, icon: Settings, label: 'Settings' },
     ...(isAdmin ? [
       { id: ViewState.ADMIN_PLANS, icon: CreditCard, label: 'Manage Plans' },

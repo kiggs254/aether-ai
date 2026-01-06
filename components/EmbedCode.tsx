@@ -917,7 +917,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                               marginTop: '20px'
                             }}
                          >
-                            <MessageSquare className="w-7 h-7" />
+                            <BotIcon className="w-7 h-7" />
                          </button>
                       </div>
 

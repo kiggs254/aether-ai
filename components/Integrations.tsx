@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Integration, Bot, ViewState } from '../types';
 import { integrationService, botService } from '../services/database';
@@ -15,7 +15,7 @@ interface IntegrationsProps {
 }
 
 const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, isAdmin = false }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError } = useModal();
   const [integrations, setIntegrations] = useState<IntegrationWithBot[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
   const [isLoading, setIsLoading] = useState(true);

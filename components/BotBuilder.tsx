@@ -3,7 +3,7 @@ import { Bot, BotAction, ActionType } from '../types';
 import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
 import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { parseXMLFeed, updateProductCatalog } from '../services/productFeed';
 import { getProductCatalog } from '../services/productQuery';
 import { Product, EcommerceSettings } from '../types';
@@ -16,7 +16,7 @@ interface BotBuilderProps {
 }
 
 const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBack }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError } = useModal();
   const [name, setName] = useState(bot?.name || '');
   const [description, setDescription] = useState(bot?.description || '');
   const [website, setWebsite] = useState(bot?.website || '');

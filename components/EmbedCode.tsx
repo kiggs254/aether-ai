@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Bot, Integration, DepartmentBot } from '../types';
 import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2, Bot as BotIcon, Lock } from 'lucide-react';
@@ -12,7 +12,7 @@ interface EmbedCodeProps {
 }
 
 const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError } = useModal();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   

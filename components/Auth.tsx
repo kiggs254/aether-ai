@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 
 interface AuthProps {
   onAuthSuccess: () => void;
@@ -8,7 +8,7 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onAuthSuccess, initialMode = 'login' }) => {
-  const { showError, showSuccess } = useNotification();
+  const { showError, showSuccess } = useModal();
   const [isLogin, setIsLogin] = useState(initialMode === 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

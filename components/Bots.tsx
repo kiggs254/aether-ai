@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Bot } from '../types';
 import { botService } from '../services/database';
@@ -15,7 +15,7 @@ interface BotsProps {
 }
 
 const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError } = useModal();
   const [bots, setBots] = useState<BotWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Search, Filter, Edit2, X, Check, Calendar, CreditCard, Loader2, AlertCircle, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { useAdminStatus } from '../lib/useAdminStatus';
 
 interface Subscription {
@@ -31,7 +31,7 @@ interface Subscription {
 
 const AdminSubscriptions: React.FC = () => {
   const { isAdmin, loading: adminLoading } = useAdminStatus();
-  const { showError, showSuccess } = useNotification();
+  const { showError, showSuccess } = useModal();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({

@@ -17,8 +17,7 @@ import PaymentCallback from './components/PaymentCallback';
 import { Bot, ViewState, Conversation } from './types';
 import { supabase } from './lib/supabase';
 import { botService, conversationService } from './services/database';
-import { NotificationProvider, useNotification } from './components/Notification';
-import { Modal } from './components/Modal';
+import { ModalProvider, useModal } from './components/ModalContext';
 import { Menu, X } from 'lucide-react';
 import { useAdminStatus } from './lib/useAdminStatus';
 
@@ -47,18 +46,6 @@ const AppContent: React.FC = () => {
   // Initialize ref with current value
   const viewedConversationIdRef = useRef<string | null>(viewedConversationId);
   
-  // Modal state
-  const [modal, setModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm?: () => void;
-    variant?: 'danger' | 'warning' | 'info';
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-  });
 
   useEffect(() => {
     // Check active session
@@ -77,7 +64,7 @@ const AppContent: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const { showError, showSuccess } = useNotification();
+  const { showError, showSuccess, showConfirm } = useModal();
 
   // Use refs to store latest values for subscriptions
   const botsRef = useRef(bots);
@@ -614,12 +601,10 @@ const AppContent: React.FC = () => {
   };
 
   const handleDeleteBot = async (botId: string) => {
-    setModal({
-      isOpen: true,
-      title: 'Delete Bot',
-      message: 'Are you sure you want to delete this bot? This will also delete all conversations and messages associated with it.',
-      variant: 'danger',
-      onConfirm: async () => {
+    showConfirm(
+      'Delete Bot',
+      'Are you sure you want to delete this bot? This will also delete all conversations and messages associated with it.',
+      async () => {
         try {
           await botService.deleteBot(botId);
           await loadBots(); // Reload bots from database
@@ -639,16 +624,15 @@ const AppContent: React.FC = () => {
           showError('Failed to delete bot', error.message || 'Please check your connection and try again');
         }
       },
-    });
+      'danger'
+    );
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
-    setModal({
-      isOpen: true,
-      title: 'Archive Conversation',
-      message: 'Are you sure you want to archive this conversation? It will be hidden but can be viewed in the archive.',
-      variant: 'warning',
-      onConfirm: async () => {
+    showConfirm(
+      'Archive Conversation',
+      'Are you sure you want to archive this conversation? It will be hidden but can be viewed in the archive.',
+      async () => {
         try {
           await conversationService.deleteConversation(conversationId);
           await loadConversations(); // Reload conversations from database
@@ -658,7 +642,8 @@ const AppContent: React.FC = () => {
           showError('Failed to archive conversation', error.message || 'Please check your connection and try again');
         }
       },
-    });
+      'warning'
+    );
   };
 
   const renderContent = () => {
@@ -902,17 +887,6 @@ const AppContent: React.FC = () => {
           {renderContent()}
         </div>
       </main>
-      <Modal
-        isOpen={modal.isOpen}
-        onClose={() => setModal({ isOpen: false, title: '', message: '' })}
-        onConfirm={modal.onConfirm}
-        title={modal.title}
-        message={modal.message}
-        type="confirm"
-        variant={modal.variant || 'info'}
-        confirmText="Confirm"
-        cancelText="Cancel"
-      />
     </div>
     </>
   );
@@ -920,9 +894,9 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <NotificationProvider>
+    <ModalProvider>
       <AppContent />
-    </NotificationProvider>
+    </ModalProvider>
   );
 };
 

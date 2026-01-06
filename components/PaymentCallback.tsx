@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAdminStatus } from '../lib/useAdminStatus';
@@ -9,7 +9,7 @@ interface PaymentCallbackProps {
 }
 
 const PaymentCallback: React.FC<PaymentCallbackProps> = ({ onComplete }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError } = useModal();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState<string>('Verifying payment...');
   const { isAdmin } = useAdminStatus();

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation, Bot, Product } from '../types';
 import { Search, Mail, Phone, Calendar, MessageSquare, Clock, User, ChevronRight, Download, Filter, Trash2, Archive, Zap, ExternalLink, MessageCircle, Users, ArrowLeft, Image, Video, Music, File, ShoppingBag, X } from 'lucide-react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { queryProducts } from '../services/productQuery';
 
 interface InboxProps {
@@ -15,7 +15,7 @@ interface InboxProps {
 }
 
 const Inbox: React.FC<InboxProps> = ({ conversations, bots, unreadConversations = new Map(), viewedConversationId, onConversationRead, onConversationViewChange, onDeleteConversation }) => {
-  const { showError } = useNotification();
+  const { showError } = useModal();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBotId, setSelectedBotId] = useState<string>('all');

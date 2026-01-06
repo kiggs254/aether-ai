@@ -3,14 +3,14 @@ import { Bot, ChatMessage, BotAction } from '../types';
 import { Send, User, Bot as BotIcon, RefreshCw, Eraser, AlertTriangle, Sparkles, ExternalLink, Phone, MessageCircle, Users, ArrowRight, Image, Video, Music, File } from 'lucide-react';
 import { createChatStream } from '../services/geminiService';
 import { conversationService } from '../services/database';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 
 interface ChatPlaygroundProps {
   bot: Bot;
 }
 
 const ChatPlayground: React.FC<ChatPlaygroundProps> = ({ bot }) => {
-  const { showError } = useNotification();
+  const { showError } = useModal();
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: `Hello! I am ${bot.name}. How can I assist you today?`, timestamp: Date.now() }
   ]);

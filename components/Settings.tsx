@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, CreditCard, Shield, Bell, Mail, Key, Trash2, LogOut, Save, Edit2, X, Check, Smartphone, Globe, Lock, Eye, EyeOff, ArrowUpRight, Calendar, Loader2, AlertCircle, Settings as SettingsIcon, Server, Code } from 'lucide-react';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 import { supabase } from '../lib/supabase';
 import PaymentFlow from './PaymentFlow';
 import { useAdminStatus } from '../lib/useAdminStatus';
@@ -13,7 +13,7 @@ interface SettingsProps {
 type SettingsSection = 'account' | 'billing' | 'security' | 'notifications' | 'smtp' | 'site';
 
 const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError, showConfirm } = useModal();
   const { isAdmin } = useAdminStatus();
   const [activeSection, setActiveSection] = useState<SettingsSection>('account');
   
@@ -161,38 +161,41 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.')) {
-      return;
-    }
+    showConfirm(
+      'Cancel Subscription',
+      'Are you sure you want to cancel your subscription? It will remain active until the end of the current billing period.',
+      async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            showError('Authentication required', 'Please sign in to continue');
+            return;
+          }
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        showError('Authentication required', 'Please sign in to continue');
-        return;
-      }
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-subscriptions/${subscription.id}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              cancel_at_period_end: true,
+            }),
+          });
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-subscriptions/${subscription.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          cancel_at_period_end: true,
-        }),
-      });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to cancel subscription');
+          }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to cancel subscription');
-      }
-
-      showSuccess('Subscription cancelled', 'Your subscription will remain active until the end of the current billing period.');
-      loadSubscription();
-    } catch (error: any) {
-      showError('Failed to cancel subscription', error.message);
-    }
+          showSuccess('Subscription cancelled', 'Your subscription will remain active until the end of the current billing period.');
+          loadSubscription();
+        } catch (error: any) {
+          showError('Failed to cancel subscription', error.message);
+        }
+      },
+      'warning'
+    );
   };
 
   const formatCurrency = (amount: number) => {

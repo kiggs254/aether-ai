@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Check, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useNotification } from './Notification';
+import { useModal } from './ModalContext';
 
 interface SubscriptionPlan {
   id: string;
@@ -22,7 +22,7 @@ interface PaymentFlowProps {
 }
 
 const PaymentFlow: React.FC<PaymentFlowProps> = ({ onSuccess, onCancel }) => {
-  const { showError, showSuccess } = useNotification();
+  const { showError, showSuccess } = useModal();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);

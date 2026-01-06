@@ -317,6 +317,54 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     return;
   }
 
+  // Check if we need to create a Paystack subscription
+  const shouldCreateSubscription = metadata.is_subscription === true || metadata.create_subscription_after_payment === true;
+  const paystackPlanCode = metadata.paystack_plan_code;
+  const customerCode = metadata.paystack_customer_code || data.authorization?.customer_code || data.customer?.customer_code;
+  const authorizationCode = data.authorization?.authorization_code;
+
+  let paystackSubscriptionCode: string | null = null;
+
+  // Create Paystack subscription if we have the required data
+  if (shouldCreateSubscription && paystackPlanCode && customerCode && authorizationCode) {
+    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+    if (paystackSecretKey) {
+      try {
+        const createSubResponse = await fetch('https://api.paystack.co/subscription', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            customer: customerCode,
+            plan: paystackPlanCode,
+            authorization: authorizationCode,
+            metadata: {
+              user_id: user_id,
+              plan_id: plan_id,
+              billing_cycle: billing_cycle,
+              plan_name: plan.name,
+            },
+          }),
+        });
+
+        const createSubData = await createSubResponse.json();
+
+        if (createSubData.status && createSubData.data) {
+          paystackSubscriptionCode = createSubData.data.subscription_code;
+          console.log('Paystack subscription created:', paystackSubscriptionCode);
+        } else {
+          console.error('Failed to create Paystack subscription:', createSubData);
+          // Continue anyway - we'll create the database subscription
+        }
+      } catch (error) {
+        console.error('Error creating Paystack subscription:', error);
+        // Continue anyway - we'll create the database subscription
+      }
+    }
+  }
+
   // Calculate period dates
   const now = new Date();
   const periodStart = new Date(now);
@@ -352,8 +400,8 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
       billing_cycle: billing_cycle,
       current_period_start: periodStart.toISOString(),
       current_period_end: periodEnd.toISOString(),
-      paystack_customer_code: data.authorization?.customer_code || data.customer?.customer_code,
-      paystack_subscription_code: subscriptionCode,
+      paystack_customer_code: customerCode,
+      paystack_subscription_code: paystackSubscriptionCode,
       cancel_at_period_end: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

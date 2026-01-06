@@ -177,16 +177,15 @@ serve(async (req) => {
 
     // Check if user has existing Paystack customer
     let customerCode: string | null = null;
-    const { data: existingSub } = await supabase
+    const { data: existingSubs } = await supabase
       .from('user_subscriptions')
       .select('paystack_customer_code')
       .eq('user_id', user.id)
       .not('paystack_customer_code', 'is', null)
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (existingSub?.paystack_customer_code) {
-      customerCode = existingSub.paystack_customer_code;
+    if (existingSubs && existingSubs.length > 0 && existingSubs[0]?.paystack_customer_code) {
+      customerCode = existingSubs[0].paystack_customer_code;
     } else {
       // Check if customer exists in Paystack by email
       const customerCheckResponse = await fetch(`https://api.paystack.co/customer?email=${encodeURIComponent(email)}`, {
@@ -283,42 +282,45 @@ serve(async (req) => {
       paystackPlanCode = createPlanData.data.plan_code;
     }
 
-    // Create Paystack subscription
-    const createSubscriptionResponse = await fetch('https://api.paystack.co/subscription', {
+    // Generate unique reference for initial transaction
+    const reference = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    // Initialize Paystack transaction with subscription metadata
+    // This will allow us to create the subscription after the first payment succeeds
+    const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${paystackSecretKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        customer: customerCode,
-        plan: paystackPlanCode,
-        authorization: null, // Will be set after card authorization
+        email,
+        amount: Math.round(amount * 100), // Convert to cents
+        reference,
+        currency: 'USD',
+        callback_url: callback_url || `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/payment/callback`,
         metadata: {
           user_id: user.id,
           plan_id: plan_id,
           billing_cycle: billing_cycle,
           plan_name: plan.name,
+          paystack_customer_code: customerCode,
+          paystack_plan_code: paystackPlanCode,
+          is_subscription: true,
         },
+        customer: customerCode, // Link to existing customer if available
       }),
     });
 
-    const subscriptionData = await createSubscriptionResponse.json();
+    const paystackData = await paystackResponse.json();
 
-    if (!subscriptionData.status || !subscriptionData.data) {
-      console.error('Paystack subscription creation error:', subscriptionData);
+    if (!paystackData.status || !paystackData.data) {
+      console.error('Paystack error:', paystackData);
       return new Response(
-        JSON.stringify({ error: 'Payment Error', message: subscriptionData.message || 'Failed to create subscription' }),
+        JSON.stringify({ error: 'Payment Error', message: paystackData.message || 'Failed to initialize payment' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const subscription = subscriptionData.data;
-    const subscriptionCode = subscription.subscription_code;
-    const authorizationUrl = subscription.authorization_url;
-
-    // Generate unique reference for initial transaction
-    const reference = `sub_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
     // Create pending transaction record with subscription info
     const { error: transactionError } = await supabase
@@ -332,26 +334,27 @@ serve(async (req) => {
         status: 'pending',
         metadata: {
           billing_cycle: billing_cycle,
-          paystack_subscription_code: subscriptionCode,
           paystack_customer_code: customerCode,
           paystack_plan_code: paystackPlanCode,
           is_subscription: true,
+          create_subscription_after_payment: true,
         },
       });
 
     if (transactionError) {
       console.error('Database error:', transactionError);
-      // Continue anyway, subscription was created
+      // Continue anyway, payment was initialized
     }
 
-    // Return subscription authorization URL
+    // Return authorization URL
     return new Response(
       JSON.stringify({
         success: true,
-        authorization_url: authorizationUrl,
-        subscription_code: subscriptionCode,
-        customer_code: customerCode,
+        authorization_url: paystackData.data.authorization_url,
+        access_code: paystackData.data.access_code,
         reference: reference,
+        customer_code: customerCode,
+        plan_code: paystackPlanCode,
       }),
       { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
     );

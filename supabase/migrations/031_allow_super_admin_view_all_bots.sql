@@ -51,3 +51,17 @@ CREATE POLICY "Super admins can view all integrations"
   ON integrations FOR SELECT
   USING (is_super_admin());
 
+-- Allow super admins to view all subscriptions
+DROP POLICY IF EXISTS "Super admins can view all subscriptions" ON user_subscriptions;
+
+CREATE POLICY "Super admins can view all subscriptions"
+  ON user_subscriptions FOR SELECT
+  USING (is_super_admin());
+
+-- Allow super admins to view all payment transactions
+DROP POLICY IF EXISTS "Super admins can view all transactions" ON payment_transactions;
+
+CREATE POLICY "Super admins can view all transactions"
+  ON payment_transactions FOR SELECT
+  USING (is_super_admin());
+

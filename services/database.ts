@@ -1,24 +1,38 @@
 import { supabase } from '../lib/supabase';
 import { Bot, BotAction, Conversation, ChatMessage, Integration, Product } from '../types';
+import { isSuperAdmin } from '../lib/admin';
 
 // Bot operations
 export const botService = {
-  // Get all bots for the current user
-  async getAllBots(): Promise<Bot[]> {
-    const { data, error } = await supabase
+  // Get all bots for the current user (or all bots if super admin)
+  async getAllBots(isSuperAdminFlag?: boolean): Promise<(Bot & { userEmail?: string })[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Check if user is super admin if flag not provided
+    const isAdmin = isSuperAdminFlag !== undefined ? isSuperAdminFlag : await isSuperAdmin();
+
+    let query = supabase
       .from('bots')
       .select(`
         *,
         bot_actions (*)
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    // Only filter by user_id if not super admin
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching bots:', error);
       throw error;
     }
 
-    return (data || []).map((bot: any) => ({
+    // If super admin, fetch user emails separately
+    let botsWithUsers = (data || []).map((bot: any) => ({
       id: bot.id,
       name: bot.name,
       description: bot.description || '',
@@ -49,7 +63,14 @@ export const botService = {
       ecommerceEnabled: bot.ecommerce_enabled || false,
       productFeedUrl: bot.product_feed_url || undefined,
       ecommerceSettings: bot.ecommerce_settings || undefined,
+      userEmail: undefined as string | undefined,
     }));
+
+    // For super admin, fetch user emails (we'll need to do this via a separate query or edge function)
+    // For now, we'll leave userEmail as undefined and handle it in the component
+    // In a production app, you might want to create an edge function or view to get user emails
+
+    return botsWithUsers;
   },
 
   // Get a single bot by ID
@@ -809,12 +830,15 @@ export const integrationService = {
     });
   },
 
-  // Get all integrations for the current user
-  async getAllUserIntegrations(): Promise<Integration[]> {
+  // Get all integrations for the current user (or all integrations if super admin)
+  async getAllUserIntegrations(isSuperAdminFlag?: boolean): Promise<(Integration & { userEmail?: string })[]> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    const { data, error } = await supabase
+    // Check if user is super admin if flag not provided
+    const isAdmin = isSuperAdminFlag !== undefined ? isSuperAdminFlag : await isSuperAdmin();
+
+    let query = supabase
       .from('integrations')
       .select(`
         *,
@@ -822,9 +846,14 @@ export const integrationService = {
           id,
           name
         )
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      `);
+
+    // Only filter by user_id if not super admin
+    if (!isAdmin) {
+      query = query.eq('user_id', user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -854,6 +883,7 @@ export const integrationService = {
         departmentBots,
         createdAt: new Date(integration.created_at).getTime(),
         updatedAt: new Date(integration.updated_at).getTime(),
+        userEmail: undefined as string | undefined,
       };
     });
   },

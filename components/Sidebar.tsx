@@ -34,9 +34,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: ViewState.DASHBOARD, icon: LayoutDashboard, label: 'Dashboard' },
     { id: ViewState.INBOX, icon: InboxIcon, label: 'Inbox & Leads' },
-    { id: ViewState.BOT_BUILDER, icon: Bot, label: 'Bot Builder' },
+    { id: ViewState.BOTS, icon: Bot, label: 'Bots' },
     { id: ViewState.PLAYGROUND, icon: MessageSquare, label: 'Playground' },
-    { id: ViewState.INTEGRATIONS, icon: Layers, label: 'Integrations' },
     { id: ViewState.INTEGRATION, icon: Code, label: 'Integration' },
     { id: ViewState.SETTINGS, icon: Settings, label: 'Settings' },
     ...(isAdmin ? [

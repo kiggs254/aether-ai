@@ -11,9 +11,10 @@ interface IntegrationWithBot extends Integration {
 
 interface IntegrationsProps {
   onNavigateToIntegration: (botId: string, integrationId?: string) => void;
+  isAdmin?: boolean;
 }
 
-const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) => {
+const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, isAdmin = false }) => {
   const { showSuccess, showError } = useNotification();
   const [integrations, setIntegrations] = useState<IntegrationWithBot[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
@@ -36,14 +37,14 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) 
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [isAdmin]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
       const [integrationsData, botsData] = await Promise.all([
-        integrationService.getAllUserIntegrations(),
-        botService.getAllBots(),
+        integrationService.getAllUserIntegrations(isAdmin),
+        botService.getAllBots(isAdmin),
       ]);
 
       // Map bot names to integrations
@@ -104,7 +105,8 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) 
     const matchesSearch = 
       !searchTerm ||
       integration.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      integration.botName?.toLowerCase().includes(searchTerm.toLowerCase());
+      integration.botName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (isAdmin && (integration as any).userEmail?.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesBot = filterBot === 'all' || integration.botId === filterBot;
 
@@ -135,7 +137,7 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) 
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search integrations..."
+              placeholder={isAdmin ? "Search integrations by name, bot, or owner..." : "Search integrations..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 rounded-xl glass-input text-sm"
@@ -193,6 +195,9 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) 
                 <tr>
                   <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Name</th>
                   <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Bot</th>
+                  {isAdmin && (
+                    <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Owner</th>
+                  )}
                   <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Theme</th>
                   <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Position</th>
                   <th className="text-left p-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Features</th>
@@ -216,6 +221,11 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration }) 
                     <td className="p-4">
                       <div className="text-sm text-white">{integration.botName}</div>
                     </td>
+                    {isAdmin && (
+                      <td className="p-4">
+                        <div className="text-sm text-slate-300">{(integration as any).userEmail || 'Unknown'}</div>
+                      </td>
+                    )}
                     <td className="p-4">
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize bg-white/10 text-slate-300">
                         {integration.theme}

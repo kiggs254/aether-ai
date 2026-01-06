@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import BotBuilder from './components/BotBuilder';
+import Bots from './components/Bots';
 import ChatPlayground from './components/ChatPlayground';
 import EmbedCode from './components/EmbedCode';
 import Integrations from './components/Integrations';
@@ -579,7 +580,7 @@ const AppContent: React.FC = () => {
 
   const handleCreateNew = () => {
     setActiveBot(null);
-    setView(ViewState.BOT_BUILDER);
+    setView(ViewState.BOTS);
   };
 
   const handleSelectBot = (bot: Bot) => {
@@ -680,7 +681,25 @@ const AppContent: React.FC = () => {
             bot={activeBot} 
             onSave={handleSaveBot} 
             onCreateNew={handleCreateNew}
-            onBack={() => setView(ViewState.DASHBOARD)}
+            onBack={() => setView(ViewState.BOTS)}
+          />
+        );
+      case ViewState.BOTS:
+        return (
+          <Bots 
+            onNavigateToBotBuilder={(botId) => {
+              if (botId) {
+                const bot = bots.find(b => b.id === botId);
+                if (bot) {
+                  setActiveBot(bot);
+                  setView(ViewState.BOT_BUILDER);
+                }
+              } else {
+                setActiveBot(null);
+                setView(ViewState.BOT_BUILDER);
+              }
+            }}
+            isAdmin={isAdmin}
           />
         );
       case ViewState.INBOX:
@@ -745,6 +764,7 @@ const AppContent: React.FC = () => {
                 setView(ViewState.INTEGRATION);
               }
             }}
+            isAdmin={isAdmin}
           />
         );
       case ViewState.SETTINGS:

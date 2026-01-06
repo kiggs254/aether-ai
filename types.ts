@@ -63,6 +63,7 @@ export interface Conversation {
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   BOT_BUILDER = 'BOT_BUILDER',
+  BOTS = 'BOTS',
   PLAYGROUND = 'PLAYGROUND',
   INTEGRATION = 'INTEGRATION',
   INTEGRATIONS = 'INTEGRATIONS',

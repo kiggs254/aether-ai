@@ -190,8 +190,23 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   const plan_id = metadata.plan_id;
   const billing_cycle = metadata.billing_cycle || 'monthly';
 
+  console.log('Processing charge.success event:', {
+    reference,
+    amount,
+    metadata,
+    user_id,
+    plan_id,
+    billing_cycle,
+  });
+
   if (!reference || !user_id || !plan_id) {
-    console.error('Missing required fields in charge.success event');
+    console.error('Missing required fields in charge.success event:', {
+      reference: !!reference,
+      user_id: !!user_id,
+      plan_id: !!plan_id,
+      full_metadata: metadata,
+      full_data: data,
+    });
     return;
   }
 
@@ -245,7 +260,7 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   }
 
   // Cancel existing active subscription
-  await supabase
+  const { error: cancelError } = await supabase
     .from('user_subscriptions')
     .update({
       status: 'cancelled',
@@ -254,10 +269,16 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     .eq('user_id', user_id)
     .eq('status', 'active');
 
-  // Create or update subscription
+  if (cancelError) {
+    console.error('Error cancelling existing subscription:', cancelError);
+  }
+
+  // Create new subscription
+  // Note: We use insert instead of upsert because we just cancelled any existing active subscription
+  // The unique constraint is on user_id WHERE status = 'active', so we can safely insert
   const { data: subscription, error: subError } = await supabase
     .from('user_subscriptions')
-    .upsert({
+    .insert({
       user_id: user_id,
       plan_id: plan_id,
       status: 'active',
@@ -266,17 +287,44 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
       current_period_end: periodEnd.toISOString(),
       paystack_customer_code: data.authorization?.customer_code || data.customer?.customer_code,
       cancel_at_period_end: false,
+      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    }, {
-      onConflict: 'user_id,status',
-      ignoreDuplicates: false,
     })
     .select()
     .single();
 
   if (subError) {
     console.error('Error creating subscription:', subError);
+    console.error('Subscription data:', {
+      user_id,
+      plan_id,
+      billing_cycle,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+    });
+    return; // Don't continue if subscription creation failed
+  }
+
+  if (!subscription || !subscription.id) {
+    console.error('Subscription was not created - no ID returned');
+    return;
+  }
+
+  console.log('Subscription created successfully:', subscription.id);
+
+  // Update transaction with subscription_id
+  const { error: updateTransactionError } = await supabase
+    .from('payment_transactions')
+    .update({
+      subscription_id: subscription.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('paystack_reference', reference);
+
+  if (updateTransactionError) {
+    console.error('Error updating transaction with subscription_id:', updateTransactionError);
   } else {
+    console.log('Transaction updated with subscription_id:', subscription.id);
   }
 }
 

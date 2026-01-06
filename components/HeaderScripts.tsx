@@ -19,16 +19,19 @@ const ALLOWED_META_ATTRIBUTES = ['name', 'content', 'property', 'http-equiv', 'c
 // Validate URL is safe (https only, no javascript:, data:, etc.)
 const isValidUrl = (url: string): boolean => {
   if (!url || typeof url !== 'string') return false;
-  const trimmed = url.trim().toLowerCase();
+  const trimmed = url.trim();
+  const lowerTrimmed = trimmed.toLowerCase();
   // Block dangerous protocols
-  if (trimmed.startsWith('javascript:') || 
-      trimmed.startsWith('data:') || 
-      trimmed.startsWith('vbscript:') ||
-      trimmed.startsWith('file:')) {
+  if (lowerTrimmed.startsWith('javascript:') || 
+      lowerTrimmed.startsWith('data:') || 
+      lowerTrimmed.startsWith('vbscript:') ||
+      lowerTrimmed.startsWith('file:')) {
     return false;
   }
-  // Only allow http/https
-  return trimmed.startsWith('http://') || trimmed.startsWith('https://');
+  // Allow http/https and relative URLs (starting with /)
+  return lowerTrimmed.startsWith('http://') || 
+         lowerTrimmed.startsWith('https://') ||
+         trimmed.startsWith('/');
 };
 
 // Sanitize attribute value
@@ -71,8 +74,11 @@ const HeaderScripts: React.FC<HeaderScriptsProps> = ({ skipWidget = false }) => 
         let headerScripts = data?.value?.header_scripts || '';
         
         if (!headerScripts || typeof headerScripts !== 'string' || headerScripts.trim() === '') {
+          console.log('HeaderScripts: No header scripts found in site settings');
           return;
         }
+        
+        console.log('HeaderScripts: Found header scripts, length:', headerScripts.length);
 
         // Create a temporary container to parse the HTML
         const tempDiv = document.createElement('div');
@@ -114,10 +120,16 @@ const HeaderScripts: React.FC<HeaderScriptsProps> = ({ skipWidget = false }) => 
             
             // Handle external scripts (with src attribute)
             if (src) {
-              // Validate src URL
-              if (!isValidUrl(src)) {
-                console.warn('HeaderScripts: Invalid script src URL:', src);
-                return;
+              // Validate src URL (allow relative URLs and absolute URLs)
+              const isRelative = src.startsWith('/') || src.startsWith('./');
+              const isAbsolute = src.startsWith('http://') || src.startsWith('https://');
+              
+              if (!isRelative && !isAbsolute) {
+                // Check if it's a valid URL format
+                if (!isValidUrl(src)) {
+                  console.warn('HeaderScripts: Invalid script src URL:', src);
+                  return;
+                }
               }
               
               // Only copy whitelisted attributes
@@ -186,6 +198,7 @@ const HeaderScripts: React.FC<HeaderScriptsProps> = ({ skipWidget = false }) => 
             
             document.head.appendChild(script);
             scriptElements.push(script);
+            console.log('HeaderScripts: Injected script', src || 'inline');
           } else if (tagName === 'link') {
             const link = document.createElement('link');
             const href = element.getAttribute('href');
@@ -211,6 +224,7 @@ const HeaderScripts: React.FC<HeaderScriptsProps> = ({ skipWidget = false }) => 
             
             document.head.appendChild(link);
             styleElements.push(link);
+            console.log('HeaderScripts: Injected link', href || 'no href');
           } else if (tagName === 'style') {
             // Allow style tags but sanitize content
             const style = document.createElement('style');

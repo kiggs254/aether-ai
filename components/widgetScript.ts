@@ -11,10 +11,16 @@ export const generateWidgetJS = (): string => {
     const checkConfig = () => {
       if (window.AetherBotConfig) {
         config = window.AetherBotConfig;
+        console.log('AetherBotConfig found, initializing widget...');
         callback();
       } else if (attempts < maxAttempts) {
         attempts++;
+        if (attempts % 10 === 0) {
+          console.log('AetherBotConfig: Waiting for config...', attempts, '/', maxAttempts);
+        }
         setTimeout(checkConfig, 100);
+      } else {
+        console.error('AetherBotConfig: Config not found after', maxAttempts, 'attempts. Make sure the embed script is added to Header Scripts in Site Settings.');
       }
     };
     checkConfig();
@@ -22,7 +28,10 @@ export const generateWidgetJS = (): string => {
   
   // Initialize widget once config is available
   waitForConfig(() => {
-    if (!config) return;
+    if (!config) {
+      console.error('AetherBotConfig: Config is null, cannot initialize widget');
+      return;
+    }
   
   // Function to fetch integration configuration from Supabase
   const fetchIntegrationConfig = async (integrationId, supabaseUrl, supabaseAnonKey) => {

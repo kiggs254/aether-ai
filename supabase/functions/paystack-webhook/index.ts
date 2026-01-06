@@ -159,11 +159,20 @@ serve(async (req) => {
         await handleSubscriptionDisable(supabase, event);
         break;
       }
+      case 'invoice.create': {
+        await handleInvoiceCreate(supabase, event);
+        break;
+      }
       case 'invoice.payment_failed': {
         await handlePaymentFailed(supabase, event);
         break;
       }
+      case 'subscription.not_renew': {
+        await handleSubscriptionNotRenew(supabase, event);
+        break;
+      }
       default: {
+        console.log('Unhandled event type:', event.event);
       }
     }
 
@@ -189,6 +198,7 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   const user_id = metadata.user_id;
   const plan_id = metadata.plan_id;
   const billing_cycle = metadata.billing_cycle || 'monthly';
+  const subscriptionCode = data.subscription?.subscription_code || metadata.paystack_subscription_code;
 
   console.log('Processing charge.success event:', {
     reference,
@@ -197,16 +207,12 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     user_id,
     plan_id,
     billing_cycle,
+    subscriptionCode,
+    isRenewal: !!subscriptionCode,
   });
 
-  if (!reference || !user_id || !plan_id) {
-    console.error('Missing required fields in charge.success event:', {
-      reference: !!reference,
-      user_id: !!user_id,
-      plan_id: !!plan_id,
-      full_metadata: metadata,
-      full_data: data,
-    });
+  if (!reference) {
+    console.error('Missing reference in charge.success event');
     return;
   }
 
@@ -218,6 +224,7 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     .single();
 
   if (existingTransaction && existingTransaction.status === 'success') {
+    console.log('Transaction already processed:', reference);
     return;
   }
 
@@ -234,6 +241,68 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
 
   if (updateError) {
     console.error('Error updating transaction:', updateError);
+  }
+
+  // If this is a subscription renewal, update the existing subscription
+  if (subscriptionCode) {
+    const { data: existingSub } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('paystack_subscription_code', subscriptionCode)
+      .single();
+
+    if (existingSub) {
+      // This is a renewal - update period dates
+      const now = new Date();
+      const periodStart = new Date(existingSub.current_period_end);
+      let periodEnd = new Date(periodStart);
+      
+      if (existingSub.billing_cycle === 'yearly') {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+      } else {
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+      }
+
+      // Update subscription period
+      const { error: subUpdateError } = await supabase
+        .from('user_subscriptions')
+        .update({
+          status: 'active',
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('paystack_subscription_code', subscriptionCode);
+
+      if (subUpdateError) {
+        console.error('Error updating subscription period:', subUpdateError);
+      } else {
+        console.log('Subscription renewed successfully:', subscriptionCode);
+      }
+
+      // Update transaction with subscription_id
+      await supabase
+        .from('payment_transactions')
+        .update({
+          subscription_id: existingSub.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('paystack_reference', reference);
+
+      return; // Renewal handled, exit early
+    }
+  }
+
+  // This is a new subscription (initial payment)
+  if (!user_id || !plan_id) {
+    console.error('Missing required fields in charge.success event for new subscription:', {
+      reference: !!reference,
+      user_id: !!user_id,
+      plan_id: !!plan_id,
+      full_metadata: metadata,
+      full_data: data,
+    });
+    return;
   }
 
   // Get plan details
@@ -274,8 +343,6 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   }
 
   // Create new subscription
-  // Note: We use insert instead of upsert because we just cancelled any existing active subscription
-  // The unique constraint is on user_id WHERE status = 'active', so we can safely insert
   const { data: subscription, error: subError } = await supabase
     .from('user_subscriptions')
     .insert({
@@ -286,6 +353,7 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
       current_period_start: periodStart.toISOString(),
       current_period_end: periodEnd.toISOString(),
       paystack_customer_code: data.authorization?.customer_code || data.customer?.customer_code,
+      paystack_subscription_code: subscriptionCode,
       cancel_at_period_end: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -302,7 +370,7 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
       periodStart: periodStart.toISOString(),
       periodEnd: periodEnd.toISOString(),
     });
-    return; // Don't continue if subscription creation failed
+    return;
   }
 
   if (!subscription || !subscription.id) {
@@ -379,31 +447,131 @@ async function handleSubscriptionDisable(supabase: any, event: PaystackEvent) {
   }
 }
 
+async function handleInvoiceCreate(supabase: any, event: PaystackEvent) {
+  const { data } = event;
+  const subscriptionCode = data.subscription?.subscription_code;
+  const invoiceCode = data.invoice?.invoice_code;
+  const amount = data.amount ? data.amount / 100 : 0;
+
+  console.log('Processing invoice.create event:', {
+    subscriptionCode,
+    invoiceCode,
+    amount,
+  });
+
+  if (!subscriptionCode) {
+    console.error('Missing subscription code in invoice.create event');
+    return;
+  }
+
+  // Find subscription
+  const { data: subscription } = await supabase
+    .from('user_subscriptions')
+    .select('*')
+    .eq('paystack_subscription_code', subscriptionCode)
+    .single();
+
+  if (!subscription) {
+    console.error('Subscription not found for invoice:', subscriptionCode);
+    return;
+  }
+
+  // Create transaction record for the invoice
+  const { error: transactionError } = await supabase
+    .from('payment_transactions')
+    .insert({
+      user_id: subscription.user_id,
+      subscription_id: subscription.id,
+      plan_id: subscription.plan_id,
+      amount: amount,
+      currency: 'USD',
+      paystack_reference: invoiceCode || `inv_${Date.now()}`,
+      status: 'pending',
+      metadata: {
+        invoice_code: invoiceCode,
+        subscription_code: subscriptionCode,
+        is_renewal: true,
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+  if (transactionError) {
+    console.error('Error creating invoice transaction:', transactionError);
+  } else {
+    console.log('Invoice transaction created for subscription:', subscriptionCode);
+  }
+}
+
 async function handlePaymentFailed(supabase: any, event: PaystackEvent) {
   const { data } = event;
   const subscriptionCode = data.subscription?.subscription_code;
-  const reference = data.reference;
+  const reference = data.reference || data.invoice?.invoice_code;
+
+  console.log('Processing payment failed event:', {
+    subscriptionCode,
+    reference,
+  });
 
   // Update transaction status if reference exists
   if (reference) {
-    await supabase
+    const { error: updateError } = await supabase
       .from('payment_transactions')
       .update({
         status: 'failed',
         updated_at: new Date().toISOString(),
       })
       .eq('paystack_reference', reference);
+
+    if (updateError) {
+      console.error('Error updating failed transaction:', updateError);
+    }
   }
 
   // Update subscription status if subscription code exists
   if (subscriptionCode) {
-    await supabase
+    const { error: subUpdateError } = await supabase
       .from('user_subscriptions')
       .update({
         status: 'past_due',
         updated_at: new Date().toISOString(),
       })
       .eq('paystack_subscription_code', subscriptionCode);
+
+    if (subUpdateError) {
+      console.error('Error updating subscription to past_due:', subUpdateError);
+    } else {
+      console.log('Subscription marked as past_due:', subscriptionCode);
+    }
+  }
+}
+
+async function handleSubscriptionNotRenew(supabase: any, event: PaystackEvent) {
+  const { data } = event;
+  const subscriptionCode = data.subscription?.subscription_code;
+
+  console.log('Processing subscription.not_renew event:', {
+    subscriptionCode,
+  });
+
+  if (!subscriptionCode) {
+    console.error('Missing subscription code in subscription.not_renew event');
+    return;
+  }
+
+  // Update subscription status to expired
+  const { error } = await supabase
+    .from('user_subscriptions')
+    .update({
+      status: 'expired',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('paystack_subscription_code', subscriptionCode);
+
+  if (error) {
+    console.error('Error updating subscription to expired:', error);
+  } else {
+    console.log('Subscription marked as expired:', subscriptionCode);
   }
 }
 

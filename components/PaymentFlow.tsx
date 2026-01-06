@@ -130,6 +130,10 @@ const PaymentFlow: React.FC<PaymentFlowProps> = ({ onSuccess, onCancel }) => {
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Choose Your Plan</h1>
         <p className="text-slate-400">Select a subscription plan that fits your needs</p>
+        <div className="mt-3 flex items-center gap-2 text-sm text-indigo-400">
+          <CreditCard className="w-4 h-4" />
+          <span>Your card will be saved for automatic renewal at the end of each billing period</span>
+        </div>
       </div>
 
       {/* Billing Cycle Toggle */}
@@ -238,9 +242,16 @@ const PaymentFlow: React.FC<PaymentFlowProps> = ({ onSuccess, onCancel }) => {
                 </div>
               )}
 
-              {price === 0 && (
+              {price === 0 ? (
                 <div className="pt-4 border-t border-white/5">
                   <span className="text-sm text-slate-400">Current Plan</span>
+                </div>
+              ) : (
+                <div className="pt-4 border-t border-white/5">
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>Auto-renewal enabled</span>
+                  </div>
                 </div>
               )}
             </div>

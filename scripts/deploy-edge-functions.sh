@@ -50,5 +50,11 @@ supabase functions deploy manage-site-settings --no-verify-jwt
 echo "✅ manage-site-settings deployed"
 echo ""
 
+# Deploy manage-paystack-subscription
+echo "📦 Deploying manage-paystack-subscription..."
+supabase functions deploy manage-paystack-subscription --no-verify-jwt
+echo "✅ manage-paystack-subscription deployed"
+echo ""
+
 echo "🎉 All edge functions deployed successfully!"
 

@@ -172,6 +172,27 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
             return;
           }
 
+          // Cancel Paystack subscription if it exists
+          if (subscription.paystack_subscription_code) {
+            const paystackResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-paystack-subscription/${subscription.id}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'cancel',
+              }),
+            });
+
+            if (!paystackResponse.ok) {
+              const error = await paystackResponse.json();
+              console.error('Error cancelling Paystack subscription:', error);
+              // Continue to update database anyway
+            }
+          }
+
+          // Update database subscription
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-subscriptions/${subscription.id}`, {
             method: 'PUT',
             headers: {
@@ -685,6 +706,12 @@ const Settings: React.FC<SettingsProps> = ({ user, onSignOut }) => {
                       <span>Renews: {formatDate(subscription.current_period_end)}</span>
                     </div>
                   </div>
+                  {subscription.paystack_subscription_code && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                      <span className="text-xs text-emerald-400">Auto-renewal enabled</span>
+                    </div>
+                  )}
                   {subscription.cancel_at_period_end && (
                     <div className="mt-3 pt-3 border-t border-white/10">
                       <p className="text-amber-400 text-sm flex items-center gap-2">

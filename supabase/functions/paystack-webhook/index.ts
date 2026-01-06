@@ -228,6 +228,17 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     return;
   }
 
+  // Get transaction metadata from database to check subscription info
+  const { data: dbTransaction } = await supabase
+    .from('payment_transactions')
+    .select('metadata')
+    .eq('paystack_reference', reference)
+    .single();
+
+  // Merge metadata from database with event metadata
+  const dbMetadata = dbTransaction?.metadata || {};
+  const mergedMetadata = { ...dbMetadata, ...metadata };
+
   // Update transaction status
   const { error: updateError } = await supabase
     .from('payment_transactions')
@@ -318,10 +329,49 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
   }
 
   // Check if we need to create a Paystack subscription
-  const shouldCreateSubscription = metadata.is_subscription === true || metadata.create_subscription_after_payment === true;
-  const paystackPlanCode = metadata.paystack_plan_code;
-  const customerCode = metadata.paystack_customer_code || data.authorization?.customer_code || data.customer?.customer_code;
-  const authorizationCode = data.authorization?.authorization_code;
+  // Use merged metadata (database + event)
+  const shouldCreateSubscription = mergedMetadata.is_subscription === true || mergedMetadata.create_subscription_after_payment === true;
+  const paystackPlanCode = mergedMetadata.paystack_plan_code;
+  let customerCode = mergedMetadata.paystack_customer_code || data.authorization?.customer_code || data.customer?.customer_code;
+  let authorizationCode = data.authorization?.authorization_code;
+
+  console.log('Subscription creation check:', {
+    shouldCreateSubscription,
+    paystackPlanCode,
+    customerCode,
+    authorizationCode: !!authorizationCode,
+    hasAuthorization: !!data.authorization,
+  });
+
+  // If authorization code is not in the event, fetch it from the transaction
+  if (!authorizationCode && reference) {
+    const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
+    if (paystackSecretKey) {
+      try {
+        const verifyResponse = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const verifyData = await verifyResponse.json();
+        if (verifyData.status && verifyData.data) {
+          authorizationCode = verifyData.data.authorization?.authorization_code;
+          if (!customerCode) {
+            customerCode = verifyData.data.customer?.customer_code || verifyData.data.authorization?.customer_code;
+          }
+          console.log('Retrieved authorization from transaction:', {
+            authorizationCode: !!authorizationCode,
+            customerCode: !!customerCode,
+          });
+        }
+      } catch (verifyError) {
+        console.error('Error verifying transaction:', verifyError);
+      }
+    }
+  }
 
   let paystackSubscriptionCode: string | null = null;
 
@@ -330,6 +380,12 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
     const paystackSecretKey = Deno.env.get('PAYSTACK_SECRET_KEY');
     if (paystackSecretKey) {
       try {
+        console.log('Creating Paystack subscription with:', {
+          customer: customerCode,
+          plan: paystackPlanCode,
+          hasAuthorization: !!authorizationCode,
+        });
+
         const createSubResponse = await fetch('https://api.paystack.co/subscription', {
           method: 'POST',
           headers: {
@@ -353,16 +409,25 @@ async function handleChargeSuccess(supabase: any, event: PaystackEvent) {
 
         if (createSubData.status && createSubData.data) {
           paystackSubscriptionCode = createSubData.data.subscription_code;
-          console.log('Paystack subscription created:', paystackSubscriptionCode);
+          console.log('Paystack subscription created successfully:', paystackSubscriptionCode);
         } else {
-          console.error('Failed to create Paystack subscription:', createSubData);
+          console.error('Failed to create Paystack subscription:', JSON.stringify(createSubData, null, 2));
           // Continue anyway - we'll create the database subscription
         }
       } catch (error) {
         console.error('Error creating Paystack subscription:', error);
         // Continue anyway - we'll create the database subscription
       }
+    } else {
+      console.error('Paystack secret key not available');
     }
+  } else {
+    console.log('Skipping Paystack subscription creation - missing required data:', {
+      shouldCreateSubscription,
+      hasPlanCode: !!paystackPlanCode,
+      hasCustomerCode: !!customerCode,
+      hasAuthorizationCode: !!authorizationCode,
+    });
   }
 
   // Calculate period dates

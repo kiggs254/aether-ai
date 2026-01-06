@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 import { Bot, Integration, DepartmentBot } from '../types';
 import { Copy, Check, Code, MessageSquare, Palette, Layout, Eye, Globe, Zap, X, Send, User, Plus, Trash2, Bot as BotIcon, Lock } from 'lucide-react';
 import { integrationService, botService } from '../services/database';
-import { getUserSubscriptionInfo } from '../lib/subscription';
+import { getUserSubscriptionInfo, FeatureValidator } from '../lib/subscription';
 
 interface EmbedCodeProps {
   bot: Bot;
@@ -22,13 +22,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
   const [isLoading, setIsLoading] = useState(true);
   
   // Subscription info
-  const [subscriptionInfo, setSubscriptionInfo] = useState<{
-    planName: string;
-    isFree: boolean;
-    canCreateMultipleIntegrations: boolean;
-    canUseDepartmentalBots: boolean;
-    canCollectLeads: boolean;
-  } | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [featureValidator, setFeatureValidator] = useState<FeatureValidator | null>(null);
   
   // Widget Customization State (for new integration or editing)
   const [integrationName, setIntegrationName] = useState('');
@@ -77,6 +72,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
     try {
       const info = await getUserSubscriptionInfo();
       setSubscriptionInfo(info);
+      setFeatureValidator(new FeatureValidator(info));
     } catch (error) {
       console.error('Failed to load subscription info:', error);
       // Default to free plan on error
@@ -144,25 +140,23 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         await loadSubscriptionInfo();
       }
 
-      // Check if user can create multiple integrations (free users limited to 1, super admins unlimited)
-      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCreateMultipleIntegrations) {
-        const allIntegrations = await integrationService.getAllUserIntegrations();
-        if (allIntegrations.length >= 1) {
-          showError('Integration limit reached', 'Free plan allows only 1 integration. Please upgrade to create more.');
+      // Check integration limit using feature validator
+      if (featureValidator) {
+        const integrationCheck = await featureValidator.canCreateIntegration();
+        if (!integrationCheck.allowed) {
+          showError('Integration limit reached', integrationCheck.reason || 'Please upgrade to create more integrations.');
           return;
         }
-      }
 
-      // Validate free plan restrictions (super admins bypass all restrictions)
-      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCollectLeads) {
-        if (collectLeads) {
-          showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
+        // Validate lead collection
+        if (collectLeads && !featureValidator.canCollectLeads()) {
+          showError('Feature not available', 'Lead collection is not available in your plan. Please upgrade.');
           return;
         }
-      }
-      if (subscriptionInfo?.isFree && !subscriptionInfo?.canUseDepartmentalBots) {
-        if (departmentBots && departmentBots.length > 0) {
-          showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
+
+        // Validate departmental bots
+        if (departmentBots && departmentBots.length > 0 && !featureValidator.canUseDepartmentalBots()) {
+          showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
           return;
         }
       }
@@ -173,8 +167,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         position,
         brandColor,
         welcomeMessage,
-        collectLeads: subscriptionInfo?.canCollectLeads ? collectLeads : false,
-        departmentBots: subscriptionInfo?.canUseDepartmentalBots ? departmentBots : [],
+        collectLeads: featureValidator?.canCollectLeads() ? collectLeads : false,
+        departmentBots: featureValidator?.canUseDepartmentalBots() ? departmentBots : [],
       });
       setSelectedIntegration(newIntegration);
       setIsCreating(false);
@@ -193,18 +187,16 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         await loadSubscriptionInfo();
       }
 
-      // Validate free plan restrictions (super admins bypass all restrictions)
-      if (subscriptionInfo?.isFree && !subscriptionInfo?.canCollectLeads) {
-        if (collectLeads) {
-          showError('Feature not available', 'Lead collection is not available on the free plan. Please upgrade.');
-          return;
-        }
+      // Validate lead collection
+      if (featureValidator && collectLeads && !featureValidator.canCollectLeads()) {
+        showError('Feature not available', 'Lead collection is not available in your plan. Please upgrade.');
+        return;
       }
-      if (subscriptionInfo?.isFree && !subscriptionInfo?.canUseDepartmentalBots) {
-        if (departmentBots && departmentBots.length > 0) {
-          showError('Feature not available', 'Departmental bots are not available on the free plan. Please upgrade.');
-          return;
-        }
+
+      // Validate departmental bots
+      if (featureValidator && departmentBots && departmentBots.length > 0 && !featureValidator.canUseDepartmentalBots()) {
+        showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
+        return;
       }
 
       const updated = await integrationService.updateIntegration(selectedIntegration.id, {
@@ -213,8 +205,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         position,
         brandColor,
         welcomeMessage,
-        collectLeads: subscriptionInfo?.canCollectLeads ? collectLeads : false,
-        departmentBots: subscriptionInfo?.canUseDepartmentalBots ? departmentBots : [],
+        collectLeads: featureValidator?.canCollectLeads() ? collectLeads : false,
+        departmentBots: featureValidator?.canUseDepartmentalBots() ? departmentBots : [],
       });
       setSelectedIntegration(updated);
       showSuccess('Integration updated', 'Your integration has been updated successfully.');
@@ -465,22 +457,22 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                                 type="checkbox"
                                 checked={collectLeads}
                                 onChange={(e) => setCollectLeads(e.target.checked)}
-                                disabled={subscriptionInfo?.isFree}
+                                disabled={featureValidator && !featureValidator.canCollectLeads()}
                                 className="rounded disabled:opacity-50 disabled:cursor-not-allowed"
                              />
                              Collect Leads
-                             {subscriptionInfo?.isFree && (
+                             {featureValidator && !featureValidator.canCollectLeads() && (
                                 <span className="ml-2 inline-flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
                                    <Lock className="w-3 h-3" />
                                    Premium
                                 </span>
                              )}
                           </label>
-                          {subscriptionInfo?.isFree && (
+                          {featureValidator && !featureValidator.canUseDepartmentalBots() && (
                              <p className="text-xs text-slate-500">Upgrade to enable lead collection</p>
                           )}
                        </div>
-                       <div className={`space-y-3 pt-3 border-t border-white/10 ${subscriptionInfo?.isFree ? 'opacity-50' : ''}`}>
+                       <div className={`space-y-3 pt-3 border-t border-white/10 ${featureValidator && !featureValidator.canUseDepartmentalBots() ? 'opacity-50' : ''}`}>
                           <div className="flex items-center justify-between">
                              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
                                 <BotIcon className="w-4 h-4 text-indigo-400" />
@@ -489,7 +481,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                              </label>
                           </div>
                           <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
-                          {subscriptionInfo?.isFree && (
+                          {featureValidator && !featureValidator.canUseDepartmentalBots() && (
                              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
                                 <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
                                 <div className="flex-1">
@@ -575,13 +567,13 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                           </div>
                           <button
                              onClick={() => {
-                                if (subscriptionInfo?.isFree) {
+                                if (featureValidator && !featureValidator.canUseDepartmentalBots()) {
                                   showError('Premium feature', 'Upgrade your plan to use departmental bots.');
                                   return;
                                 }
                                 setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
                              }}
-                             disabled={subscriptionInfo?.isFree}
+                             disabled={featureValidator && !featureValidator.canUseDepartmentalBots()}
                              className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                              <Plus className="w-4 h-4" />

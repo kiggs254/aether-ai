@@ -14,6 +14,14 @@ interface SubscriptionPlan {
   max_bots: number | null;
   max_messages: number | null;
   max_storage_gb: number | null;
+  allowed_models: string[] | null;
+  max_integrations: number | null;
+  max_knowledge_chars: number | null;
+  max_storage_mb: number | null;
+  allow_actions: boolean;
+  allow_lead_collection: boolean;
+  allow_ecommerce: boolean;
+  allow_departmental_bots: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -35,6 +43,14 @@ const AdminPlans: React.FC = () => {
     max_bots: null,
     max_messages: null,
     max_storage_gb: null,
+    allowed_models: [],
+    max_integrations: null,
+    max_knowledge_chars: null,
+    max_storage_mb: null,
+    allow_actions: false,
+    allow_lead_collection: false,
+    allow_ecommerce: false,
+    allow_departmental_bots: false,
     is_active: true,
   });
 
@@ -107,6 +123,14 @@ const AdminPlans: React.FC = () => {
         max_bots: null,
         max_messages: null,
         max_storage_gb: null,
+        allowed_models: [],
+        max_integrations: null,
+        max_knowledge_chars: null,
+        max_storage_mb: null,
+        allow_actions: false,
+        allow_lead_collection: false,
+        allow_ecommerce: false,
+        allow_departmental_bots: false,
         is_active: true,
       });
       loadPlans();
@@ -188,6 +212,14 @@ const AdminPlans: React.FC = () => {
       max_bots: plan.max_bots,
       max_messages: plan.max_messages,
       max_storage_gb: plan.max_storage_gb,
+      allowed_models: plan.allowed_models || [],
+      max_integrations: plan.max_integrations,
+      max_knowledge_chars: plan.max_knowledge_chars,
+      max_storage_mb: plan.max_storage_mb,
+      allow_actions: plan.allow_actions ?? false,
+      allow_lead_collection: plan.allow_lead_collection ?? false,
+      allow_ecommerce: plan.allow_ecommerce ?? false,
+      allow_departmental_bots: plan.allow_departmental_bots ?? false,
       is_active: plan.is_active,
     });
   };
@@ -481,6 +513,105 @@ const PlanForm: React.FC<PlanFormProps> = ({ formData, setFormData, onSave, onCa
             step="0.1"
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Max Integrations</label>
+          <input
+            type="number"
+            value={formData.max_integrations ?? ''}
+            onChange={(e) => setFormData({ ...formData, max_integrations: e.target.value ? parseInt(e.target.value) : null })}
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            placeholder="Unlimited"
+            min="0"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Max Knowledge Chars</label>
+          <input
+            type="number"
+            value={formData.max_knowledge_chars ?? ''}
+            onChange={(e) => setFormData({ ...formData, max_knowledge_chars: e.target.value ? parseInt(e.target.value) : null })}
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            placeholder="Unlimited"
+            min="0"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">Storage (MB)</label>
+          <input
+            type="number"
+            value={formData.max_storage_mb ?? ''}
+            onChange={(e) => setFormData({ ...formData, max_storage_mb: e.target.value ? parseInt(e.target.value) : null })}
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            placeholder="Unlimited"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-300 mb-2">Allowed Models</label>
+        <div className="space-y-2">
+          {['deepseek-fast', 'openai-fast', 'gemini-fast', 'deepseek-reasoning', 'openai-reasoning', 'gemini-reasoning'].map((model) => (
+            <label key={model} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={(formData.allowed_models || []).includes(model)}
+                onChange={(e) => {
+                  const current = formData.allowed_models || [];
+                  if (e.target.checked) {
+                    setFormData({ ...formData, allowed_models: [...current, model] });
+                  } else {
+                    setFormData({ ...formData, allowed_models: current.filter(m => m !== model) });
+                  }
+                }}
+                className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="text-sm text-slate-300">{model}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formData.allow_actions ?? false}
+            onChange={(e) => setFormData({ ...formData, allow_actions: e.target.checked })}
+            className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span className="text-sm text-slate-300">Allow Actions</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formData.allow_lead_collection ?? false}
+            onChange={(e) => setFormData({ ...formData, allow_lead_collection: e.target.checked })}
+            className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span className="text-sm text-slate-300">Allow Lead Collection</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formData.allow_ecommerce ?? false}
+            onChange={(e) => setFormData({ ...formData, allow_ecommerce: e.target.checked })}
+            className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span className="text-sm text-slate-300">Allow Ecommerce</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={formData.allow_departmental_bots ?? false}
+            onChange={(e) => setFormData({ ...formData, allow_departmental_bots: e.target.checked })}
+            className="w-4 h-4 rounded border-white/10 bg-white/5 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span className="text-sm text-slate-300">Allow Departmental Bots</span>
+        </label>
       </div>
 
       <div>

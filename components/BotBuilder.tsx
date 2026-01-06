@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
-import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search } from 'lucide-react';
+import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search, AlertCircle } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
 import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
 import { useModal } from './ModalContext';
 import { parseXMLFeed, updateProductCatalog } from '../services/productFeed';
 import { getProductCatalog } from '../services/productQuery';
 import { Product, EcommerceSettings } from '../types';
+import { getUserSubscriptionInfo, FeatureValidator, getModelIdentifier } from '../lib/subscription';
 
 interface BotBuilderProps {
   bot: Bot | null;
@@ -65,6 +66,18 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const [productSearchQuery, setProductSearchQuery] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
+  // Subscription info
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
+  const [featureValidator, setFeatureValidator] = useState<FeatureValidator | null>(null);
+
+  // Load subscription info
+  useEffect(() => {
+    getUserSubscriptionInfo().then((info) => {
+      setSubscriptionInfo(info);
+      setFeatureValidator(new FeatureValidator(info));
+    });
+  }, []);
+
   // Load catalog when bot is loaded and e-commerce is enabled
   useEffect(() => {
     if (bot?.id && ecommerceEnabled && activeTab === 'ecommerce') {
@@ -118,7 +131,71 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
     }
   }, [bot]);
 
-  const handleSave = () => {
+  // Helper function to check if a model is allowed
+  const isModelAllowed = (provider: string, modelName: string): boolean => {
+    if (!featureValidator) return true; // Allow all if not loaded yet
+    return featureValidator.canUseModel(provider, modelName);
+  };
+
+  // Get available models for a provider based on subscription
+  const getAvailableModels = (provider: string): Array<{ value: string; label: string; identifier: string }> => {
+    const allModels: Record<string, Array<{ value: string; label: string; identifier: string }>> = {
+      gemini: [
+        { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', identifier: 'gemini-fast' },
+        { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite', identifier: 'gemini-fast' },
+        { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', identifier: 'gemini-fast' },
+        { value: 'gemini-3-flash', label: 'Gemini 3 Flash', identifier: 'gemini-fast' },
+        { value: 'gemini-3-pro', label: 'Gemini 3 Pro', identifier: 'gemini-fast' },
+        { value: 'gemini-3-deep-think', label: 'Gemini 3 Deep Think', identifier: 'gemini-reasoning' },
+        { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (Preview)', identifier: 'gemini-fast' },
+      ],
+      deepseek: [
+        { value: 'deepseek-chat', label: 'DeepSeek Chat', identifier: 'deepseek-fast' },
+        { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner', identifier: 'deepseek-reasoning' },
+      ],
+      openai: [
+        { value: 'gpt-4', label: 'GPT-4', identifier: 'openai-fast' },
+        { value: 'gpt-4-turbo', label: 'GPT-4 Turbo', identifier: 'openai-fast' },
+        { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', identifier: 'openai-fast' },
+        { value: 'o1', label: 'O1', identifier: 'openai-reasoning' },
+        { value: 'o3', label: 'O3', identifier: 'openai-reasoning' },
+      ],
+    };
+
+    const models = allModels[provider] || [];
+    if (!featureValidator) return models; // Return all if not loaded
+
+    return models.filter(m => featureValidator.canUseModel(provider, m.value));
+  };
+
+  const handleSave = async () => {
+    // Validate knowledge base character limit
+    if (featureValidator) {
+      const knowledgeCheck = featureValidator.canUseKnowledgeChars(knowledge.length);
+      if (!knowledgeCheck.allowed) {
+        showError('Knowledge Base Limit Exceeded', knowledgeCheck.reason || 'Character limit exceeded');
+        return;
+      }
+    }
+
+    // Validate model selection
+    if (featureValidator && !featureValidator.canUseModel(provider, model)) {
+      showError('Model Not Available', 'The selected model is not available in your plan. Please select an allowed model or upgrade your plan.');
+      return;
+    }
+
+    // Validate actions
+    if (actions.length > 0 && featureValidator && !featureValidator.canUseActions()) {
+      showError('Actions Not Available', 'Custom actions are not available in your plan. Please upgrade to use actions.');
+      return;
+    }
+
+    // Validate ecommerce
+    if (ecommerceEnabled && featureValidator && !featureValidator.canUseEcommerce()) {
+      showError('Ecommerce Not Available', 'Ecommerce functionality is not available in your plan. Please upgrade to use ecommerce features.');
+      return;
+    }
+
     const newBot: Bot = {
       id: bot?.id || crypto.randomUUID(),
       name: name || 'Untitled Bot',
@@ -133,7 +210,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       model,
       provider,
       status: bot?.status || 'active',
-      actions,
+      actions: featureValidator?.canUseActions() ? actions : [],
       brandingText: brandingText.trim() || undefined,
       headerImageUrl: headerImageUrl.trim() || undefined,
       ecommerceEnabled: ecommerceEnabled,
@@ -407,22 +484,48 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
           Knowledge Base
         </button>
         <button
-          onClick={() => setActiveTab('actions')}
+          onClick={() => {
+            if (featureValidator && !featureValidator.canUseActions()) {
+              showError('Actions Not Available', 'Custom actions are not available in your plan. Please upgrade to use actions.');
+              return;
+            }
+            setActiveTab('actions');
+          }}
+          disabled={featureValidator && !featureValidator.canUseActions()}
           className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-            activeTab === 'actions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            featureValidator && !featureValidator.canUseActions()
+              ? 'opacity-50 cursor-not-allowed text-slate-600'
+              : activeTab === 'actions' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
+          title={featureValidator && !featureValidator.canUseActions() ? 'Actions are not available in your plan. Please upgrade.' : ''}
         >
           <Zap className="w-4 h-4" />
           Actions & Tools
+          {featureValidator && !featureValidator.canUseActions() && (
+            <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded uppercase">Premium</span>
+          )}
         </button>
         <button
-          onClick={() => setActiveTab('ecommerce')}
+          onClick={() => {
+            if (featureValidator && !featureValidator.canUseEcommerce()) {
+              showError('Ecommerce Not Available', 'Ecommerce functionality is not available in your plan. Please upgrade to use ecommerce features.');
+              return;
+            }
+            setActiveTab('ecommerce');
+          }}
+          disabled={featureValidator && !featureValidator.canUseEcommerce()}
           className={`px-6 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
-            activeTab === 'ecommerce' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            featureValidator && !featureValidator.canUseEcommerce()
+              ? 'opacity-50 cursor-not-allowed text-slate-600'
+              : activeTab === 'ecommerce' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
           }`}
+          title={featureValidator && !featureValidator.canUseEcommerce() ? 'Ecommerce is not available in your plan. Please upgrade.' : ''}
         >
           <ShoppingBag className="w-4 h-4" />
           E-commerce
+          {featureValidator && !featureValidator.canUseEcommerce() && (
+            <span className="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded uppercase">Premium</span>
+          )}
         </button>
       </div>
 
@@ -554,32 +657,31 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                         <label className="text-sm text-slate-300 block mb-2">Model</label>
                         <select
                           value={model}
-                          onChange={(e) => setModel(e.target.value)}
+                          onChange={(e) => {
+                            const newModel = e.target.value;
+                            if (featureValidator && !featureValidator.canUseModel(provider, newModel)) {
+                              showError('Model Not Available', 'This model is not available in your plan. Please upgrade to use this model.');
+                              return;
+                            }
+                            setModel(newModel);
+                          }}
                           className="w-full p-3 rounded-xl glass-input text-white"
                         >
-                          {provider === 'gemini' ? (
-                            <>
-                              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-                              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                              <option value="gemini-3-flash">Gemini 3 Flash</option>
-                              <option value="gemini-3-pro">Gemini 3 Pro</option>
-                              <option value="gemini-3-deep-think">Gemini 3 Deep Think</option>
-                              <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
-                            </>
-                          ) : provider === 'deepseek' ? (
-                            <>
-                              <option value="deepseek-chat">DeepSeek Chat</option>
-                              <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                            </>
-                          ) : (
-                            <>
-                              <option value="gpt-4">GPT-4</option>
-                              <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            </>
+                          {getAvailableModels(provider).map((m) => (
+                            <option key={m.value} value={m.value}>
+                              {m.label}
+                            </option>
+                          ))}
+                          {getAvailableModels(provider).length === 0 && (
+                            <option value="">No models available for your plan</option>
                           )}
                         </select>
+                        {featureValidator && !featureValidator.canUseModel(provider, model) && (
+                          <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            This model is not available in your plan
+                          </p>
+                        )}
                      </div>
                      
                      <div className="pt-4 border-t border-white/5">
@@ -651,6 +753,15 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
             </div>
           </div>
         ) : activeTab === 'actions' ? (
+          featureValidator && !featureValidator.canUseActions() ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="glass-card p-8 rounded-2xl text-center max-w-md border border-red-500/20">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Actions Not Available</h3>
+                <p className="text-slate-400 mb-4">Custom actions are not available in your current plan. Please upgrade to use this feature.</p>
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full">
             <div className="lg:col-span-1 space-y-4">
                <div className="glass-card p-4 sm:p-6 rounded-2xl">
@@ -944,6 +1055,15 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
             </div>
           </div>
         ) : activeTab === 'ecommerce' ? (
+          featureValidator && !featureValidator.canUseEcommerce() ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="glass-card p-8 rounded-2xl text-center max-w-md border border-red-500/20">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">Ecommerce Not Available</h3>
+                <p className="text-slate-400 mb-4">Ecommerce functionality is not available in your current plan. Please upgrade to Premium to use this feature.</p>
+              </div>
+            </div>
+          ) : (
           <div className="space-y-8">
             {/* Enable E-commerce */}
             <div className="glass-card p-6 rounded-2xl">
@@ -955,14 +1075,21 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                   </h3>
                   <p className="text-slate-400 text-sm mt-1">Enable product recommendations in your chat widget</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className={`relative inline-flex items-center ${featureValidator && !featureValidator.canUseEcommerce() ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     checked={ecommerceEnabled}
-                    onChange={(e) => setEcommerceEnabled(e.target.checked)}
+                    disabled={featureValidator && !featureValidator.canUseEcommerce()}
+                    onChange={(e) => {
+                      if (featureValidator && !featureValidator.canUseEcommerce()) {
+                        showError('Ecommerce Not Available', 'Ecommerce functionality is not available in your plan. Please upgrade to Premium.');
+                        return;
+                      }
+                      setEcommerceEnabled(e.target.checked);
+                    }}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-disabled:opacity-50"></div>
                 </label>
               </div>
             </div>
@@ -1158,6 +1285,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
               </>
             )}
           </div>
+          )
         ) : (
           <div className="space-y-6 animate-fade-in h-full flex flex-col">
             <div className="flex items-start gap-4 p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
@@ -1174,14 +1302,36 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
             <div className="flex-1 min-h-[500px] relative">
                <textarea
                 value={knowledge}
-                onChange={(e) => setKnowledge(e.target.value)}
+                onChange={(e) => {
+                  const newKnowledge = e.target.value;
+                  if (featureValidator) {
+                    const check = featureValidator.canUseKnowledgeChars(newKnowledge.length);
+                    if (!check.allowed) {
+                      showError('Knowledge Base Limit', check.reason || 'Character limit exceeded');
+                      return;
+                    }
+                  }
+                  setKnowledge(newKnowledge);
+                }}
                 className="w-full h-full p-6 rounded-2xl glass-input placeholder-slate-500 resize-none font-mono text-sm leading-relaxed"
                 placeholder="# Company Overview
 Aether AI is a..."
               />
-              <div className="absolute bottom-4 right-4 text-xs text-slate-500 bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
-                 {knowledge.length} characters
+              <div className={`absolute bottom-4 right-4 text-xs bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm ${
+                subscriptionInfo?.maxKnowledgeChars && knowledge.length > subscriptionInfo.maxKnowledgeChars
+                  ? 'text-red-400'
+                  : subscriptionInfo?.maxKnowledgeChars && knowledge.length > subscriptionInfo.maxKnowledgeChars * 0.9
+                  ? 'text-yellow-400'
+                  : 'text-slate-500'
+              }`}>
+                 {knowledge.length.toLocaleString()} / {subscriptionInfo?.maxKnowledgeChars ? subscriptionInfo.maxKnowledgeChars.toLocaleString() : '∞'} characters
               </div>
+              {subscriptionInfo?.maxKnowledgeChars && knowledge.length > subscriptionInfo.maxKnowledgeChars && (
+                <div className="absolute bottom-12 right-4 bg-red-500/20 border border-red-500/50 text-red-400 text-xs px-3 py-2 rounded-lg backdrop-blur-sm max-w-xs">
+                  <AlertCircle className="w-4 h-4 inline mr-1" />
+                  Character limit exceeded. Please reduce the text or upgrade your plan.
+                </div>
+              )}
             </div>
           </div>
         )}

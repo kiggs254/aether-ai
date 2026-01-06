@@ -188,7 +188,77 @@ serve(async (req) => {
       customerCode = existingSubs[0].paystack_customer_code;
     } else {
       // Check if customer exists in Paystack by email
-      const customerCheckResponse = await fetch(`https://api.paystack.co/customer?email=${encodeURIComponent(email)}`, {
+      try {
+        const customerCheckResponse = await fetch(`https://api.paystack.co/customer?email=${encodeURIComponent(email)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const customerCheckData = await customerCheckResponse.json();
+        
+        if (customerCheckData.status && customerCheckData.data && customerCheckData.data.length > 0) {
+          customerCode = customerCheckData.data[0].customer_code;
+          console.log('Found existing Paystack customer:', customerCode);
+        } else {
+          // Create new Paystack customer
+          const createCustomerResponse = await fetch('https://api.paystack.co/customer', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${paystackSecretKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email,
+              first_name: userData?.user_metadata?.first_name || '',
+              last_name: userData?.user_metadata?.last_name || '',
+              metadata: {
+                user_id: user.id,
+              },
+            }),
+          });
+
+          const createCustomerData = await createCustomerResponse.json();
+          
+          if (!createCustomerData.status || !createCustomerData.data) {
+            console.error('Paystack customer creation error:', createCustomerData);
+            return new Response(
+              JSON.stringify({ error: 'Payment Error', message: createCustomerData.message || 'Failed to create customer account' }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          customerCode = createCustomerData.data.customer_code;
+          console.log('Created new Paystack customer:', customerCode);
+        }
+      } catch (customerError) {
+        console.error('Error checking/creating customer:', customerError);
+        return new Response(
+          JSON.stringify({ error: 'Payment Error', message: 'Failed to process customer account' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    if (!customerCode) {
+      console.error('Customer code is null after processing');
+      return new Response(
+        JSON.stringify({ error: 'Payment Error', message: 'Failed to get or create customer' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create or retrieve Paystack subscription plan
+    const interval = billing_cycle === 'monthly' ? 'monthly' : 'annually';
+    const planAmount = Math.round(amount * 100); // Convert to cents
+    const planName = `${plan.name} (${billing_cycle})`;
+    let paystackPlanCode: string;
+
+    try {
+      // Check if plan exists by querying all plans and matching by name, amount, and interval
+      const listPlansResponse = await fetch('https://api.paystack.co/plan', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${paystackSecretKey}`,
@@ -196,90 +266,67 @@ serve(async (req) => {
         },
       });
 
-      const customerCheckData = await customerCheckResponse.json();
+      const listPlansData = await listPlansResponse.json();
       
-      if (customerCheckData.status && customerCheckData.data && customerCheckData.data.length > 0) {
-        customerCode = customerCheckData.data[0].customer_code;
-      } else {
-        // Create new Paystack customer
-        const createCustomerResponse = await fetch('https://api.paystack.co/customer', {
+      if (listPlansData.status && listPlansData.data) {
+        // Find matching plan by name, amount, and interval
+        const matchingPlan = listPlansData.data.find((p: any) => 
+          p.name === planName && 
+          p.amount === planAmount && 
+          p.interval === interval &&
+          p.currency === 'USD'
+        );
+
+        if (matchingPlan) {
+          paystackPlanCode = matchingPlan.plan_code;
+          console.log('Found existing Paystack plan:', paystackPlanCode);
+        }
+      }
+
+      // If no matching plan found, create a new one
+      if (!paystackPlanCode) {
+        const createPlanResponse = await fetch('https://api.paystack.co/plan', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${paystackSecretKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            email,
-            first_name: userData?.user_metadata?.first_name || '',
-            last_name: userData?.user_metadata?.last_name || '',
-            metadata: {
-              user_id: user.id,
-            },
+            name: planName,
+            interval: interval,
+            amount: planAmount,
+            currency: 'USD',
+            description: plan.description || `${plan.name} subscription plan`,
           }),
         });
 
-        const createCustomerData = await createCustomerResponse.json();
-        
-        if (!createCustomerData.status || !createCustomerData.data) {
-          console.error('Paystack customer creation error:', createCustomerData);
+        const createPlanData = await createPlanResponse.json();
+
+        if (!createPlanData.status || !createPlanData.data) {
+          console.error('Paystack plan creation error:', createPlanData);
           return new Response(
-            JSON.stringify({ error: 'Payment Error', message: 'Failed to create customer account' }),
+            JSON.stringify({ error: 'Payment Error', message: createPlanData.message || 'Failed to create subscription plan' }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        customerCode = createCustomerData.data.customer_code;
+        paystackPlanCode = createPlanData.data.plan_code;
+        console.log('Created new Paystack plan:', paystackPlanCode);
       }
+    } catch (planError) {
+      console.error('Error checking/creating plan:', planError);
+      return new Response(
+        JSON.stringify({ error: 'Payment Error', message: planError.message || 'Failed to process subscription plan' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Create or retrieve Paystack subscription plan
-    const planName = plan.name.replace(/\s+/g, '_').toLowerCase();
-    const planCode = `${planName}_${billing_cycle}`;
-    let paystackPlanCode: string;
-
-    // Check if plan exists
-    const planCheckResponse = await fetch(`https://api.paystack.co/plan/${planCode}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${paystackSecretKey}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const planCheckData = await planCheckResponse.json();
-
-    if (planCheckData.status && planCheckData.data) {
-      paystackPlanCode = planCheckData.data.plan_code;
-    } else {
-      // Create new Paystack plan
-      const interval = billing_cycle === 'monthly' ? 'monthly' : 'annually';
-      const createPlanResponse = await fetch('https://api.paystack.co/plan', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${paystackSecretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: `${plan.name} (${billing_cycle})`,
-          interval: interval,
-          amount: Math.round(amount * 100), // Convert to cents
-          currency: 'USD',
-          plan_code: planCode,
-          description: plan.description || `${plan.name} subscription plan`,
-        }),
-      });
-
-      const createPlanData = await createPlanResponse.json();
-
-      if (!createPlanData.status || !createPlanData.data) {
-        console.error('Paystack plan creation error:', createPlanData);
-        return new Response(
-          JSON.stringify({ error: 'Payment Error', message: 'Failed to create subscription plan' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      paystackPlanCode = createPlanData.data.plan_code;
+    if (!paystackPlanCode) {
+      console.error('Plan code is null after processing');
+      return new Response(
+        JSON.stringify({ error: 'Payment Error', message: 'Failed to get or create plan' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Generate unique reference for initial transaction
@@ -287,82 +334,107 @@ serve(async (req) => {
 
     // Initialize Paystack transaction with subscription metadata
     // This will allow us to create the subscription after the first payment succeeds
-    const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${paystackSecretKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email,
-        amount: Math.round(amount * 100), // Convert to cents
-        reference,
-        currency: 'USD',
-        callback_url: callback_url || `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/payment/callback`,
-        metadata: {
+    try {
+      const paystackResponse = await fetch('https://api.paystack.co/transaction/initialize', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${paystackSecretKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          amount: Math.round(amount * 100), // Convert to cents
+          reference,
+          currency: 'USD',
+          callback_url: callback_url || `${Deno.env.get('SITE_URL') || 'http://localhost:3000'}/payment/callback`,
+          metadata: {
+            user_id: user.id,
+            plan_id: plan_id,
+            billing_cycle: billing_cycle,
+            plan_name: plan.name,
+            paystack_customer_code: customerCode,
+            paystack_plan_code: paystackPlanCode,
+            is_subscription: true,
+          },
+        }),
+      });
+
+      if (!paystackResponse.ok) {
+        const errorText = await paystackResponse.text();
+        console.error('Paystack API error response:', paystackResponse.status, errorText);
+        return new Response(
+          JSON.stringify({ error: 'Payment Error', message: `Paystack API error: ${paystackResponse.status}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const paystackData = await paystackResponse.json();
+
+      if (!paystackData.status || !paystackData.data) {
+        console.error('Paystack error:', JSON.stringify(paystackData, null, 2));
+        return new Response(
+          JSON.stringify({ error: 'Payment Error', message: paystackData.message || 'Failed to initialize payment' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!paystackData.data.authorization_url) {
+        console.error('Paystack response missing authorization_url:', JSON.stringify(paystackData, null, 2));
+        return new Response(
+          JSON.stringify({ error: 'Payment Error', message: 'Invalid response from Paystack' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Create pending transaction record with subscription info
+      const { error: transactionError } = await supabase
+        .from('payment_transactions')
+        .insert({
           user_id: user.id,
           plan_id: plan_id,
-          billing_cycle: billing_cycle,
-          plan_name: plan.name,
-          paystack_customer_code: customerCode,
-          paystack_plan_code: paystackPlanCode,
-          is_subscription: true,
-        },
-        customer: customerCode, // Link to existing customer if available
-      }),
-    });
+          amount: amount,
+          currency: 'USD',
+          paystack_reference: reference,
+          status: 'pending',
+          metadata: {
+            billing_cycle: billing_cycle,
+            paystack_customer_code: customerCode,
+            paystack_plan_code: paystackPlanCode,
+            is_subscription: true,
+            create_subscription_after_payment: true,
+          },
+        });
 
-    const paystackData = await paystackResponse.json();
+      if (transactionError) {
+        console.error('Database error creating transaction:', transactionError);
+        // Continue anyway, payment was initialized
+      }
 
-    if (!paystackData.status || !paystackData.data) {
-      console.error('Paystack error:', paystackData);
+      // Return authorization URL
       return new Response(
-        JSON.stringify({ error: 'Payment Error', message: paystackData.message || 'Failed to initialize payment' }),
+        JSON.stringify({
+          success: true,
+          authorization_url: paystackData.data.authorization_url,
+          access_code: paystackData.data.access_code || null,
+          reference: reference,
+          customer_code: customerCode,
+          plan_code: paystackPlanCode,
+        }),
+        { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (transactionError) {
+      console.error('Error initializing Paystack transaction:', transactionError);
+      return new Response(
+        JSON.stringify({ error: 'Payment Error', message: transactionError.message || 'Failed to initialize transaction' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create pending transaction record with subscription info
-    const { error: transactionError } = await supabase
-      .from('payment_transactions')
-      .insert({
-        user_id: user.id,
-        plan_id: plan_id,
-        amount: amount,
-        currency: 'USD',
-        paystack_reference: reference,
-        status: 'pending',
-        metadata: {
-          billing_cycle: billing_cycle,
-          paystack_customer_code: customerCode,
-          paystack_plan_code: paystackPlanCode,
-          is_subscription: true,
-          create_subscription_after_payment: true,
-        },
-      });
-
-    if (transactionError) {
-      console.error('Database error:', transactionError);
-      // Continue anyway, payment was initialized
-    }
-
-    // Return authorization URL
-    return new Response(
-      JSON.stringify({
-        success: true,
-        authorization_url: paystackData.data.authorization_url,
-        access_code: paystackData.data.access_code,
-        reference: reference,
-        customer_code: customerCode,
-        plan_code: paystackPlanCode,
-      }),
-      { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
-    );
-
   } catch (error) {
     console.error('Error initializing payment:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error', message: error.message }),
+      JSON.stringify({ error: 'Internal Server Error', message: error.message || 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -145,6 +145,85 @@ serve(async (req) => {
       );
     }
 
+    // Validate model access based on subscription plan
+    if (userId) {
+      const { data: subscription } = await supabase
+        .from('user_subscriptions')
+        .select(`
+          *,
+          subscription_plans (
+            allowed_models,
+            max_messages
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (subscription?.subscription_plans) {
+        const plan = subscription.subscription_plans;
+        const allowedModels = Array.isArray(plan.allowed_models) ? plan.allowed_models : (plan.allowed_models ? JSON.parse(plan.allowed_models as any) : []);
+        
+        // Map model to identifier
+        const getModelIdentifier = (provider: string, model: string): string => {
+          if (provider === 'deepseek') {
+            if (model.includes('reasoner') || model.includes('reasoning')) return 'deepseek-reasoning';
+            return 'deepseek-fast';
+          }
+          if (provider === 'openai') {
+            if (model.includes('o1') || model.includes('o3') || model.includes('reasoning')) return 'openai-reasoning';
+            return 'openai-fast';
+          }
+          if (provider === 'gemini') {
+            if (model.includes('thinking') || model.includes('reasoning')) return 'gemini-reasoning';
+            return 'gemini-fast';
+          }
+          return `${provider}-fast`;
+        };
+
+        const modelIdentifier = getModelIdentifier(provider, bot.model || '');
+        if (allowedModels.length > 0 && !allowedModels.includes(modelIdentifier)) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Model not available', 
+              message: `The selected model is not available in your plan. Please select an allowed model or upgrade your plan.` 
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check message limit (if not unlimited)
+        if (plan.max_messages !== null && plan.max_messages !== undefined) {
+          // Get current period usage
+          const { data: usage } = await supabase
+            .from('user_usage')
+            .select('messages_count')
+            .eq('user_id', userId)
+            .eq('subscription_id', subscription.id)
+            .gte('period_start', subscription.current_period_start)
+            .lte('period_end', subscription.current_period_end)
+            .maybeSingle();
+
+          const currentUsage = usage?.messages_count || 0;
+          if (currentUsage >= plan.max_messages) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Message limit exceeded', 
+                message: `You've reached your monthly message limit of ${plan.max_messages.toLocaleString()}. Please upgrade your plan or wait for the next billing period.` 
+              }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Increment message count (using the function from migration)
+          await supabase.rpc('increment_message_count', { 
+            p_user_id: userId, 
+            p_count: 1 
+          });
+        }
+      }
+    }
+
     const systemInstruction = buildSystemInstruction(bot);
 
     if (action === 'chat-stream') {

@@ -29,6 +29,14 @@ interface PlanData {
   max_bots?: number | null;
   max_messages?: number | null;
   max_storage_gb?: number | null;
+  allowed_models?: string[];
+  max_integrations?: number | null;
+  max_knowledge_chars?: number | null;
+  max_storage_mb?: number | null;
+  allow_actions?: boolean;
+  allow_lead_collection?: boolean;
+  allow_ecommerce?: boolean;
+  allow_departmental_bots?: boolean;
   is_active?: boolean;
 }
 
@@ -224,6 +232,36 @@ serve(async (req) => {
             );
           }
         }
+        if (planData.max_integrations !== null && planData.max_integrations !== undefined) {
+          if (typeof planData.max_integrations !== 'number' || planData.max_integrations < 0 || planData.max_integrations > 1000000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_integrations must be a number between 0 and 1,000,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        if (planData.max_knowledge_chars !== null && planData.max_knowledge_chars !== undefined) {
+          if (typeof planData.max_knowledge_chars !== 'number' || planData.max_knowledge_chars < 0 || planData.max_knowledge_chars > 100000000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_knowledge_chars must be a number between 0 and 100,000,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        if (planData.max_storage_mb !== null && planData.max_storage_mb !== undefined) {
+          if (typeof planData.max_storage_mb !== 'number' || planData.max_storage_mb < 0 || planData.max_storage_mb > 100000000) {
+            return new Response(
+              JSON.stringify({ error: 'Bad Request', message: 'max_storage_mb must be a number between 0 and 100,000,000' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        if (planData.allowed_models !== undefined && !Array.isArray(planData.allowed_models)) {
+          return new Response(
+            JSON.stringify({ error: 'Bad Request', message: 'allowed_models must be an array' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
 
         const { data, error } = await supabase
           .from('subscription_plans')
@@ -236,6 +274,14 @@ serve(async (req) => {
             max_bots: planData.max_bots ?? null,
             max_messages: planData.max_messages ?? null,
             max_storage_gb: planData.max_storage_gb ?? null,
+            allowed_models: Array.isArray(planData.allowed_models) ? planData.allowed_models : [],
+            max_integrations: planData.max_integrations ?? null,
+            max_knowledge_chars: planData.max_knowledge_chars ?? null,
+            max_storage_mb: planData.max_storage_mb ?? null,
+            allow_actions: planData.allow_actions ?? false,
+            allow_lead_collection: planData.allow_lead_collection ?? false,
+            allow_ecommerce: planData.allow_ecommerce ?? false,
+            allow_departmental_bots: planData.allow_departmental_bots ?? false,
             is_active: planData.is_active !== undefined ? Boolean(planData.is_active) : true,
           })
           .select()
@@ -308,6 +354,14 @@ serve(async (req) => {
         if (planData.max_bots !== undefined) updateData.max_bots = planData.max_bots;
         if (planData.max_messages !== undefined) updateData.max_messages = planData.max_messages;
         if (planData.max_storage_gb !== undefined) updateData.max_storage_gb = planData.max_storage_gb;
+        if (planData.allowed_models !== undefined) updateData.allowed_models = planData.allowed_models;
+        if (planData.max_integrations !== undefined) updateData.max_integrations = planData.max_integrations;
+        if (planData.max_knowledge_chars !== undefined) updateData.max_knowledge_chars = planData.max_knowledge_chars;
+        if (planData.max_storage_mb !== undefined) updateData.max_storage_mb = planData.max_storage_mb;
+        if (planData.allow_actions !== undefined) updateData.allow_actions = planData.allow_actions;
+        if (planData.allow_lead_collection !== undefined) updateData.allow_lead_collection = planData.allow_lead_collection;
+        if (planData.allow_ecommerce !== undefined) updateData.allow_ecommerce = planData.allow_ecommerce;
+        if (planData.allow_departmental_bots !== undefined) updateData.allow_departmental_bots = planData.allow_departmental_bots;
         if (planData.is_active !== undefined) updateData.is_active = planData.is_active;
 
         const { data, error } = await supabase

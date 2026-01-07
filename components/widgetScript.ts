@@ -3315,81 +3315,10 @@ export const generateWidgetJS = (): string => {
   });
   
   // Helper function to load conversation history for a session
-  const loadConversationHistoryForSession = function(session, botId) {
-    if (session && session.conversationId && !conversationId) {
-      // Only load if we don't already have a conversationId (from initialization)
-      console.log('Found existing session, loading conversation:', session.conversationId, 'for bot:', botId);
-      conversationId = session.conversationId;
-      
-      // Restore lead data if present
-      if (session.leadData) {
-        leadData = session.leadData;
-      }
-      
-      // Load conversation history asynchronously
-      loadConversationHistory(session.conversationId).then(function(historyMessages) {
-              // Map bot_actions to actions
-              let actions = [];
-              if (selectedBotConfig.actions && Array.isArray(selectedBotConfig.actions)) {
-                actions = selectedBotConfig.actions;
-              } else if (selectedBotConfig.bot_actions && Array.isArray(selectedBotConfig.bot_actions)) {
-                actions = selectedBotConfig.bot_actions.map(function(action) {
-                  return {
-                    id: action.id,
-                    type: action.type,
-                    label: action.label,
-                    payload: action.payload,
-                    description: action.description || '',
-                    triggerMessage: action.trigger_message || undefined,
-                    mediaType: action.media_type || undefined,
-                    fileSize: action.file_size || undefined
-                  };
-                });
-              }
-              
-              // Update current bot to the department bot
-              currentBot = {
-                id: selectedBotConfig.id || deptBot.botId,
-                name: selectedBotConfig.name || 'Chat Assistant',
-                systemInstruction: selectedBotConfig.system_instruction || selectedBotConfig.systemInstruction || 'You are a helpful AI assistant.',
-                knowledgeBase: selectedBotConfig.knowledge_base || selectedBotConfig.knowledgeBase || '',
-                provider: selectedBotConfig.provider || 'gemini',
-                model: selectedBotConfig.model || (selectedBotConfig.provider === 'openai' ? 'gpt-4' : selectedBotConfig.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-1.5-flash'),
-                temperature: selectedBotConfig.temperature ?? 0.7,
-                actions: actions,
-                collectLeads: collectLeads,
-                brandingText: selectedBotConfig.branding_text || selectedBotConfig.brandingText || undefined,
-                headerImageUrl: selectedBotConfig.header_image_url || selectedBotConfig.headerImageUrl || undefined,
-                ecommerceEnabled: selectedBotConfig.ecommerce_enabled || selectedBotConfig.ecommerceEnabled || false,
-                ecommerceSettings: selectedBotConfig.ecommerce_settings || selectedBotConfig.ecommerceSettings || undefined
-              };
-              // Also update bot reference
-              bot = currentBot;
-              selectedDepartmentBot = deptBot;
-              console.log('Loaded department bot from session:', deptBot.departmentLabel, currentBot);
-              
-              // Now load conversation history with the correct bot
-              if (session && session.conversationId && !conversationId) {
-                loadConversationHistoryForSession(session, sessionBotId);
-              }
-            }).catch(function(err) {
-              console.error('Error loading department bot config:', err);
-              // Still try to load conversation history with default bot
-              if (session && session.conversationId && !conversationId) {
-                loadConversationHistoryForSession(session, sessionBotId);
-              }
-            });
-            break;
-          }
-        }
-      }
-    }
-    
-    // Helper function to load conversation history
     const loadConversationHistoryForSession = function(session, botId) {
       if (session && session.conversationId && !conversationId) {
       // Only load if we don't already have a conversationId (from initialization)
-      console.log('Found existing session, loading conversation:', session.conversationId, 'for bot:', sessionBotId);
+      console.log('Found existing session, loading conversation:', session.conversationId, 'for bot:', botId);
       conversationId = session.conversationId;
       
       // Restore lead data if present

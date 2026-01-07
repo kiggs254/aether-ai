@@ -537,7 +537,7 @@ export const generateWidgetJS = (): string => {
     }
   }
   
-  // Hide step 2 (department selection) if no departments exist
+        // Hide step 2 (department selection) if no departments exist
   if (showForm) {
     const departmentBots = config.departmentBots;
     if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
@@ -545,9 +545,19 @@ export const generateWidgetJS = (): string => {
       const formStep2El = container.querySelector('#aether-lead-form-step2');
       const nextBtnEl = container.querySelector('#aether-next-btn');
       const startBtnEl = container.querySelector('#aether-start-btn');
-      if (formStep2El) formStep2El.style.display = 'none';
+      if (formStep2El) {
+        formStep2El.style.display = 'none';
+        formStep2El.style.visibility = 'hidden';
+      }
       if (nextBtnEl) nextBtnEl.style.display = 'none';
       if (startBtnEl) startBtnEl.style.display = 'block';
+    } else {
+      // Departments exist - ensure step 2 is visible when shown
+      const formStep2El = container.querySelector('#aether-lead-form-step2');
+      if (formStep2El && formStep2El.style.display !== 'none') {
+        formStep2El.style.visibility = 'visible';
+        formStep2El.style.opacity = '1';
+      }
     }
   }
   
@@ -1559,6 +1569,8 @@ export const generateWidgetJS = (): string => {
     // Show department selection
     if (departmentGroup && departmentOptions) {
       departmentGroup.style.display = 'block';
+      departmentGroup.style.visibility = 'visible';
+      departmentGroup.style.opacity = '1';
       departmentOptions.innerHTML = '';
       
       departmentBots.forEach((dept) => {
@@ -1570,16 +1582,16 @@ export const generateWidgetJS = (): string => {
         btn.dataset.botId = dept.botId;
         btn.dataset.departmentName = dept.departmentName || dept.departmentLabel.toLowerCase();
         
-        // Theme-aware styling
+        // Theme-aware styling with better visibility
         const isDark = theme === 'dark';
-        const bgColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-        const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+        const bgColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+        const borderColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)';
         const textColor = isDark ? 'white' : '#18181b';
-        const hoverBg = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-        const selectedBg = isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)';
-        const selectedBorder = 'rgba(99,102,241,0.5)';
+        const hoverBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+        const selectedBg = isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)';
+        const selectedBorder = 'rgba(99,102,241,0.6)';
         
-        btn.style.cssText = 'width: 100%; padding: 12px 16px; margin-bottom: 8px; background: ' + bgColor + '; border: 1px solid ' + borderColor + '; border-radius: 8px; color: ' + textColor + '; text-align: left; cursor: pointer; transition: all 0.2s; font-size: 14px; font-weight: 500;';
+        btn.style.cssText = 'width: 100%; padding: 14px 18px; margin-bottom: 10px; background: ' + bgColor + '; border: 2px solid ' + borderColor + '; border-radius: 10px; color: ' + textColor + '; text-align: left; cursor: pointer; transition: all 0.2s ease; font-size: 15px; font-weight: 600; display: block; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
         btn.addEventListener('mouseenter', () => {
           if (btn.dataset.selected !== 'true') {
             btn.style.background = hoverBg;
@@ -2867,8 +2879,8 @@ export const generateWidgetJS = (): string => {
         } else if (actionId) {
           // For actions without text, don't show message in bubble - it will be shown in the action card
           // Remove empty message bubble - action card will be created below
-          if (botMsg && botMsg.parentNode) {
-            botMsg.parentNode.removeChild(botMsg);
+            if (botMsg && botMsg.parentNode) {
+              botMsg.parentNode.removeChild(botMsg);
             botMsg = null; // Clear reference
           }
         } else {
@@ -3282,13 +3294,11 @@ export const generateWidgetJS = (): string => {
     });
   });
   
-  // Check for existing session and load conversation history (only if not in lead form flow or already handled)
-  if (!showForm || (leadData && leadData.email && conversationId)) {
-    // Only check session if we're not in the lead collection flow, or if we already have lead data and conversation
-    const session = loadSession(bot.id);
+  // Helper function to load conversation history for a session
+  const loadConversationHistoryForSession = function(session, botId) {
     if (session && session.conversationId && !conversationId) {
       // Only load if we don't already have a conversationId (from initialization)
-      console.log('Found existing session, loading conversation:', session.conversationId);
+      console.log('Found existing session, loading conversation:', session.conversationId, 'for bot:', botId);
       conversationId = session.conversationId;
       
       // Restore lead data if present
@@ -3298,6 +3308,77 @@ export const generateWidgetJS = (): string => {
       
       // Load conversation history asynchronously
       loadConversationHistory(session.conversationId).then(function(historyMessages) {
+              // Map bot_actions to actions
+              let actions = [];
+              if (selectedBotConfig.actions && Array.isArray(selectedBotConfig.actions)) {
+                actions = selectedBotConfig.actions;
+              } else if (selectedBotConfig.bot_actions && Array.isArray(selectedBotConfig.bot_actions)) {
+                actions = selectedBotConfig.bot_actions.map(function(action) {
+                  return {
+                    id: action.id,
+                    type: action.type,
+                    label: action.label,
+                    payload: action.payload,
+                    description: action.description || '',
+                    triggerMessage: action.trigger_message || undefined,
+                    mediaType: action.media_type || undefined,
+                    fileSize: action.file_size || undefined
+                  };
+                });
+              }
+              
+              // Update current bot to the department bot
+              currentBot = {
+                id: selectedBotConfig.id || deptBot.botId,
+                name: selectedBotConfig.name || 'Chat Assistant',
+                systemInstruction: selectedBotConfig.system_instruction || selectedBotConfig.systemInstruction || 'You are a helpful AI assistant.',
+                knowledgeBase: selectedBotConfig.knowledge_base || selectedBotConfig.knowledgeBase || '',
+                provider: selectedBotConfig.provider || 'gemini',
+                model: selectedBotConfig.model || (selectedBotConfig.provider === 'openai' ? 'gpt-4' : selectedBotConfig.provider === 'deepseek' ? 'deepseek-chat' : 'gemini-1.5-flash'),
+                temperature: selectedBotConfig.temperature ?? 0.7,
+                actions: actions,
+                collectLeads: collectLeads,
+                brandingText: selectedBotConfig.branding_text || selectedBotConfig.brandingText || undefined,
+                headerImageUrl: selectedBotConfig.header_image_url || selectedBotConfig.headerImageUrl || undefined,
+                ecommerceEnabled: selectedBotConfig.ecommerce_enabled || selectedBotConfig.ecommerceEnabled || false,
+                ecommerceSettings: selectedBotConfig.ecommerce_settings || selectedBotConfig.ecommerceSettings || undefined
+              };
+              // Also update bot reference
+              bot = currentBot;
+              selectedDepartmentBot = deptBot;
+              console.log('Loaded department bot from session:', deptBot.departmentLabel, currentBot);
+              
+              // Now load conversation history with the correct bot
+              if (session && session.conversationId && !conversationId) {
+                loadConversationHistoryForSession(session, sessionBotId);
+              }
+            }).catch(function(err) {
+              console.error('Error loading department bot config:', err);
+              // Still try to load conversation history with default bot
+              if (session && session.conversationId && !conversationId) {
+                loadConversationHistoryForSession(session, sessionBotId);
+              }
+            });
+            break;
+          }
+        }
+      }
+    }
+    
+    // Helper function to load conversation history
+    const loadConversationHistoryForSession = function(session, botId) {
+      if (session && session.conversationId && !conversationId) {
+      // Only load if we don't already have a conversationId (from initialization)
+      console.log('Found existing session, loading conversation:', session.conversationId, 'for bot:', sessionBotId);
+      conversationId = session.conversationId;
+      
+      // Restore lead data if present
+      if (session.leadData) {
+        leadData = session.leadData;
+      }
+      
+        // Load conversation history asynchronously
+        loadConversationHistory(session.conversationId).then(function(historyMessages) {
         if (historyMessages && historyMessages.length > 0) {
           // Hide welcome container
           hideWelcomeContainer();
@@ -3542,15 +3623,23 @@ export const generateWidgetJS = (): string => {
       } else {
         console.log('No messages found in conversation, starting fresh');
       }
-    }).catch(function(err) {
-      console.error('Error loading conversation history:', err);
-      // Clear invalid session if conversation fails to load
-      clearSession(bot.id);
-      conversationId = null;
-    });
-      } else {
-        console.log('No existing session found, starting fresh');
+        }).catch(function(err) {
+          console.error('Error loading conversation history:', err);
+          // Clear invalid session if conversation fails to load
+          clearSession(botId);
+          conversationId = null;
+        });
       }
+    };
+    
+    if (session && session.conversationId && !conversationId) {
+      // If we found a session and haven't already loaded it, load it now
+      // (unless it's a department bot session which will be handled above)
+      if (sessionBotId === bot.id) {
+        loadConversationHistoryForSession(session, sessionBotId);
+      }
+    } else {
+      console.log('No existing session found, starting fresh');
     }
   }
   

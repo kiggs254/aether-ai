@@ -1616,12 +1616,14 @@ export const generateWidgetJS = (): string => {
           if (btn.dataset.selected !== 'true') {
             btn.style.background = hoverBg;
             btn.style.borderColor = selectedBorder;
+            btn.style.color = textColor;
           }
         });
         btn.addEventListener('mouseleave', () => {
           if (btn.dataset.selected !== 'true') {
             btn.style.background = bgColor;
             btn.style.borderColor = borderColor;
+            btn.style.color = textColor;
           }
         });
         btn.addEventListener('click', async () => {
@@ -1630,17 +1632,20 @@ export const generateWidgetJS = (): string => {
           const bgColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
           const borderColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
           const selectedBg = isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)';
+          const textColor = isDark ? 'white' : '#18181b';
           const selectedBorder = 'rgba(99,102,241,0.5)';
           
           Array.from(departmentOptions.children).forEach(function(child) {
             child.dataset.selected = 'false';
             child.style.background = bgColor;
             child.style.borderColor = borderColor;
+            child.style.color = textColor;
           });
           btn.dataset.selected = 'true';
           btn.style.background = selectedBg;
           btn.style.borderColor = selectedBorder;
           btn.style.boxShadow = '0 0 0 2px rgba(99,102,241,0.1)';
+          btn.style.color = textColor;
           
           // Store selected department bot
           selectedDepartmentBot = dept;

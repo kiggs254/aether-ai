@@ -301,7 +301,7 @@ export const generateBotResponse = async (
 /**
  * Uses Gemini to improve the user's system instructions
  */
-export const optimizeSystemInstruction = async (currentInstruction: string, botName: string): Promise<string> => {
+export const optimizeSystemInstruction = async (currentInstruction: string, botName: string, bot: Bot): Promise<string> => {
   try {
     if (USE_EDGE_FUNCTION) {
       const { data: { session } } = await supabase.auth.getSession();
@@ -315,6 +315,14 @@ export const optimizeSystemInstruction = async (currentInstruction: string, botN
       const normalizedUrl = supabaseUrl.replace(/\/$/, '');
       const functionUrl = `${normalizedUrl}/functions/v1/proxy-ai`;
 
+      // Create a bot object for optimization with minimal required fields
+      const optimizationBot: Bot = {
+        ...bot,
+        systemInstruction: currentInstruction, // Use current instruction for the optimization request
+        knowledgeBase: '', // Don't include knowledge base for optimization
+        actions: [], // No actions needed for optimization
+      };
+
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
@@ -324,7 +332,7 @@ export const optimizeSystemInstruction = async (currentInstruction: string, botN
         },
         body: JSON.stringify({
           action: 'chat',
-          bot: { model: 'gemini-3-flash-preview', temperature: 0.7 },
+          bot: optimizationBot,
           history: [],
           message: `
             Act as an expert prompt engineer. Improve the following system instruction for an AI bot named "${botName}".
@@ -332,16 +340,21 @@ export const optimizeSystemInstruction = async (currentInstruction: string, botN
             
             Original Instruction: "${currentInstruction}"
             
-            Return ONLY the improved instruction text, nothing else.
+            Return ONLY the improved instruction text, nothing else. Do not include any explanations, comments, or additional text.
           `,
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || currentInstruction;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
       }
-      return currentInstruction;
+
+      const data = await response.json();
+      const optimizedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 
+                            data.text?.trim() || 
+                            currentInstruction;
+      return optimizedText;
     } else {
       if (!ai) {
         return currentInstruction;

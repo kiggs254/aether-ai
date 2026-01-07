@@ -114,22 +114,45 @@ serve(async (req) => {
     
     const { action, bot, history = [], message } = body;
 
-    if (!action || !bot?.id) {
+    if (!action) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: action and bot are required' }),
+        JSON.stringify({ error: 'Missing required field: action is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const botValidation = await validateBotAccess(supabase, bot.id, userId);
-    if (!botValidation.valid) {
+    // For optimization requests, we don't need a saved bot - allow minimal bot structure
+    const messageStr = typeof message === 'string' ? message : '';
+    const isOptimizationRequest = action === 'chat' && 
+                                  messageStr.includes('expert prompt engineer') &&
+                                  messageStr.includes('Improve the following system instruction');
+
+    if (!isOptimizationRequest && !bot?.id) {
       return new Response(
-        JSON.stringify({ error: botValidation.error || 'Invalid bot access' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Missing required fields: bot.id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate bot structure
+    // Only validate bot access if it's not an optimization request
+    if (!isOptimizationRequest && bot?.id) {
+      const botValidation = await validateBotAccess(supabase, bot.id, userId);
+      if (!botValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: botValidation.error || 'Invalid bot access' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Validate bot structure (ensure bot object exists for optimization requests)
+    if (!bot) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required field: bot is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (bot.actions !== undefined && !Array.isArray(bot.actions)) {
       bot.actions = [];
     }

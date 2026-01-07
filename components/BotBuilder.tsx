@@ -225,9 +225,33 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const handleOptimize = async () => {
     if (!instruction || !name) return;
     setIsOptimizing(true);
-    const optimized = await optimizeSystemInstruction(instruction, name);
-    setInstruction(optimized);
-    setIsOptimizing(false);
+    try {
+      // Create a minimal bot object for optimization (proxy-ai requires bot.id)
+      const tempBot: Bot = {
+        id: bot?.id || crypto.randomUUID(),
+        name: name || 'Untitled Bot',
+        description: description || '',
+        website: website || 'https://example.com',
+        systemInstruction: instruction,
+        knowledgeBase: knowledge || '',
+        createdAt: bot?.createdAt || Date.now(),
+        avatarColor: bot?.avatarColor || 'from-indigo-500 to-purple-600',
+        totalInteractions: 0,
+        temperature: temperature,
+        model: model,
+        provider: provider,
+        status: 'active',
+        actions: [],
+      };
+      const optimized = await optimizeSystemInstruction(instruction, name, tempBot);
+      setInstruction(optimized);
+      showSuccess('Instruction optimized', 'Your system instruction has been improved!');
+    } catch (error: any) {
+      console.error('Optimization error:', error);
+      showError('Optimization failed', error.message || 'Failed to optimize instruction. Please try again.');
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {

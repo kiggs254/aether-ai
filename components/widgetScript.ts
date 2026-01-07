@@ -430,8 +430,27 @@ export const generateWidgetJS = (): string => {
   const container = document.createElement('div');
   container.id = 'aether-widget-container';
   container.setAttribute('data-position', position);
+  // Set theme data attribute so CSS (or host) can react if needed
+  container.setAttribute('data-theme', theme);
   // Set CSS custom properties for theme colors
   container.style.setProperty('--aether-brand-color', brandColor);
+  // Apply dark vs light base variables so dark theme actually changes background/text
+  if (theme === 'dark') {
+    container.style.setProperty('--aether-bg-color', '#020617');
+    container.style.setProperty('--aether-text-color', '#e5e7eb');
+    container.style.setProperty('--aether-secondary-bg', '#020617');
+    container.style.setProperty('--aether-border-color', 'rgba(148,163,184,0.4)');
+    container.style.setProperty('--aether-bot-msg-bg', '#020617');
+    container.style.setProperty('--aether-bot-msg-text', '#e5e7eb');
+  } else {
+    // explicit light defaults, matching widget.css
+    container.style.setProperty('--aether-bg-color', '#ffffff');
+    container.style.setProperty('--aether-text-color', '#18181b');
+    container.style.setProperty('--aether-secondary-bg', '#f4f4f5');
+    container.style.setProperty('--aether-border-color', 'rgba(0,0,0,0.1)');
+    container.style.setProperty('--aether-bot-msg-bg', '#f3f4f6');
+    container.style.setProperty('--aether-bot-msg-text', '#1f2937');
+  }
   
   // Determine initial view (Chat or Form)
   const showForm = collectLeads;

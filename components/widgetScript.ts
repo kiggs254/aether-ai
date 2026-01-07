@@ -308,6 +308,7 @@ export const generateWidgetJS = (): string => {
     
     // Store department bots in config for later use
     config.departmentBots = departmentBots;
+    console.log('Department bots loaded from integration:', departmentBots);
     
     // Fetch bot config using botId from integration
     const fetchedBot = await fetchBotConfig(integrationConfig.botId, config.supabaseUrl, config.supabaseAnonKey);
@@ -477,17 +478,17 @@ export const generateWidgetJS = (): string => {
           '<button class="aether-btn" id="aether-next-btn">Next</button>' +
           '<button class="aether-btn" id="aether-start-btn" style="display:none;">Start Chatting</button>' +
         '</div>' +
-        '<div id="aether-lead-form-step2" style="display:none;">' +
+        '<div id="aether-lead-form-step2" style="display:none; visibility: visible; opacity: 1;">' +
           '<div>' +
             '<div class="aether-form-title">Select Department</div>' +
             '<div class="aether-form-desc">Choose the department you would like to chat with.</div>' +
           '</div>' +
-          '<div class="aether-form-group" id="aether-department-group">' +
-            '<label>Select Department</label>' +
-            '<div id="aether-department-options" class="aether-department-options"></div>' +
+          '<div class="aether-form-group" id="aether-department-group" style="display: block; visibility: visible; opacity: 1;">' +
+            '<label style="display: block; margin-bottom: 12px; font-weight: 600; font-size: 14px;">Select Department</label>' +
+            '<div id="aether-department-options" class="aether-department-options" style="min-height: 100px;"></div>' +
             '<div class="aether-form-error" id="aether-department-error" style="display:none; color: #ef4444; font-size: 12px; margin-top: 4px;"></div>' +
           '</div>' +
-          '<button class="aether-btn" id="aether-submit-lead">Start Chatting</button>' +
+          '<button class="aether-btn" id="aether-submit-lead" style="display: block; width: 100%; margin-top: 16px;">Start Chatting</button>' +
         '</div>' +
       '</div>' : '') +
       '<div class="aether-messages" id="aether-messages" style="' + (showForm ? 'display:none' : '') + '">' +
@@ -716,10 +717,15 @@ export const generateWidgetJS = (): string => {
         if (formStep1El) formStep1El.style.display = 'none';
         if (formStep2El) {
           formStep2El.style.display = 'block';
+          formStep2El.style.visibility = 'visible';
+          formStep2El.style.opacity = '1';
           // Wait a bit for DOM to be ready and function to be defined, then show departments
           setTimeout(function() {
             if (typeof showDepartmentSelection === 'function') {
+              console.log('Calling showDepartmentSelection from session restore');
               showDepartmentSelection();
+            } else {
+              console.error('showDepartmentSelection function not found');
             }
           }, 300);
         }
@@ -1487,11 +1493,15 @@ export const generateWidgetJS = (): string => {
         
         // Check if departments exist
         const departmentBots = config.departmentBots;
+        console.log('Next button clicked, checking departments:', departmentBots);
         if (departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0) {
           // Show step 2 (department selection)
           if (formStep1) formStep1.style.display = 'none';
           if (formStep2) {
             formStep2.style.display = 'block';
+            formStep2.style.visibility = 'visible';
+            formStep2.style.opacity = '1';
+            console.log('Showing step 2, calling showDepartmentSelection');
             showDepartmentSelection();
           }
         } else {
@@ -1562,10 +1572,8 @@ export const generateWidgetJS = (): string => {
   // Function to show department selection
   const showDepartmentSelection = async () => {
     const departmentBots = config.departmentBots;
-    if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
-      return;
-    }
-
+    console.log('showDepartmentSelection called, departmentBots:', departmentBots);
+    
     // Show department selection
     if (departmentGroup && departmentOptions) {
       departmentGroup.style.display = 'block';
@@ -1573,6 +1581,18 @@ export const generateWidgetJS = (): string => {
       departmentGroup.style.opacity = '1';
       departmentOptions.innerHTML = '';
       
+      if (!departmentBots || !Array.isArray(departmentBots) || departmentBots.length === 0) {
+        // Show fallback message when no departments are configured
+        const noDeptMsg = document.createElement('div');
+        noDeptMsg.className = 'aether-no-departments';
+        noDeptMsg.style.cssText = 'padding: 16px; text-align: center; color: ' + (theme === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)') + '; font-size: 14px; border: 1px dashed ' + (theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)') + '; border-radius: 8px; background: ' + (theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)') + ';';
+        noDeptMsg.textContent = 'No departments configured. Please contact support.';
+        departmentOptions.appendChild(noDeptMsg);
+        console.warn('No department bots configured');
+        return;
+      }
+      
+      console.log('Rendering', departmentBots.length, 'department options');
       departmentBots.forEach((dept) => {
         if (!dept.botId || !dept.departmentLabel) return;
         const btn = document.createElement('button');

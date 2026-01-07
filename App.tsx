@@ -85,6 +85,36 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     showSuccessRef.current = showSuccess;
   }, [showSuccess]);
+
+  // Simple audio notification instead of modal popups for new conversations/messages
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        return;
+      }
+      const audioCtx = new AudioContextClass();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = 'triangle';
+      oscillator.frequency.value = 880; // A5
+      gainNode.gain.value = 0.06;
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.18);
+
+      oscillator.onended = () => {
+        gainNode.disconnect();
+        audioCtx.close();
+      };
+    } catch (err) {
+      console.warn('Unable to play notification sound:', err);
+    }
+  }, []);
   
   useEffect(() => {
     viewedConversationIdRef.current = viewedConversationId;
@@ -259,20 +289,10 @@ const AppContent: React.FC = () => {
               return next;
             });
             
-            // Show notification only if conversation has actual user messages
+            // Play sound notification only (no modal) if conversation has actual user messages
             if (hasUserMessage) {
-              console.log('Showing notification for new widget conversation');
-              if (showSuccessRef.current) {
-                showSuccessRef.current('New conversation started', 'A new lead has started chatting');
-              } else {
-                console.warn('showSuccessRef.current is not available yet, will retry...');
-                // Retry after a short delay
-                setTimeout(() => {
-                  if (showSuccessRef.current) {
-                    showSuccessRef.current('New conversation started', 'A new lead has started chatting');
-                  }
-                }, 500);
-              }
+              console.log('Playing sound for new widget conversation');
+              playNotificationSound();
             }
           }
         }
@@ -485,20 +505,10 @@ const AppContent: React.FC = () => {
                 console.log('Message received for currently viewed conversation or bot message, not incrementing unread count');
               }
               
-              // Show notification for new messages (only if it's a user message, not bot response)
+              // Play sound notification for new user messages (no modal)
               if (message.role === 'user') {
-                console.log('Showing notification for widget user message');
-                if (showSuccessRef.current) {
-                  showSuccessRef.current('New message received', 'A user sent a new message');
-                } else {
-                  console.warn('showSuccessRef.current is not available yet, will retry...');
-                  // Retry after a short delay
-                  setTimeout(() => {
-                    if (showSuccessRef.current) {
-                      showSuccessRef.current('New message received', 'A user sent a new message');
-                    }
-                  }, 500);
-                }
+                console.log('Playing sound for new widget user message');
+                playNotificationSound();
               }
             }
           }

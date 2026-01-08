@@ -146,67 +146,30 @@ export const botService = {
 
     // If creating a new bot, check bot limit (unless super admin)
     if (isNewBot || !existingBot) {
-      // Check super admin status first - super admins bypass all limits
-      // Use multiple methods to ensure we catch super admins
-      let isAdmin = false;
-      let isAdminViaPlan = false;
+      // Check super admin status - super admins bypass all limits
+      // First check subscription info (which already checks for super admin)
+      const { getUserSubscriptionInfo } = await import('../lib/subscription');
+      const subscriptionInfo = await getUserSubscriptionInfo();
       
-      try {
-        // Method 1: Check admin_users table directly
-        const { data: adminCheck } = await supabase
-          .from('admin_users')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('role', 'super_admin')
-          .maybeSingle();
-        isAdmin = !!adminCheck;
-        console.log('[saveBot] Direct admin_users check:', isAdmin);
-      } catch (error) {
-        console.error('[saveBot] Error checking admin_users table:', error);
-      }
+      // Super admins have planName === 'Super Admin' and maxBots === null
+      const isSuperAdminUser = subscriptionInfo.planName === 'Super Admin' || subscriptionInfo.maxBots === null;
       
-      if (!isAdmin) {
-        try {
-          // Method 2: Check via isSuperAdmin function
-          const { isSuperAdmin } = await import('../lib/admin');
-          isAdmin = await isSuperAdmin();
-          console.log('[saveBot] Super admin check (function):', isAdmin);
-        } catch (error) {
-          console.error('[saveBot] Error checking super admin status:', error);
-        }
-      }
-      
-      if (!isAdmin) {
-        try {
-          // Method 3: Check subscription info for super admin plan name
-          const { getUserSubscriptionInfo } = await import('../lib/subscription');
-          const subscriptionInfo = await getUserSubscriptionInfo();
-          isAdminViaPlan = subscriptionInfo.planName === 'Super Admin';
-          console.log('[saveBot] Subscription plan name:', subscriptionInfo.planName, 'isAdminViaPlan:', isAdminViaPlan);
-        } catch (error) {
-          console.error('[saveBot] Error getting subscription info:', error);
-        }
-      }
+      console.log('[saveBot] Plan name:', subscriptionInfo.planName, 'Max bots:', subscriptionInfo.maxBots, 'Is super admin:', isSuperAdminUser);
       
       // Super admins bypass all limit checks
-      if (isAdmin || isAdminViaPlan) {
-        // User is super admin, skip all limit checks
-        console.log('[saveBot] Super admin detected, bypassing bot limit check');
-      } else {
+      if (!isSuperAdminUser && subscriptionInfo.maxBots !== null) {
         // Check bot limit for non-admin users
-        const { getUserSubscriptionInfo } = await import('../lib/subscription');
-        const subscriptionInfo = await getUserSubscriptionInfo();
-        if (subscriptionInfo.maxBots !== null) {
-          const { count } = await supabase
-            .from('bots')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+        const { count } = await supabase
+          .from('bots')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
 
-          console.log('[saveBot] Bot count:', count, 'Max bots:', subscriptionInfo.maxBots, 'User ID:', user.id);
-          if ((count || 0) >= subscriptionInfo.maxBots) {
-            throw new Error(`Bot limit reached: Maximum ${subscriptionInfo.maxBots} bots allowed for your plan. Please upgrade to create more.`);
-          }
+        console.log('[saveBot] Bot count:', count, 'Max bots:', subscriptionInfo.maxBots, 'User ID:', user.id);
+        if ((count || 0) >= subscriptionInfo.maxBots) {
+          throw new Error(`Bot limit reached: Maximum ${subscriptionInfo.maxBots} bots allowed for your plan. Please upgrade to create more.`);
         }
+      } else {
+        console.log('[saveBot] Super admin detected or unlimited bots, bypassing bot limit check');
       }
     }
 
@@ -769,39 +732,29 @@ export const integrationService = {
     if (!user) throw new Error('User not authenticated');
 
     // Check integration limit (unless super admin)
-    // Check super admin status first - super admins bypass all limits
-    let isAdmin = false;
-    try {
-      const { isSuperAdmin } = await import('../lib/admin');
-      isAdmin = await isSuperAdmin();
-      console.log('Super admin check result (integration):', isAdmin);
-    } catch (error) {
-      console.error('Error checking super admin status:', error);
-    }
-    
-    // Also check subscription info for super admin plan name
+    // Check subscription info (which already checks for super admin)
     const { getUserSubscriptionInfo } = await import('../lib/subscription');
     const subscriptionInfo = await getUserSubscriptionInfo();
-    const isAdminViaPlan = subscriptionInfo.planName === 'Super Admin';
-    console.log('Subscription plan name (integration):', subscriptionInfo.planName, 'isAdminViaPlan:', isAdminViaPlan);
+    
+    // Super admins have planName === 'Super Admin' and maxIntegrations === null
+    const isSuperAdminUser = subscriptionInfo.planName === 'Super Admin' || subscriptionInfo.maxIntegrations === null;
+    
+    console.log('[createIntegration] Plan name:', subscriptionInfo.planName, 'Max integrations:', subscriptionInfo.maxIntegrations, 'Is super admin:', isSuperAdminUser);
     
     // Super admins bypass all limit checks
-    if (isAdmin || isAdminViaPlan) {
-      // User is super admin, skip all limit checks
-      console.log('Super admin detected, bypassing integration limit check');
-    } else {
+    if (!isSuperAdminUser && subscriptionInfo.maxIntegrations !== null) {
       // Check integration limit for non-admin users
-      if (subscriptionInfo.maxIntegrations !== null) {
-        const { count } = await supabase
-          .from('integrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
+      const { count } = await supabase
+        .from('integrations')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
 
-        console.log('Integration count:', count, 'Max integrations:', subscriptionInfo.maxIntegrations);
-        if ((count || 0) >= subscriptionInfo.maxIntegrations) {
-          throw new Error(`Integration limit reached: Maximum ${subscriptionInfo.maxIntegrations} integrations allowed for your plan. Please upgrade to create more.`);
-        }
+      console.log('[createIntegration] Integration count:', count, 'Max integrations:', subscriptionInfo.maxIntegrations);
+      if ((count || 0) >= subscriptionInfo.maxIntegrations) {
+        throw new Error(`Integration limit reached: Maximum ${subscriptionInfo.maxIntegrations} integrations allowed for your plan. Please upgrade to create more.`);
       }
+    } else {
+      console.log('[createIntegration] Super admin detected or unlimited integrations, bypassing integration limit check');
     }
 
     const { data, error } = await supabase

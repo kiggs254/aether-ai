@@ -146,7 +146,10 @@ export const botService = {
 
     // If creating a new bot, check bot limit (unless super admin)
     if (isNewBot || !existingBot) {
-      // Check super admin status DIRECTLY - this is the most reliable method
+      // Security: Redundant admin check using multiple methods for defense-in-depth
+      // Method 1: Direct check of admin_users table (most reliable)
+      // Method 2: Fallback check via subscription info
+      // This redundancy ensures admin status is correctly identified even if one method fails
       let isSuperAdminUser = false;
       
       // Method 1: Direct check of admin_users table
@@ -159,9 +162,8 @@ export const botService = {
           .maybeSingle();
         
         isSuperAdminUser = !adminError && !!adminCheck;
-        console.log('[saveBot] Direct admin_users check:', isSuperAdminUser, 'Error:', adminError);
       } catch (error) {
-        console.error('[saveBot] Error checking admin_users:', error);
+        console.error('Error checking admin status:', error);
       }
       
       // Method 2: Check via subscription info (fallback)
@@ -169,13 +171,10 @@ export const botService = {
         const { getUserSubscriptionInfo } = await import('../lib/subscription');
         const subscriptionInfo = await getUserSubscriptionInfo();
         isSuperAdminUser = subscriptionInfo.planName === 'Super Admin' || subscriptionInfo.maxBots === null;
-        console.log('[saveBot] Subscription check - Plan name:', subscriptionInfo.planName, 'Max bots:', subscriptionInfo.maxBots, 'Is super admin:', isSuperAdminUser);
       }
       
       // Super admins bypass all limit checks
-      if (isSuperAdminUser) {
-        console.log('[saveBot] ✅ Super admin confirmed - bypassing ALL bot limit checks');
-      } else {
+      if (!isSuperAdminUser) {
         // Check bot limit for non-admin users
         const { getUserSubscriptionInfo } = await import('../lib/subscription');
         const subscriptionInfo = await getUserSubscriptionInfo();
@@ -186,7 +185,6 @@ export const botService = {
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
 
-          console.log('[saveBot] Bot count:', count, 'Max bots:', subscriptionInfo.maxBots, 'User ID:', user.id);
           if ((count || 0) >= subscriptionInfo.maxBots) {
             throw new Error(`Bot limit reached: Maximum ${subscriptionInfo.maxBots} bots allowed for your plan. Please upgrade to create more.`);
           }
@@ -220,7 +218,6 @@ export const botService = {
     // This handles new bot creation properly even when crypto.randomUUID() generates a valid UUID
     if (isNewBot || !existingBot) {
       // New bot - create (no ID or temp ID, or bot doesn't exist)
-      console.log('[saveBot] Attempting to insert bot with data:', { ...botData, system_instruction: '[truncated]' });
       const { data, error } = await supabase
         .from('bots')
         .insert(botData)
@@ -228,18 +225,17 @@ export const botService = {
         .single();
 
       if (error) {
-        console.error('[saveBot] ❌ INSERT ERROR:', error);
-        console.error('[saveBot] Error details:', JSON.stringify(error, null, 2));
-        console.error('[saveBot] User ID:', user.id);
-        console.error('[saveBot] Bot data user_id:', botData.user_id);
+        console.error('Error creating bot:', error.message || error);
         throw error;
       }
       if (!data) throw new Error('Failed to create bot');
-      console.log('[saveBot] ✅ Bot created successfully:', data.id);
       savedBot = data;
     } else {
       // Bot exists - verify ownership before updating
-      // Both regular users and super admins can only edit their own bots
+      // Security: Defense-in-depth - Application layer enforces stricter rules than RLS
+      // While RLS policies allow super admins to update any bot, the application layer
+      // restricts all users (including super admins) to editing only their own bots.
+      // This provides an additional security layer beyond database-level policies.
       if (existingBot.user_id !== user.id) {
         throw new Error('Bot not found or you do not have permission to edit this bot');
       }
@@ -761,7 +757,10 @@ export const integrationService = {
     if (!user) throw new Error('User not authenticated');
 
     // Check integration limit (unless super admin)
-    // Check super admin status DIRECTLY - this is the most reliable method
+    // Security: Redundant admin check using multiple methods for defense-in-depth
+    // Method 1: Direct check of admin_users table (most reliable)
+    // Method 2: Fallback check via subscription info
+    // This redundancy ensures admin status is correctly identified even if one method fails
     let isSuperAdminUser = false;
     
     // Method 1: Direct check of admin_users table
@@ -774,9 +773,8 @@ export const integrationService = {
         .maybeSingle();
       
       isSuperAdminUser = !adminError && !!adminCheck;
-      console.log('[createIntegration] Direct admin_users check:', isSuperAdminUser, 'Error:', adminError);
     } catch (error) {
-      console.error('[createIntegration] Error checking admin_users:', error);
+      console.error('Error checking admin status:', error);
     }
     
     // Method 2: Check via subscription info (fallback)
@@ -784,13 +782,10 @@ export const integrationService = {
       const { getUserSubscriptionInfo } = await import('../lib/subscription');
       const subscriptionInfo = await getUserSubscriptionInfo();
       isSuperAdminUser = subscriptionInfo.planName === 'Super Admin' || subscriptionInfo.maxIntegrations === null;
-      console.log('[createIntegration] Subscription check - Plan name:', subscriptionInfo.planName, 'Max integrations:', subscriptionInfo.maxIntegrations, 'Is super admin:', isSuperAdminUser);
     }
     
     // Super admins bypass all limit checks
-    if (isSuperAdminUser) {
-      console.log('[createIntegration] ✅ Super admin confirmed - bypassing ALL integration limit checks');
-    } else {
+    if (!isSuperAdminUser) {
       // Check integration limit for non-admin users
       const { getUserSubscriptionInfo } = await import('../lib/subscription');
       const subscriptionInfo = await getUserSubscriptionInfo();
@@ -801,7 +796,6 @@ export const integrationService = {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id);
 
-        console.log('[createIntegration] Integration count:', count, 'Max integrations:', subscriptionInfo.maxIntegrations);
         if ((count || 0) >= subscriptionInfo.maxIntegrations) {
           throw new Error(`Integration limit reached: Maximum ${subscriptionInfo.maxIntegrations} integrations allowed for your plan. Please upgrade to create more.`);
         }

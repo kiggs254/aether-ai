@@ -9,12 +9,16 @@ export interface AdminUser {
 
 /**
  * Check if the current user is a super admin
+ * 
+ * Security Note: The admin_users table has RLS disabled to prevent infinite recursion
+ * when checking admin status in RLS policies. Database functions use SECURITY DEFINER
+ * to query this table with elevated privileges. This function queries directly since
+ * RLS is disabled, but access is still controlled by authentication (valid JWT required).
  */
 export async function isSuperAdmin(): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      console.log('[isSuperAdmin] No user found');
       return false;
     }
 
@@ -28,10 +32,9 @@ export async function isSuperAdmin(): Promise<boolean> {
       .maybeSingle();
 
     const isAdmin = !error && !!data;
-    console.log('[isSuperAdmin] User ID:', user.id, 'Is admin:', isAdmin, 'Error:', error);
     return isAdmin;
   } catch (error) {
-    console.error('[isSuperAdmin] Error checking admin status:', error);
+    console.error('Error checking admin status:', error);
     return false;
   }
 }

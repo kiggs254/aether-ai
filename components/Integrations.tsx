@@ -3,7 +3,8 @@ import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Integration, Bot, ViewState } from '../types';
 import { integrationService, botService } from '../services/database';
-import { Globe, Plus, Trash2, Edit, Eye, Code, Search, Filter, X } from 'lucide-react';
+import { getUserSubscriptionInfo } from '../lib/subscription';
+import { Globe, Plus, Trash2, Edit, Eye, Code, Search, Filter, X, Lock } from 'lucide-react';
 
 interface IntegrationWithBot extends Integration {
   botName?: string;
@@ -21,6 +22,7 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBot, setFilterBot] = useState<string>('all');
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
 
   // Modal state
   const [modal, setModal] = useState<{
@@ -48,7 +50,17 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
 
   useEffect(() => {
     loadData();
+    loadSubscriptionInfo();
   }, [isAdmin]);
+
+  const loadSubscriptionInfo = async () => {
+    try {
+      const info = await getUserSubscriptionInfo();
+      setSubscriptionInfo(info);
+    } catch (error) {
+      console.error('Failed to load subscription info:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -118,24 +130,39 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
   };
 
   const handleTypeSelection = (type: 'single' | 'departmental') => {
-    setTypeSelectionModal(prev => ({ ...prev, selectedType: type }));
-    
-    // For departmental, navigate immediately
+    // Check if user can use multi-bot (departmental) feature
     if (type === 'departmental') {
-      onNavigateToIntegration(null, undefined, 'departmental');
-      setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
+      const canUseMultiBot = subscriptionInfo?.allowDepartmentalBots || subscriptionInfo?.planName === 'Super Admin';
+      if (!canUseMultiBot) {
+        showError('Premium Feature', 'Multi-bot widgets are only available for Pro and Premium plans. Please upgrade to use this feature.');
+        return;
+      }
     }
-    // For single, wait for bot selection
+    setTypeSelectionModal(prev => ({ ...prev, selectedType: type }));
   };
 
   const handleBotSelection = (botId: string) => {
     setTypeSelectionModal(prev => ({ ...prev, selectedBotId: botId }));
-    
-    // If single bot type is selected and bot is chosen, navigate immediately
-    if (typeSelectionModal.selectedType === 'single' && botId) {
-      onNavigateToIntegration(botId, undefined, 'single');
-      setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
+  };
+
+  const handleConfirmTypeSelection = () => {
+    if (!typeSelectionModal.selectedType) {
+      showError('Please select integration type', 'Choose either Single Bot or Multi-Bot Widget.');
+      return;
     }
+
+    if (typeSelectionModal.selectedType === 'single') {
+      if (!typeSelectionModal.selectedBotId) {
+        showError('Please select a bot', 'Choose a bot for your single bot integration.');
+        return;
+      }
+      onNavigateToIntegration(typeSelectionModal.selectedBotId, undefined, 'single');
+    } else {
+      // Multi-bot widget
+      onNavigateToIntegration(null, undefined, 'departmental');
+    }
+    
+    setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
   };
 
   // Filter integrations
@@ -382,26 +409,45 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
               </label>
 
               {/* Multi-Bot Widget Option */}
-              <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-white/5"
-                style={{
-                  borderColor: typeSelectionModal.selectedType === 'departmental' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
-                  backgroundColor: typeSelectionModal.selectedType === 'departmental' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-                }}
-                onClick={() => handleTypeSelection('departmental')}
-              >
-                <input
-                  type="radio"
-                  name="integrationType"
-                  value="departmental"
-                  checked={typeSelectionModal.selectedType === 'departmental'}
-                  onChange={() => handleTypeSelection('departmental')}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-white mb-1">Multi-Bot Widget</div>
-                  <div className="text-sm text-slate-400">Create a widget that combines several bots for different departments</div>
-                </div>
-              </label>
+              {(() => {
+                const canUseMultiBot = subscriptionInfo?.allowDepartmentalBots || subscriptionInfo?.planName === 'Super Admin';
+                return (
+                  <label 
+                    className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+                      canUseMultiBot 
+                        ? 'cursor-pointer hover:bg-white/5' 
+                        : 'cursor-not-allowed opacity-50'
+                    }`}
+                    style={{
+                      borderColor: typeSelectionModal.selectedType === 'departmental' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
+                      backgroundColor: typeSelectionModal.selectedType === 'departmental' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                    }}
+                    onClick={() => canUseMultiBot && handleTypeSelection('departmental')}
+                  >
+                    <input
+                      type="radio"
+                      name="integrationType"
+                      value="departmental"
+                      checked={typeSelectionModal.selectedType === 'departmental'}
+                      onChange={() => canUseMultiBot && handleTypeSelection('departmental')}
+                      disabled={!canUseMultiBot}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-white mb-1 flex items-center gap-2">
+                        Multi-Bot Widget
+                        {!canUseMultiBot && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                            <Lock className="w-3 h-3" />
+                            Premium
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-slate-400">Create a widget that combines several bots for different departments</div>
+                    </div>
+                  </label>
+                );
+              })()}
 
               {/* Bot Selection for Single Bot */}
               {typeSelectionModal.selectedType === 'single' && (
@@ -421,6 +467,26 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
                   </select>
                 </div>
               )}
+            </div>
+
+            {/* Modal Footer with Confirm Button */}
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/10">
+              <button
+                onClick={() => setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' })}
+                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmTypeSelection}
+                disabled={
+                  !typeSelectionModal.selectedType || 
+                  (typeSelectionModal.selectedType === 'single' && !typeSelectionModal.selectedBotId)
+                }
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>

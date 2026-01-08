@@ -13,19 +13,25 @@ export interface AdminUser {
 export async function isSuperAdmin(): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) {
+      console.log('[isSuperAdmin] No user found');
+      return false;
+    }
 
     // Since RLS is disabled on admin_users, we can query directly
+    // Use maybeSingle() instead of single() to avoid errors when no record exists
     const { data, error } = await supabase
       .from('admin_users')
       .select('id')
       .eq('user_id', user.id)
       .eq('role', 'super_admin')
-      .single();
+      .maybeSingle();
 
-    return !error && !!data;
+    const isAdmin = !error && !!data;
+    console.log('[isSuperAdmin] User ID:', user.id, 'Is admin:', isAdmin, 'Error:', error);
+    return isAdmin;
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    console.error('[isSuperAdmin] Error checking admin status:', error);
     return false;
   }
 }

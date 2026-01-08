@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, BotAction, ActionType } from '../types';
-import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search, AlertCircle } from 'lucide-react';
+import { Save, Brain, Sparkles, Wand2, Sliders, Info, Globe, Plus, ChevronLeft, Check, UserPlus, Zap, Trash2, ExternalLink, Phone, MessageCircle, Users, Image, File, Video, Music, ShoppingBag, RefreshCw, Loader, X, Search, AlertCircle, Lock } from 'lucide-react';
 import { suggestBotDescription, optimizeSystemInstruction } from '../services/geminiService';
 import { uploadMediaFile, uploadHeaderImage, validateMediaFile, getMediaType, MediaType, deleteMediaFile } from '../services/storage';
 import { useModal } from './ModalContext';
@@ -229,6 +229,13 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       return;
     }
 
+    // Validate branding options (premium feature)
+    const isFreeUser = subscriptionInfo?.isFree && subscriptionInfo?.planName !== 'Super Admin';
+    if (isFreeUser && (brandingText.trim() || headerImageUrl.trim())) {
+      showError('Premium Feature', 'Custom branding (text and header image) is only available for Pro and Premium plans. Please upgrade to use this feature.');
+      return;
+    }
+
     const newBot: Bot = {
       id: bot?.id || crypto.randomUUID(),
       name: name || 'Untitled Bot',
@@ -244,8 +251,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       provider,
       status: bot?.status || 'active',
       actions: featureValidator?.canUseActions() ? actions : [],
-      brandingText: brandingText.trim() || undefined,
-      headerImageUrl: headerImageUrl.trim() || undefined,
+      brandingText: isFreeUser ? undefined : (brandingText.trim() || undefined),
+      headerImageUrl: isFreeUser ? undefined : (headerImageUrl.trim() || undefined),
       ecommerceEnabled: ecommerceEnabled,
       productFeedUrl: productFeedUrl.trim() || undefined,
       ecommerceSettings: ecommerceEnabled ? ecommerceSettings : undefined
@@ -320,6 +327,14 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   const handleHeaderImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check if user has premium access
+    const isFreeUser = subscriptionInfo?.isFree && subscriptionInfo?.planName !== 'Super Admin';
+    if (isFreeUser) {
+      showError('Premium Feature', 'Header images are only available for Pro and Premium plans. Please upgrade to use this feature.');
+      e.target.value = '';
+      return;
+    }
 
     // Only allow images for header
     if (!file.type.startsWith('image/')) {
@@ -771,70 +786,118 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                      </div>
                      
                      <div className="pt-4 border-t border-white/5">
-                        <div className="flex items-center justify-between mb-2">
-                           <label className="text-sm text-slate-300">Branding Text</label>
-                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
-                        </div>
-                        <input
-                          type="text"
-                          value={brandingText}
-                          onChange={(e) => setBrandingText(e.target.value)}
-                          placeholder="Powered by ChatFlow"
-                          disabled={isViewOnly}
-                          className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
-                        <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>
+                        {(() => {
+                          const isFreeUser = subscriptionInfo?.isFree && subscriptionInfo?.planName !== 'Super Admin';
+                          return (
+                            <>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm text-slate-300">Branding Text</label>
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  Premium
+                                </span>
+                              </div>
+                              <input
+                                type="text"
+                                value={brandingText}
+                                onChange={(e) => {
+                                  if (isFreeUser) {
+                                    showError('Premium Feature', 'Custom branding text is only available for Pro and Premium plans. Please upgrade to use this feature.');
+                                    return;
+                                  }
+                                  setBrandingText(e.target.value);
+                                }}
+                                placeholder="Powered by ChatFlow"
+                                disabled={isViewOnly || isFreeUser}
+                                className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              />
+                              <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>
+                              {isFreeUser && (
+                                <div className="mt-2 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
+                                  <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-orange-400">Premium Feature</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">Upgrade to Pro or Premium to customize branding text</p>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                      </div>
 
                      <div className="pt-4 border-t border-white/5">
-                        <div className="flex items-center justify-between mb-2">
-                           <label className="text-sm text-slate-300">Header Image</label>
-                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
-                        </div>
-                        <p className="text-xs text-slate-500 mb-3">Upload a custom header image for the chat widget (max 5MB, JPG/PNG/GIF/WebP)</p>
-                        
-                        {headerImagePreview ? (
-                          <div className="space-y-2">
-                            <div className="relative rounded-xl overflow-hidden border border-white/10">
-                              <img 
-                                src={headerImagePreview} 
-                                alt="Header preview" 
-                                className="w-full h-32 object-cover"
-                              />
-                              {isUploadingHeader && (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                  <div className="text-white text-sm">Uploading...</div>
+                        {(() => {
+                          const isFreeUser = subscriptionInfo?.isFree && subscriptionInfo?.planName !== 'Super Admin';
+                          return (
+                            <>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm text-slate-300">Header Image</label>
+                                <span className="text-[10px] text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  Premium
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-500 mb-3">Upload a custom header image for the chat widget (max 5MB, JPG/PNG/GIF/WebP)</p>
+                              
+                              {headerImagePreview ? (
+                                <div className="space-y-2">
+                                  <div className="relative rounded-xl overflow-hidden border border-white/10">
+                                    <img 
+                                      src={headerImagePreview} 
+                                      alt="Header preview" 
+                                      className="w-full h-32 object-cover"
+                                    />
+                                    {isUploadingHeader && (
+                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                        <div className="text-white text-sm">Uploading...</div>
+                                      </div>
+                                    )}
+                                    <button
+                                      onClick={handleRemoveHeaderImage}
+                                      disabled={isUploadingHeader || isFreeUser}
+                                      className="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Remove header image"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                  {!bot?.id && (
+                                    <p className="text-xs text-amber-400">Save the bot first to upload the header image.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <label className="block">
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                    onChange={handleHeaderImageSelect}
+                                    disabled={isViewOnly || isFreeUser}
+                                    className="hidden"
+                                  />
+                                  <div className={`border-2 border-dashed border-white/10 rounded-xl p-6 text-center transition-colors ${
+                                    isViewOnly || isFreeUser 
+                                      ? 'opacity-50 cursor-not-allowed' 
+                                      : 'cursor-pointer hover:border-indigo-500/50'
+                                  }`}>
+                                    <Image className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                                    <p className="text-sm text-slate-300">Click to upload header image</p>
+                                    <p className="text-xs text-slate-500 mt-1">JPG, PNG, GIF, or WebP (max 5MB)</p>
+                                  </div>
+                                </label>
+                              )}
+                              {isFreeUser && (
+                                <div className="mt-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
+                                  <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-orange-400">Premium Feature</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">Upgrade to Pro or Premium to upload custom header images</p>
+                                  </div>
                                 </div>
                               )}
-                              <button
-                                onClick={handleRemoveHeaderImage}
-                                disabled={isUploadingHeader}
-                                className="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Remove header image"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            {!bot?.id && (
-                              <p className="text-xs text-amber-400">Save the bot first to upload the header image.</p>
-                            )}
-                          </div>
-                        ) : (
-                          <label className="block">
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                              onChange={handleHeaderImageSelect}
-                              disabled={isViewOnly}
-                              className="hidden"
-                            />
-                            <div className={`border-2 border-dashed border-white/10 rounded-xl p-6 text-center transition-colors ${isViewOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-indigo-500/50'}`}>
-                              <Image className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                              <p className="text-sm text-slate-300">Click to upload header image</p>
-                              <p className="text-xs text-slate-500 mt-1">JPG, PNG, GIF, or WebP (max 5MB)</p>
-                            </div>
-                          </label>
-                        )}
+                            </>
+                          );
+                        })()}
                      </div>
                   </div>
                </div>

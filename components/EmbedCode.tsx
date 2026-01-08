@@ -207,17 +207,16 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
         }
       }
 
-        // Validate lead collection
-        if (collectLeads && !featureValidator.canCollectLeads()) {
-          showError('Feature not available', 'Lead collection is not available in your plan. Please upgrade.');
-          return;
-        }
+      // Validate lead collection
+      if (collectLeads && featureValidator && !featureValidator.canCollectLeads()) {
+        showError('Feature not available', 'Lead collection is not available in your plan. Please upgrade.');
+        return;
+      }
 
-        // Validate departmental bots
-        if (integrationType === 'departmental' && departmentBots && departmentBots.length > 0 && !featureValidator.canUseDepartmentalBots()) {
-          showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
-          return;
-        }
+      // Validate departmental bots
+      if (integrationType === 'departmental' && departmentBots && departmentBots.length > 0 && featureValidator && !featureValidator.canUseDepartmentalBots()) {
+        showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
+        return;
       }
 
       // Determine botId: for single bot use selectedBotId, for departmental use empty string or first department bot

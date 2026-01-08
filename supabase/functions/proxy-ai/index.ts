@@ -283,11 +283,29 @@ serve(async (req) => {
           body: JSON.stringify(requestBody),
         });
 
-        if (!response.ok || !response.body) {
-          const error = await response.text().catch(() => 'Unknown error');
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => 'Unknown error');
+          let errorMessage = `DeepSeek API error (${response.status}): ${errorText}`;
+          
+          // Provide helpful error messages
+          if (response.status === 401) {
+            errorMessage = 'DeepSeek API key is invalid or missing. Please check your DEEPSEEK_API_KEY secret.';
+          } else if (response.status === 400) {
+            errorMessage = `DeepSeek API request error: ${errorText}. Check if the model name "${bot.model || 'deepseek-chat'}" is valid.`;
+          } else if (response.status === 429) {
+            errorMessage = 'DeepSeek API rate limit exceeded. Please try again later.';
+          }
+          
           return new Response(
-            JSON.stringify({ error: `DeepSeek API error: ${error}` }),
+            JSON.stringify({ error: errorMessage }),
             { status: response.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (!response.body) {
+          return new Response(
+            JSON.stringify({ error: 'DeepSeek API returned empty response body' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -303,10 +321,22 @@ serve(async (req) => {
                 const { done, value } = await reader.read();
                 if (done) {
                   if (Object.keys(accumulatedFunctionCalls).length > 0) {
-                    const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => ({
-                      name: fc.name,
-                      args: fc.args ? JSON.parse(fc.args) : {}
-                    }));
+                    const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => {
+                      let parsedArgs = {};
+                      if (fc.args) {
+                        try {
+                          parsedArgs = JSON.parse(fc.args);
+                        } catch (e) {
+                          console.error('Failed to parse function call args:', fc.args, e);
+                          // Try to parse as a string if JSON parse fails
+                          parsedArgs = { action_id: fc.args };
+                        }
+                      }
+                      return {
+                        name: fc.name,
+                        args: parsedArgs
+                      };
+                    });
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
                   }
                   break;
@@ -323,15 +353,20 @@ serve(async (req) => {
                       }
                       if (delta?.tool_calls) {
                         for (const toolCall of delta.tool_calls) {
-                          const index = toolCall.index;
-                          if (!accumulatedFunctionCalls[index]) {
-                            accumulatedFunctionCalls[index] = { name: '', args: '' };
-                          }
-                          if (toolCall.function?.name) {
-                            accumulatedFunctionCalls[index].name = toolCall.function.name;
-                          }
-                          if (toolCall.function?.arguments) {
-                            accumulatedFunctionCalls[index].args += toolCall.function.arguments;
+                          try {
+                            const index = toolCall.index;
+                            if (!accumulatedFunctionCalls[index]) {
+                              accumulatedFunctionCalls[index] = { name: '', args: '' };
+                            }
+                            if (toolCall.function?.name) {
+                              accumulatedFunctionCalls[index].name = toolCall.function.name;
+                            }
+                            if (toolCall.function?.arguments) {
+                              accumulatedFunctionCalls[index].args += toolCall.function.arguments;
+                            }
+                          } catch (toolCallError) {
+                            console.error('Error processing tool call:', toolCallError, toolCall);
+                            // Continue processing other tool calls
                           }
                         }
                       }
@@ -341,6 +376,29 @@ serve(async (req) => {
               }
               controller.close();
             } catch (error) {
+              console.error('Stream processing error:', error);
+              // Try to send any accumulated function calls before erroring
+              try {
+                if (Object.keys(accumulatedFunctionCalls).length > 0) {
+                  const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => {
+                    let parsedArgs = {};
+                    if (fc.args) {
+                      try {
+                        parsedArgs = JSON.parse(fc.args);
+                      } catch (e) {
+                        parsedArgs = { action_id: fc.args };
+                      }
+                    }
+                    return {
+                      name: fc.name,
+                      args: parsedArgs
+                    };
+                  });
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                }
+              } catch (finalError) {
+                console.error('Error sending final function calls:', finalError);
+              }
               controller.error(error);
             }
           },
@@ -403,10 +461,22 @@ serve(async (req) => {
                 const { done, value } = await reader.read();
                 if (done) {
                   if (Object.keys(accumulatedFunctionCalls).length > 0) {
-                    const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => ({
-                      name: fc.name,
-                      args: fc.args ? JSON.parse(fc.args) : {}
-                    }));
+                    const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => {
+                      let parsedArgs = {};
+                      if (fc.args) {
+                        try {
+                          parsedArgs = JSON.parse(fc.args);
+                        } catch (e) {
+                          console.error('Failed to parse function call args:', fc.args, e);
+                          // Try to parse as a string if JSON parse fails
+                          parsedArgs = { action_id: fc.args };
+                        }
+                      }
+                      return {
+                        name: fc.name,
+                        args: parsedArgs
+                      };
+                    });
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
                   }
                   break;
@@ -423,15 +493,20 @@ serve(async (req) => {
                       }
                       if (delta?.tool_calls) {
                         for (const toolCall of delta.tool_calls) {
-                          const index = toolCall.index;
-                          if (!accumulatedFunctionCalls[index]) {
-                            accumulatedFunctionCalls[index] = { name: '', args: '' };
-                          }
-                          if (toolCall.function?.name) {
-                            accumulatedFunctionCalls[index].name = toolCall.function.name;
-                          }
-                          if (toolCall.function?.arguments) {
-                            accumulatedFunctionCalls[index].args += toolCall.function.arguments;
+                          try {
+                            const index = toolCall.index;
+                            if (!accumulatedFunctionCalls[index]) {
+                              accumulatedFunctionCalls[index] = { name: '', args: '' };
+                            }
+                            if (toolCall.function?.name) {
+                              accumulatedFunctionCalls[index].name = toolCall.function.name;
+                            }
+                            if (toolCall.function?.arguments) {
+                              accumulatedFunctionCalls[index].args += toolCall.function.arguments;
+                            }
+                          } catch (toolCallError) {
+                            console.error('Error processing tool call:', toolCallError, toolCall);
+                            // Continue processing other tool calls
                           }
                         }
                       }
@@ -441,6 +516,29 @@ serve(async (req) => {
               }
               controller.close();
             } catch (error) {
+              console.error('Stream processing error:', error);
+              // Try to send any accumulated function calls before erroring
+              try {
+                if (Object.keys(accumulatedFunctionCalls).length > 0) {
+                  const functionCalls = Object.values(accumulatedFunctionCalls).map((fc: any) => {
+                    let parsedArgs = {};
+                    if (fc.args) {
+                      try {
+                        parsedArgs = JSON.parse(fc.args);
+                      } catch (e) {
+                        parsedArgs = { action_id: fc.args };
+                      }
+                    }
+                    return {
+                      name: fc.name,
+                      args: parsedArgs
+                    };
+                  });
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ functionCalls })}\n\n`));
+                }
+              } catch (finalError) {
+                console.error('Error sending final function calls:', finalError);
+              }
               controller.error(error);
             }
           },

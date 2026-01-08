@@ -40,8 +40,10 @@ View your app in AI Studio: https://ai.studio/apps/temp/1
    supabase login
    supabase link --project-ref your-project-ref
    
-   # Set Gemini API key as secret
+   # Set API keys as secrets (set only the ones you need)
    supabase secrets set GEMINI_API_KEY=your_gemini_api_key
+   supabase secrets set OPENAI_API_KEY=your_openai_api_key  # Optional
+   supabase secrets set DEEPSEEK_API_KEY=your_deepseek_api_key  # Optional
    
    # Deploy the function
    supabase functions deploy proxy-ai

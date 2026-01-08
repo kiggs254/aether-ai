@@ -66,9 +66,16 @@ supabase start
    ```
    (You can find your project ref in the Supabase dashboard URL)
 
-4. Set the Gemini API key as a secret:
+4. Set the API keys as secrets:
    ```bash
+   # Set Gemini API key
    supabase secrets set GEMINI_API_KEY=your_gemini_api_key
+   
+   # Set OpenAI API key (optional, if using OpenAI)
+   supabase secrets set OPENAI_API_KEY=your_openai_api_key
+   
+   # Set DeepSeek API key (optional, if using DeepSeek)
+   supabase secrets set DEEPSEEK_API_KEY=your_deepseek_api_key
    ```
 
 5. Deploy the edge function:
@@ -205,14 +212,20 @@ supabase link --project-ref your-production-project-ref
 
 Replace `your-production-project-ref` with the reference ID from Step 1.
 
-### Step 4: Set the Gemini API Key Secret
+### Step 4: Set the API Key Secrets
 
 ```bash
 # Set the Gemini API key as a secret in your production project
 supabase secrets set GEMINI_API_KEY=your_gemini_api_key
+
+# Set OpenAI API key (optional, if using OpenAI)
+supabase secrets set OPENAI_API_KEY=your_openai_api_key
+
+# Set DeepSeek API key (optional, if using DeepSeek)
+supabase secrets set DEEPSEEK_API_KEY=your_deepseek_api_key
 ```
 
-**Important:** Replace `your_gemini_api_key` with your actual Gemini API key. This secret will be securely stored and accessible only to your edge functions.
+**Important:** Replace the API keys with your actual keys. These secrets will be securely stored and accessible only to your edge functions. You only need to set the keys for the providers you plan to use.
 
 ### Step 5: Deploy the Edge Function
 
@@ -271,8 +284,11 @@ VITE_SUPABASE_ANON_KEY=your_production_anon_key
 - Verify your `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are correct
 
 **API key errors:**
-- Verify the secret is set: `supabase secrets list`
-- Make sure you set it in the correct project (production, not local)
+- Verify the secrets are set: `supabase secrets list`
+- Make sure you set them in the correct project (production, not local)
+- For DeepSeek: Ensure `DEEPSEEK_API_KEY` is set if using DeepSeek models
+- For OpenAI: Ensure `OPENAI_API_KEY` is set if using OpenAI models
+- For Gemini: Ensure `GEMINI_API_KEY` is set if using Gemini models
 
 **CORS errors:**
 - The edge function includes CORS headers, but verify your production domain is allowed

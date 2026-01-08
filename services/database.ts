@@ -130,6 +130,44 @@ export const botService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Check if this is a new bot creation (not an update)
+    const isNewBot = !bot.id || bot.id.startsWith('temp-');
+    
+    // For new bots, check if bot exists in database
+    let existingBot = null;
+    if (!isNewBot) {
+      const { data } = await supabase
+        .from('bots')
+        .select('id, user_id')
+        .eq('id', bot.id)
+        .single();
+      existingBot = data;
+    }
+
+    // If creating a new bot, check bot limit (unless super admin)
+    if (isNewBot || !existingBot) {
+      const { isSuperAdmin } = await import('../lib/admin');
+      const isAdmin = await isSuperAdmin();
+      
+      if (!isAdmin) {
+        // Check bot limit for non-admin users
+        const { getUserSubscriptionInfo } = await import('../lib/subscription');
+        const subscriptionInfo = await getUserSubscriptionInfo();
+        
+        if (subscriptionInfo.maxBots !== null) {
+          const { count } = await supabase
+            .from('bots')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          if ((count || 0) >= subscriptionInfo.maxBots) {
+            throw new Error(`Bot limit reached: Maximum ${subscriptionInfo.maxBots} bots allowed for your plan. Please upgrade to create more.`);
+          }
+        }
+      }
+      // Super admins bypass the limit check
+    }
+
     const botData = {
       user_id: user.id,
       name: bot.name,
@@ -154,8 +192,8 @@ export const botService = {
     
     // Check if bot exists in database (not just UUID format check)
     // This handles new bot creation properly even when crypto.randomUUID() generates a valid UUID
-    if (!bot.id || bot.id.startsWith('temp-')) {
-      // New bot - create (no ID or temp ID)
+    if (isNewBot || !existingBot) {
+      // New bot - create (no ID or temp ID, or bot doesn't exist)
       const { data, error } = await supabase
         .from('bots')
         .insert(botData)
@@ -166,44 +204,24 @@ export const botService = {
       if (!data) throw new Error('Failed to create bot');
       savedBot = data;
     } else {
-      // Check if bot actually exists in database
-      const { data: existingBot } = await supabase
+      // Bot exists - verify ownership before updating
+      // Both regular users and super admins can only edit their own bots
+      if (existingBot.user_id !== user.id) {
+        throw new Error('Bot not found or you do not have permission to edit this bot');
+      }
+
+      // Update existing bot (user owns it)
+      const { data, error } = await supabase
         .from('bots')
-        .select('id, user_id')
+        .update(botData)
         .eq('id', bot.id)
+        .eq('user_id', user.id)
+        .select()
         .single();
 
-      if (!existingBot) {
-        // Bot doesn't exist in DB - treat as new bot creation
-        const { data, error } = await supabase
-          .from('bots')
-          .insert(botData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (!data) throw new Error('Failed to create bot');
-        savedBot = data;
-      } else {
-        // Bot exists - verify ownership before updating
-        // Both regular users and super admins can only edit their own bots
-        if (existingBot.user_id !== user.id) {
-          throw new Error('Bot not found or you do not have permission to edit this bot');
-        }
-
-        // Update existing bot (user owns it)
-        const { data, error } = await supabase
-          .from('bots')
-          .update(botData)
-          .eq('id', bot.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (!data) throw new Error('Bot not found or update failed');
-        savedBot = data;
-      }
+      if (error) throw error;
+      if (!data) throw new Error('Bot not found or update failed');
+      savedBot = data;
     }
 
     // Save actions
@@ -707,6 +725,28 @@ export const integrationService = {
   }): Promise<Integration> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
+
+    // Check integration limit (unless super admin)
+    const { isSuperAdmin } = await import('../lib/admin');
+    const isAdmin = await isSuperAdmin();
+    
+    if (!isAdmin) {
+      // Check integration limit for non-admin users
+      const { getUserSubscriptionInfo } = await import('../lib/subscription');
+      const subscriptionInfo = await getUserSubscriptionInfo();
+      
+      if (subscriptionInfo.maxIntegrations !== null) {
+        const { count } = await supabase
+          .from('integrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        if ((count || 0) >= subscriptionInfo.maxIntegrations) {
+          throw new Error(`Integration limit reached: Maximum ${subscriptionInfo.maxIntegrations} integrations allowed for your plan. Please upgrade to create more.`);
+        }
+      }
+    }
+    // Super admins bypass the limit check
 
     const { data, error } = await supabase
       .from('integrations')

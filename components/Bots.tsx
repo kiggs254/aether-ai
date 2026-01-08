@@ -3,6 +3,7 @@ import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Bot } from '../types';
 import { botService } from '../services/database';
+import { supabase } from '../lib/supabase';
 import { Bot as BotIcon, Plus, Trash2, Edit, Search, Filter } from 'lucide-react';
 
 interface BotWithUser extends Bot {
@@ -28,6 +29,7 @@ const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) 
     message: string;
     onConfirm?: () => void;
     variant?: 'danger' | 'warning' | 'info';
+    type?: 'confirm' | 'alert';
   }>({
     isOpen: false,
     title: '',
@@ -52,23 +54,43 @@ const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) 
     }
   };
 
-  const handleDeleteBot = async (botId: string, botName?: string) => {
-    setModal({
-      isOpen: true,
-      title: 'Delete Bot',
-      message: `Are you sure you want to delete "${botName || 'this bot'}"? This cannot be undone.`,
-      variant: 'danger',
-      onConfirm: async () => {
-        try {
-          await botService.deleteBot(botId);
-          await loadData();
-          showSuccess('Bot deleted', 'The bot has been deleted successfully.');
-        } catch (error) {
-          console.error('Failed to delete bot:', error);
-          showError('Failed to delete bot', 'Please try again.');
-        }
-      },
-    });
+  const handleDeleteBot = async (bot: BotWithUser) => {
+    // Check if this is another user's bot (for admins)
+    const { data: { user } } = await supabase.auth.getUser();
+    const isOtherUsersBot = isAdmin && user?.email && bot.userEmail && bot.userEmail !== user.email;
+
+    if (isOtherUsersBot) {
+      // Show info modal explaining admins cannot delete other users' bots
+      setModal({
+        isOpen: true,
+        title: 'Cannot Delete Bot',
+        message: `You cannot delete "${bot.name}" as it belongs to another user (${bot.userEmail}). Admins can only delete their own bots.`,
+        variant: 'info',
+        type: 'alert',
+        onConfirm: () => {
+          setModal({ isOpen: false, title: '', message: '' });
+        },
+      });
+    } else {
+      // Normal delete confirmation for own bots
+      setModal({
+        isOpen: true,
+        title: 'Delete Bot',
+        message: `Are you sure you want to delete "${bot.name}"? This cannot be undone.`,
+        variant: 'danger',
+        type: 'confirm',
+        onConfirm: async () => {
+          try {
+            await botService.deleteBot(bot.id);
+            await loadData();
+            showSuccess('Bot deleted', 'The bot has been deleted successfully.');
+          } catch (error) {
+            console.error('Failed to delete bot:', error);
+            showError('Failed to delete bot', 'Please try again.');
+          }
+        },
+      });
+    }
   };
 
   const handleEditBot = (bot: BotWithUser) => {
@@ -231,7 +253,7 @@ const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) 
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteBot(bot.id, bot.name)}
+                          onClick={() => handleDeleteBot(bot)}
                           className="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
                           title="Delete bot"
                         >
@@ -253,9 +275,9 @@ const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) 
         onConfirm={modal.onConfirm}
         title={modal.title}
         message={modal.message}
-        type="confirm"
+        type={modal.type || 'confirm'}
         variant={modal.variant || 'info'}
-        confirmText="Delete"
+        confirmText={modal.type === 'alert' ? 'OK' : 'Delete'}
         cancelText="Cancel"
       />
     </div>

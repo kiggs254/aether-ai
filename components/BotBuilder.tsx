@@ -8,6 +8,8 @@ import { parseXMLFeed, updateProductCatalog } from '../services/productFeed';
 import { getProductCatalog } from '../services/productQuery';
 import { Product, EcommerceSettings } from '../types';
 import { getUserSubscriptionInfo, FeatureValidator, getModelIdentifier } from '../lib/subscription';
+import { useAdminStatus } from '../lib/useAdminStatus';
+import { supabase } from '../lib/supabase';
 
 interface BotBuilderProps {
   bot: Bot | null;
@@ -18,6 +20,9 @@ interface BotBuilderProps {
 
 const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBack }) => {
   const { showSuccess, showError } = useModal();
+  const { isAdmin } = useAdminStatus();
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [name, setName] = useState(bot?.name || '');
   const [description, setDescription] = useState(bot?.description || '');
   const [website, setWebsite] = useState(bot?.website || '');
@@ -69,6 +74,28 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   // Subscription info
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [featureValidator, setFeatureValidator] = useState<FeatureValidator | null>(null);
+
+  // Check if bot is view-only (super admin viewing another user's bot)
+  useEffect(() => {
+    async function checkOwnership() {
+      if (!bot || !bot.userId) {
+        setIsViewOnly(false);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsViewOnly(false);
+        return;
+      }
+
+      setCurrentUserId(user.id);
+      const isOwnBot = bot.userId === user.id;
+      // View-only if super admin and viewing another user's bot
+      setIsViewOnly(isAdmin && !isOwnBot);
+    }
+    checkOwnership();
+  }, [bot, isAdmin]);
 
   // Load subscription info
   useEffect(() => {
@@ -169,6 +196,12 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   };
 
   const handleSave = async () => {
+    // Prevent saving if view-only
+    if (isViewOnly) {
+      showError('View Only Mode', 'You cannot edit this bot as it belongs to another user.');
+      return;
+    }
+
     // Validate knowledge base character limit
     if (featureValidator) {
       const knowledgeCheck = featureValidator.canUseKnowledgeChars(knowledge.length);
@@ -223,6 +256,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   };
 
   const handleOptimize = async () => {
+    if (isViewOnly) {
+      showError('View Only Mode', 'You cannot optimize this bot as it belongs to another user.');
+      return;
+    }
     if (!instruction || !name) return;
     setIsOptimizing(true);
     try {
@@ -431,6 +468,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
   };
 
   const handleDeleteAction = (id: string) => {
+    if (isViewOnly) {
+      showError('View Only Mode', 'You cannot delete actions for this bot as it belongs to another user.');
+      return;
+    }
     setActions(prev => prev.filter(a => a.id !== id));
   };
 
@@ -454,6 +495,19 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-5xl mx-auto">
+      {/* View-Only Banner */}
+      {isViewOnly && (
+        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-yellow-400 font-medium">View Only Mode</p>
+            <p className="text-yellow-300/80 text-sm mt-1">
+              This bot belongs to another user. You can view the configuration but cannot make changes.
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-2 sm:gap-4">
           <button 
@@ -480,7 +534,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
            )}
            <button 
             onClick={handleSave}
-            className={`flex items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-medium shadow-lg transition-all active:scale-95 text-sm sm:text-base ${saveStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]'}`}
+            disabled={isViewOnly}
+            className={`flex items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-2.5 rounded-xl font-medium shadow-lg transition-all active:scale-95 text-sm sm:text-base ${isViewOnly ? 'bg-slate-600 text-slate-300 cursor-not-allowed opacity-50' : saveStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)]'}`}
            >
              {saveStatus === 'saved' ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
              {saveStatus === 'saved' ? 'Saved!' : 'Save Bot'}
@@ -570,7 +625,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. Sales Assistant"
-                        className="w-full p-3 rounded-xl glass-input placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                        disabled={isViewOnly}
+                        className="w-full p-3 rounded-xl glass-input placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                     </div>
                     <div className="space-y-2">
@@ -582,7 +638,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             value={website}
                             onChange={(e) => setWebsite(e.target.value)}
                             placeholder="https://myshop.com"
-                            className="w-full p-3 pl-10 rounded-xl glass-input placeholder-slate-500"
+                            disabled={isViewOnly}
+                            className="w-full p-3 pl-10 rounded-xl glass-input placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                         </div>
                     </div>
@@ -594,7 +651,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Short tagline for dashboard reference..."
-                    className="w-full p-3 rounded-xl glass-input placeholder-slate-500"
+                    disabled={isViewOnly}
+                    className="w-full p-3 rounded-xl glass-input placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                  </div>
               </div>
@@ -607,7 +665,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                     </h3>
                     <button 
                        onClick={handleOptimize}
-                       disabled={isOptimizing}
+                       disabled={isViewOnly || isOptimizing}
                        className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
                        <Wand2 className={`w-3 h-3 ${isOptimizing ? 'animate-spin' : ''}`} />
@@ -618,7 +676,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                  <textarea
                     value={instruction}
                     onChange={(e) => setInstruction(e.target.value)}
-                    className="w-full h-80 p-4 rounded-xl glass-input placeholder-slate-500 resize-none font-mono text-sm leading-relaxed"
+                    disabled={isViewOnly}
+                    className="w-full h-80 p-4 rounded-xl glass-input placeholder-slate-500 resize-none font-mono text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="You are a helpful customer support agent..."
                  />
               </div>
@@ -644,7 +703,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                            step="0.1" 
                            value={temperature}
                            onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                           disabled={isViewOnly}
+                           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <div className="flex justify-between text-xs text-slate-500 mt-1">
                            <span>Precise</span>
@@ -669,7 +729,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                               setModel('gemini-2.5-flash');
                             }
                           }}
-                          className="w-full p-3 rounded-xl glass-input text-white"
+                          disabled={isViewOnly}
+                          className="w-full p-3 rounded-xl glass-input text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <option value="gemini">Google Gemini</option>
                           <option value="openai">OpenAI</option>
@@ -689,7 +750,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             }
                             setModel(newModel);
                           }}
-                          className="w-full p-3 rounded-xl glass-input text-white"
+                          disabled={isViewOnly}
+                          className="w-full p-3 rounded-xl glass-input text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {getAvailableModels(provider).map((m) => (
                             <option key={m.value} value={m.value}>
@@ -718,7 +780,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                           value={brandingText}
                           onChange={(e) => setBrandingText(e.target.value)}
                           placeholder="Powered by ChatFlow"
-                          className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm"
+                          disabled={isViewOnly}
+                          className="w-full p-3 rounded-xl glass-input text-white placeholder-slate-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <p className="text-xs text-slate-500 mt-1.5">Customize the "Powered by" text shown in the widget. Leave empty for default.</p>
                      </div>
@@ -762,9 +825,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                               type="file"
                               accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                               onChange={handleHeaderImageSelect}
+                              disabled={isViewOnly}
                               className="hidden"
                             />
-                            <div className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-500/50 transition-colors">
+                            <div className={`border-2 border-dashed border-white/10 rounded-xl p-6 text-center transition-colors ${isViewOnly ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-indigo-500/50'}`}>
                               <Image className="w-8 h-8 mx-auto mb-2 text-slate-400" />
                               <p className="text-sm text-slate-300">Click to upload header image</p>
                               <p className="text-xs text-slate-500 mt-1">JPG, PNG, GIF, or WebP (max 5MB)</p>
@@ -843,7 +907,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                          value={currentAction.label}
                          onChange={(e) => setCurrentAction(prev => ({ ...prev, label: e.target.value }))}
                          placeholder={currentAction.type === 'phone' ? 'Call Support' : 'Click Me'}
-                         className="w-full p-2.5 rounded-xl glass-input text-sm placeholder-slate-600"
+                         disabled={isViewOnly}
+                         className="w-full p-2.5 rounded-xl glass-input text-sm placeholder-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                        />
                     </div>
 
@@ -1009,7 +1074,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
 
                     <button 
                        onClick={handleSaveAction}
-                       disabled={!currentAction.label || isUploading || (currentAction.type === 'products' && !ecommerceEnabled)}
+                       disabled={isViewOnly || !currentAction.label || isUploading || (currentAction.type === 'products' && !ecommerceEnabled)}
                        className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-medium text-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center gap-2"
                     >
                        {isUploading ? (
@@ -1055,18 +1120,24 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                  <button 
                                     onClick={() => { 
+                                      if (isViewOnly) {
+                                        showError('View Only Mode', 'You cannot edit actions for this bot as it belongs to another user.');
+                                        return;
+                                      }
                                       setCurrentAction(action); 
                                       setIsEditingAction(true);
                                       setSelectedFile(null);
                                       setFilePreview(null);
                                     }}
-                                    className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
+                                    disabled={isViewOnly}
+                                    className={`p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white ${isViewOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                  >
                                     <Sliders className="w-4 h-4" />
                                  </button>
                                  <button 
                                     onClick={() => handleDeleteAction(action.id)}
-                                    className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400"
+                                    disabled={isViewOnly}
+                                    className={`p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 ${isViewOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                  >
                                     <Trash2 className="w-4 h-4" />
                                  </button>
@@ -1104,8 +1175,12 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                   <input
                     type="checkbox"
                     checked={ecommerceEnabled}
-                    disabled={featureValidator && !featureValidator.canUseEcommerce()}
+                    disabled={isViewOnly || (featureValidator && !featureValidator.canUseEcommerce())}
                     onChange={(e) => {
+                      if (isViewOnly) {
+                        showError('View Only Mode', 'You cannot edit this bot as it belongs to another user.');
+                        return;
+                      }
                       if (featureValidator && !featureValidator.canUseEcommerce()) {
                         showError('Ecommerce Not Available', 'Ecommerce functionality is not available in your plan. Please upgrade to Premium.');
                         return;
@@ -1133,10 +1208,15 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                           value={productFeedUrl}
                           onChange={(e) => setProductFeedUrl(e.target.value)}
                           placeholder="https://example.com/products.xml"
-                          className="flex-1 p-3 rounded-xl glass-input text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                          disabled={isViewOnly}
+                          className="flex-1 p-3 rounded-xl glass-input text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <button
                           onClick={async () => {
+                            if (isViewOnly) {
+                              showError('View Only Mode', 'You cannot test feeds for this bot as it belongs to another user.');
+                              return;
+                            }
                             if (!productFeedUrl) {
                               showError('Missing URL', 'Please enter a product feed URL');
                               return;
@@ -1154,7 +1234,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                               setIsTestingFeed(false);
                             }
                           }}
-                          disabled={isTestingFeed || !productFeedUrl}
+                          disabled={isViewOnly || isTestingFeed || !productFeedUrl}
                           className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                           {isTestingFeed ? <Loader className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -1192,6 +1272,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             showError('No bot ID', 'Please save the bot first');
                             return;
                           }
+                          if (isViewOnly) {
+                            showError('View Only Mode', 'You cannot update the catalog for this bot as it belongs to another user.');
+                            return;
+                          }
                           setIsRefreshingCatalog(true);
                           try {
                             const defaultCurrency = ecommerceSettings.defaultCurrency || 'USD';
@@ -1206,7 +1290,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             setIsRefreshingCatalog(false);
                           }
                         }}
-                        disabled={isRefreshingCatalog || !productFeedUrl}
+                        disabled={isViewOnly || isRefreshingCatalog || !productFeedUrl}
                         className="w-full px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
                         {isRefreshingCatalog ? <Loader className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -1232,7 +1316,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             ...ecommerceSettings,
                             maxProductsToRecommend: parseInt(e.target.value) || 10
                           })}
-                          disabled={!ecommerceEnabled}
+                          disabled={isViewOnly || !ecommerceEnabled}
                           className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <p className="text-xs text-slate-500 mt-1">Maximum products the AI can recommend in a single response</p>
@@ -1248,7 +1332,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             ...ecommerceSettings,
                             productsVisibleInCarousel: parseInt(e.target.value) || 5
                           })}
-                          disabled={!ecommerceEnabled}
+                          disabled={isViewOnly || !ecommerceEnabled}
                           className="w-full p-3 rounded-xl glass-input text-white focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <p className="text-xs text-slate-500 mt-1">Number of products shown when a product action is triggered</p>
@@ -1264,6 +1348,10 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                       <h3 className="text-white font-semibold">Product Catalog</h3>
                       <button
                         onClick={async () => {
+                          if (isViewOnly) {
+                            showError('View Only Mode', 'You cannot refresh the catalog for this bot as it belongs to another user.');
+                            return;
+                          }
                           if (!bot.id) return;
                           try {
                             const products = await getProductCatalog(bot.id);
@@ -1272,7 +1360,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                             showError('Failed to load catalog', error.message);
                           }
                         }}
-                        className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                        disabled={isViewOnly}
+                        className={`text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 ${isViewOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <RefreshCw className="w-3 h-3" />
                         Refresh
@@ -1328,6 +1417,7 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                <textarea
                 value={knowledge}
                 onChange={(e) => {
+                  if (isViewOnly) return;
                   const newKnowledge = e.target.value;
                   if (featureValidator) {
                     const check = featureValidator.canUseKnowledgeChars(newKnowledge.length);
@@ -1338,7 +1428,8 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
                   }
                   setKnowledge(newKnowledge);
                 }}
-                className="w-full h-full p-6 rounded-2xl glass-input placeholder-slate-500 resize-none font-mono text-sm leading-relaxed"
+                disabled={isViewOnly}
+                className="w-full h-full p-6 rounded-2xl glass-input placeholder-slate-500 resize-none font-mono text-sm leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="# Company Overview
 Aether AI is a..."
               />

@@ -130,9 +130,6 @@ export const botService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Check if user is super admin
-    const isAdmin = await isSuperAdmin();
-
     const botData = {
       user_id: user.id,
       name: bot.name,
@@ -154,11 +151,11 @@ export const botService = {
     };
 
     let savedBot;
-    // Check if bot ID is a valid UUID (not a temp ID)
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bot.id || '');
     
-    if (!bot.id || bot.id.startsWith('temp-') || !isUUID) {
-      // New bot - create
+    // Check if bot exists in database (not just UUID format check)
+    // This handles new bot creation properly even when crypto.randomUUID() generates a valid UUID
+    if (!bot.id || bot.id.startsWith('temp-')) {
+      // New bot - create (no ID or temp ID)
       const { data, error } = await supabase
         .from('bots')
         .insert(botData)
@@ -169,26 +166,15 @@ export const botService = {
       if (!data) throw new Error('Failed to create bot');
       savedBot = data;
     } else {
-      // Update existing bot - first check if it exists
-      // Super admins can edit any bot, regular users can only edit their own
-      let existingBotQuery = supabase
+      // Check if bot actually exists in database
+      const { data: existingBot } = await supabase
         .from('bots')
         .select('id, user_id')
-        .eq('id', bot.id);
-      
-      if (!isAdmin) {
-        // Regular users can only edit their own bots
-        existingBotQuery = existingBotQuery.eq('user_id', user.id);
-      }
-      
-      const { data: existingBot } = await existingBotQuery.single();
+        .eq('id', bot.id)
+        .single();
 
       if (!existingBot) {
-        // Bot doesn't exist or user doesn't have permission
-        if (!isAdmin) {
-          throw new Error('Bot not found or you do not have permission to edit this bot');
-        }
-        // For super admin, create new one if it doesn't exist
+        // Bot doesn't exist in DB - treat as new bot creation
         const { data, error } = await supabase
           .from('bots')
           .insert(botData)
@@ -199,23 +185,20 @@ export const botService = {
         if (!data) throw new Error('Failed to create bot');
         savedBot = data;
       } else {
-        // Update existing bot
-        // For super admins editing other users' bots, preserve the original user_id
-        const updateData = isAdmin && existingBot.user_id !== user.id 
-          ? { ...botData, user_id: existingBot.user_id } // Preserve original owner
-          : botData;
-        
-        let updateQuery = supabase
-          .from('bots')
-          .update(updateData)
-          .eq('id', bot.id);
-        
-        if (!isAdmin) {
-          // Regular users can only update their own bots
-          updateQuery = updateQuery.eq('user_id', user.id);
+        // Bot exists - verify ownership before updating
+        // Both regular users and super admins can only edit their own bots
+        if (existingBot.user_id !== user.id) {
+          throw new Error('Bot not found or you do not have permission to edit this bot');
         }
-        
-        const { data, error } = await updateQuery.select().single();
+
+        // Update existing bot (user owns it)
+        const { data, error } = await supabase
+          .from('bots')
+          .update(botData)
+          .eq('id', bot.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
 
         if (error) throw error;
         if (!data) throw new Error('Bot not found or update failed');

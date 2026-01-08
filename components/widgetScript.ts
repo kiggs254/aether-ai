@@ -2794,7 +2794,7 @@ export const generateWidgetJS = (): string => {
       removeTypingIndicator();
       if (!messages) return;
       
-      const botMsg = document.createElement('div');
+      let botMsg = document.createElement('div');
       botMsg.className = 'aether-msg bot';
       botMsg.id = 'aether-current-msg';
       messages.appendChild(botMsg);

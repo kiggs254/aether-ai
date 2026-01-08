@@ -1608,7 +1608,14 @@ export const generateWidgetJS = (): string => {
       if (convId) {
         conversationId = convId;
         // Update bot reference for the rest of the session
-        bot = botToUse;
+        // Use currentBot instead of reassigning bot to avoid closure issues
+        if (selectedDepartmentBot) {
+          currentBot = botToUse;
+        } else {
+          // For non-department bots, update the main bot reference
+          // Create a new object to avoid const assignment issues
+          Object.assign(bot, botToUse);
+        }
         console.log('Conversation created/found:', convId, 'with bot:', botToUse.name);
         
         // Update bot name in header
@@ -2704,8 +2711,10 @@ export const generateWidgetJS = (): string => {
     }
     
     // Update session timestamp when sending a message
+    // Use currentBot if department bot is selected, otherwise use default bot
+    const botForSession = selectedDepartmentBot ? currentBot : bot;
     if (conversationId) {
-      saveSession(bot.id, conversationId, leadData.email || leadData.phone ? leadData : null);
+      saveSession(botForSession.id, conversationId, leadData.email || leadData.phone ? leadData : null);
     }
     
     let imageDataUrl = null;
@@ -2752,14 +2761,17 @@ export const generateWidgetJS = (): string => {
         console.error('Widget error: Supabase anon key required for direct Supabase calls. Please add supabaseAnonKey to AetherBotConfig or use Netlify proxy.');
       }
       
+      // Use currentBot if department bot is selected, otherwise use default bot
+      const botToSend = selectedDepartmentBot ? currentBot : bot;
+      
       // Log bot configuration being sent (for debugging)
       console.log('Sending bot config to API:', {
-        id: bot.id,
-        name: bot.name,
-        provider: bot.provider,
-        model: bot.model,
-        actionsCount: bot.actions ? bot.actions.length : 0,
-        actions: bot.actions
+        id: botToSend.id,
+        name: botToSend.name,
+        provider: botToSend.provider,
+        model: botToSend.model,
+        actionsCount: botToSend.actions ? botToSend.actions.length : 0,
+        actions: botToSend.actions
       });
       
       const response = await fetch(functionUrl, {
@@ -2767,7 +2779,7 @@ export const generateWidgetJS = (): string => {
         headers: headers,
         body: JSON.stringify({
           action: 'chat-stream',
-          bot: bot,
+          bot: botToSend,
           history: messageHistory.slice(-10),
           message: text || (imageDataUrl ? 'User sent an image' : ''),
           image: imageDataUrl,
@@ -2921,9 +2933,11 @@ export const generateWidgetJS = (): string => {
       }
 
       // Handle product recommendations
+      // Use currentBot if department bot is selected, otherwise use default bot
+      const botForActions = selectedDepartmentBot ? currentBot : bot;
       if (productRecommendationCall) {
         try {
-          const hasProducts = await handleProductRecommendation(productRecommendationCall, botMsg, bot, conversationId);
+          const hasProducts = await handleProductRecommendation(productRecommendationCall, botMsg, botForActions, conversationId);
           // If no products found, the message was already updated in handleProductRecommendation
           // If products found and no text from AI, set default message
           if (hasProducts && (!fullText || !fullText.trim())) {
@@ -3002,7 +3016,7 @@ export const generateWidgetJS = (): string => {
       }
       
       if (actionId) {
-        const action = bot.actions.find(a => a.id === actionId);
+        const action = botForActions.actions.find(a => a.id === actionId);
         if (action) {
           // Get trigger message to save as message text
           const triggerMessage = action.triggerMessage || (action.type === 'handoff' ? 'Transferring you to an agent...' : "I've triggered the requested action for you.");
@@ -3044,14 +3058,14 @@ export const generateWidgetJS = (): string => {
             }
             
             // Fetch and render products
-            if (bot && bot.id) {
+            if (botForActions && botForActions.id) {
               // If product_ids are specified, fetch those specific products
               // Otherwise, use filters to query products
               let productsPromise;
               if (filters.product_ids && Array.isArray(filters.product_ids) && filters.product_ids.length > 0) {
                 // Fetch specific products by ID
                 productsPromise = Promise.all(filters.product_ids.map(function(productId) {
-                  return fetch(config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + bot.id + '&product_id=eq.' + encodeURIComponent(productId) + '&select=*', {
+                  return fetch(config.supabaseUrl + '/rest/v1/product_catalog?bot_id=eq.' + botForActions.id + '&product_id=eq.' + encodeURIComponent(productId) + '&select=*', {
                     method: 'GET',
                     headers: {
                       'Content-Type': 'application/json',
@@ -3071,12 +3085,12 @@ export const generateWidgetJS = (): string => {
                 });
               } else {
                 // Use filters to query products
-                productsPromise = queryProducts(bot.id, {
+                productsPromise = queryProducts(botForActions.id, {
                   category: filters.category,
                   price_min: filters.price_min,
                   price_max: filters.price_max,
                   keywords: filters.keywords,
-                  max_results: filters.max_results || (bot.ecommerceSettings?.productsVisibleInCarousel || 5),
+                  max_results: filters.max_results || (botForActions.ecommerceSettings?.productsVisibleInCarousel || 5),
                 });
               }
               

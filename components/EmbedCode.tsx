@@ -207,14 +207,14 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
         }
       }
 
-      // Validate lead collection
-      if (collectLeads && featureValidator && !featureValidator.canCollectLeads()) {
+      // Validate lead collection (unless super admin)
+      if (!isAdmin && collectLeads && featureValidator && !featureValidator.canCollectLeads()) {
         showError('Feature not available', 'Lead collection is not available in your plan. Please upgrade.');
         return;
       }
 
-      // Validate departmental bots
-      if (integrationType === 'departmental' && departmentBots && departmentBots.length > 0 && featureValidator && !featureValidator.canUseDepartmentalBots()) {
+      // Validate departmental bots (unless super admin)
+      if (!isAdmin && integrationType === 'departmental' && departmentBots && departmentBots.length > 0 && featureValidator && !featureValidator.canUseDepartmentalBots()) {
         showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
         return;
       }
@@ -228,8 +228,8 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
         position,
         brandColor,
         welcomeMessage,
-        collectLeads: featureValidator?.canCollectLeads() ? collectLeads : false,
-        departmentBots: (integrationType === 'departmental' && featureValidator?.canUseDepartmentalBots()) ? departmentBots : [],
+        collectLeads: (isAdmin || featureValidator?.canCollectLeads()) ? collectLeads : false,
+        departmentBots: (integrationType === 'departmental' && (isAdmin || featureValidator?.canUseDepartmentalBots())) ? departmentBots : [],
       });
       setSelectedIntegration(newIntegration);
       setIsCreating(false);

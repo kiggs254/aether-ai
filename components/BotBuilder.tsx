@@ -202,8 +202,14 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       return;
     }
 
-    // Validate knowledge base character limit
-    if (featureValidator) {
+    // Check if user is super admin - super admins bypass all restrictions
+    const { isSuperAdmin } = await import('../lib/admin');
+    const isAdmin = await isSuperAdmin();
+    const isAdminViaPlan = subscriptionInfo?.planName === 'Super Admin';
+    const isSuperAdminUser = isAdmin || isAdminViaPlan;
+
+    // Validate knowledge base character limit (unless super admin)
+    if (!isSuperAdminUser && featureValidator) {
       const knowledgeCheck = featureValidator.canUseKnowledgeChars(knowledge.length);
       if (!knowledgeCheck.allowed) {
         showError('Knowledge Base Limit Exceeded', knowledgeCheck.reason || 'Character limit exceeded');
@@ -211,26 +217,26 @@ const BotBuilder: React.FC<BotBuilderProps> = ({ bot, onSave, onCreateNew, onBac
       }
     }
 
-    // Validate model selection
-    if (featureValidator && !featureValidator.canUseModel(provider, model)) {
+    // Validate model selection (unless super admin)
+    if (!isSuperAdminUser && featureValidator && !featureValidator.canUseModel(provider, model)) {
       showError('Model Not Available', 'The selected model is not available in your plan. Please select an allowed model or upgrade your plan.');
       return;
     }
 
-    // Validate actions
-    if (actions.length > 0 && featureValidator && !featureValidator.canUseActions()) {
+    // Validate actions (unless super admin)
+    if (!isSuperAdminUser && actions.length > 0 && featureValidator && !featureValidator.canUseActions()) {
       showError('Actions Not Available', 'Custom actions are not available in your plan. Please upgrade to use actions.');
       return;
     }
 
-    // Validate ecommerce
-    if (ecommerceEnabled && featureValidator && !featureValidator.canUseEcommerce()) {
+    // Validate ecommerce (unless super admin)
+    if (!isSuperAdminUser && ecommerceEnabled && featureValidator && !featureValidator.canUseEcommerce()) {
       showError('Ecommerce Not Available', 'Ecommerce functionality is not available in your plan. Please upgrade to use ecommerce features.');
       return;
     }
 
-    // Validate branding options (premium feature)
-    const isFreeUser = subscriptionInfo?.isFree && subscriptionInfo?.planName !== 'Super Admin';
+    // Validate branding options (premium feature) - super admins can use branding
+    const isFreeUser = !isSuperAdminUser && subscriptionInfo?.isFree;
     if (isFreeUser && (brandingText.trim() || headerImageUrl.trim())) {
       showError('Premium Feature', 'Custom branding (text and header image) is only available for Pro and Premium plans. Please upgrade to use this feature.');
       return;

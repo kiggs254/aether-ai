@@ -7,11 +7,12 @@ import { integrationService, botService } from '../services/database';
 import { getUserSubscriptionInfo, FeatureValidator } from '../lib/subscription';
 
 interface EmbedCodeProps {
-  bot: Bot;
+  bot: Bot | null;
   integrationId?: string; // Optional: for editing existing integration
+  integrationType?: 'single' | 'departmental'; // Type of integration being created/edited
 }
 
-const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
+const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, integrationType: propIntegrationType }) => {
   const { showSuccess, showError } = useModal();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
@@ -21,17 +22,24 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
   const [isCreating, setIsCreating] = useState(!integrationId);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Integration type state (from prop or determined from integration)
+  const [integrationType, setIntegrationType] = useState<'single' | 'departmental' | null>(propIntegrationType || null);
+  
+  // Selected bot state (for single bot integrations when bot is not provided)
+  const [selectedBotId, setSelectedBotId] = useState<string>(propBot?.id || '');
+  const [selectedBot, setSelectedBot] = useState<Bot | null>(propBot);
+  
   // Subscription info
   const [subscriptionInfo, setSubscriptionInfo] = useState<any>(null);
   const [featureValidator, setFeatureValidator] = useState<FeatureValidator | null>(null);
   
   // Widget Customization State (for new integration or editing)
   const [integrationName, setIntegrationName] = useState('');
-  const [welcomeMessage, setWelcomeMessage] = useState(`Hi there! I'm ${bot.name}. How can I help you?`);
+  const [welcomeMessage, setWelcomeMessage] = useState(propBot ? `Hi there! I'm ${propBot.name}. How can I help you?` : 'Hi there! How can I help you?');
   const [brandColor, setBrandColor] = useState('#6366f1');
   const [position, setPosition] = useState<'right' | 'left'>('right');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [collectLeads, setCollectLeads] = useState(bot.collectLeads || false);
+  const [collectLeads, setCollectLeads] = useState(propBot?.collectLeads || false);
   const [departmentBots, setDepartmentBots] = useState<DepartmentBot[]>([]);
   const [availableBots, setAvailableBots] = useState<Bot[]>([]);
   const [isLoadingBots, setIsLoadingBots] = useState(false);
@@ -56,6 +64,22 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
     message: '',
   });
 
+  // Update selected bot when propBot changes
+  useEffect(() => {
+    if (propBot) {
+      setSelectedBot(propBot);
+      setSelectedBotId(propBot.id);
+      setWelcomeMessage(`Hi there! I'm ${propBot.name}. How can I help you?`);
+    }
+  }, [propBot]);
+
+  // Update integration type from prop
+  useEffect(() => {
+    if (propIntegrationType) {
+      setIntegrationType(propIntegrationType);
+    }
+  }, [propIntegrationType]);
+
   // Load subscription info and integration
   useEffect(() => {
     loadSubscriptionInfo();
@@ -66,7 +90,20 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
       setIsCreating(true);
       setIsLoading(false);
     }
-  }, [bot.id, integrationId]);
+  }, [integrationId]);
+
+  // Update selected bot when selectedBotId changes (for single bot integrations)
+  useEffect(() => {
+    if (selectedBotId && availableBots.length > 0) {
+      const bot = availableBots.find(b => b.id === selectedBotId);
+      if (bot) {
+        setSelectedBot(bot);
+        if (!integrationId && !welcomeMessage.includes(bot.name)) {
+          setWelcomeMessage(`Hi there! I'm ${bot.name}. How can I help you?`);
+        }
+      }
+    }
+  }, [selectedBotId, availableBots]);
 
   const loadSubscriptionInfo = async () => {
     try {
@@ -102,12 +139,23 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
     try {
       setIsLoading(true);
       const integration = await integrationService.getIntegrationById(id);
-      if (integration && integration.botId === bot.id) {
+      if (integration) {
+        // Determine integration type from departmentBots
+        const type = integration.departmentBots && integration.departmentBots.length > 0 ? 'departmental' : 'single';
+        setIntegrationType(type);
+        
+        // For single bot integrations, load the bot
+        if (type === 'single' && integration.botId) {
+          const bot = await botService.getBotById(integration.botId);
+          setSelectedBot(bot);
+          setSelectedBotId(bot.id);
+        }
+        
         setSelectedIntegration(integration);
         loadIntegrationSettings(integration);
         setIsCreating(false);
       } else {
-        showError('Integration not found', 'This integration does not belong to this bot.');
+        showError('Integration not found', 'This integration could not be loaded.');
       }
     } catch (error) {
       console.error('Failed to load integration:', error);
@@ -124,7 +172,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
 
   const loadIntegrationSettings = (integration: Integration) => {
     setIntegrationName(integration.name || '');
-    setWelcomeMessage(integration.welcomeMessage || `Hi there! I'm ${bot.name}. How can I help you?`);
+    setWelcomeMessage(integration.welcomeMessage || (selectedBot ? `Hi there! I'm ${selectedBot.name}. How can I help you?` : 'Hi there! How can I help you?'));
     setBrandColor(integration.brandColor);
     setPosition(integration.position);
     setTheme(integration.theme);
@@ -135,6 +183,12 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
 
   const handleCreateIntegration = async () => {
     try {
+      // Validate bot selection for single bot integrations
+      if (integrationType === 'single' && !selectedBotId) {
+        showError('Bot selection required', 'Please select a bot for your single bot integration.');
+        return;
+      }
+
       // Check subscription limits
       if (!subscriptionInfo) {
         await loadSubscriptionInfo();
@@ -155,20 +209,23 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
         }
 
         // Validate departmental bots
-        if (departmentBots && departmentBots.length > 0 && !featureValidator.canUseDepartmentalBots()) {
+        if (integrationType === 'departmental' && departmentBots && departmentBots.length > 0 && !featureValidator.canUseDepartmentalBots()) {
           showError('Feature not available', 'Departmental bots are not available in your plan. Please upgrade.');
           return;
         }
       }
 
-      const newIntegration = await integrationService.createIntegration(bot.id, {
+      // Determine botId: for single bot use selectedBotId, for departmental use empty string or first department bot
+      const botId = integrationType === 'single' ? selectedBotId : (departmentBots.length > 0 ? departmentBots[0].botId : '');
+
+      const newIntegration = await integrationService.createIntegration(botId, {
         name: integrationName.trim() || undefined,
         theme,
         position,
         brandColor,
         welcomeMessage,
         collectLeads: featureValidator?.canCollectLeads() ? collectLeads : false,
-        departmentBots: featureValidator?.canUseDepartmentalBots() ? departmentBots : [],
+        departmentBots: (integrationType === 'departmental' && featureValidator?.canUseDepartmentalBots()) ? departmentBots : [],
       });
       setSelectedIntegration(newIntegration);
       setIsCreating(false);
@@ -291,9 +348,9 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
     if (selectedIntegration) {
       // New format: use integrationId (widget will fetch both integration and bot configs)
       configObject.integrationId = selectedIntegration.id;
-    } else {
+    } else if (selectedBot) {
       // Fallback: use botId format (backward compatibility)
-      configObject.botId = bot.id;
+      configObject.botId = selectedBot.id;
       configObject.theme = theme;
       configObject.position = position;
       configObject.brandColor = brandColor;
@@ -437,6 +494,36 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
 
                  <div className="w-full h-px bg-white/5"></div>
 
+                 {/* Bot Selection for Single Bot Integrations */}
+                 {isCreating && integrationType === 'single' && !selectedBot && (
+                    <>
+                       <div className="space-y-4">
+                          <h3 className="text-white font-semibold flex items-center gap-2">
+                             <BotIcon className="w-5 h-5 text-indigo-400" /> Select Bot
+                          </h3>
+                          <div className="space-y-3">
+                             <div className="space-y-1">
+                                <label className="text-xs font-medium text-slate-400">Choose a bot for this integration</label>
+                                <select
+                                   value={selectedBotId}
+                                   onChange={(e) => setSelectedBotId(e.target.value)}
+                                   className="w-full p-3 rounded-xl glass-input text-sm text-white"
+                                >
+                                   <option value="">Select a bot...</option>
+                                   {availableBots.map((b) => (
+                                      <option key={b.id} value={b.id}>{b.name}</option>
+                                   ))}
+                                </select>
+                                {!selectedBotId && (
+                                   <p className="text-xs text-slate-500">You must select a bot to create a single bot integration.</p>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                       <div className="w-full h-px bg-white/5"></div>
+                    </>
+                 )}
+
                  {/* General Settings */}
                  <div className="space-y-4">
                     <h3 className="text-white font-semibold flex items-center gap-2">
@@ -472,114 +559,117 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                              <p className="text-xs text-slate-500">Upgrade to enable lead collection</p>
                           )}
                        </div>
-                       <div className={`space-y-3 pt-3 border-t border-white/10 ${featureValidator && !featureValidator.canUseDepartmentalBots() ? 'opacity-50' : ''}`}>
-                          <div className="flex items-center justify-between">
-                             <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                                <BotIcon className="w-4 h-4 text-indigo-400" />
-                                Department Bots
-                                <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
-                             </label>
-                          </div>
-                          <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
-                          {featureValidator && !featureValidator.canUseDepartmentalBots() && (
-                             <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
-                                <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1">
-                                   <p className="text-xs font-medium text-orange-400">Premium Feature</p>
-                                   <p className="text-xs text-slate-400 mt-0.5">Upgrade your plan to use departmental bots</p>
-                                </div>
+                       {/* Departmental Bots Setup - Only show for departmental integrations */}
+                       {integrationType === 'departmental' && (
+                          <div className={`space-y-3 pt-3 border-t border-white/10 ${featureValidator && !featureValidator.canUseDepartmentalBots() ? 'opacity-50' : ''}`}>
+                             <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                   <BotIcon className="w-4 h-4 text-indigo-400" />
+                                   Department Bots
+                                   <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
+                                </label>
                              </div>
-                          )}
-                          <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                             {departmentBots.length === 0 ? (
-                                <div className="text-center py-6 text-slate-500 text-sm">
-                                   No departments added. Click "Add Department" to get started.
-                                </div>
-                             ) : (
-                                departmentBots.map((deptBot, index) => (
-                                   <div key={index} className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
-                                      <div className="flex items-center justify-between">
-                                         <span className="text-xs font-medium text-slate-400">Department {index + 1}</span>
-                                         <button
-                                            onClick={() => {
-                                               setDepartmentBots(departmentBots.filter((_, i) => i !== index));
-                                            }}
-                                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            title="Remove department"
-                                         >
-                                            <X className="w-4 h-4" />
-                                         </button>
-                                      </div>
-                                      <div className="space-y-2">
-                                         <div>
-                                            <label className="text-xs text-slate-400 mb-1.5 block">Bot</label>
-                                            <select
-                                               value={deptBot.botId}
-                                               onChange={(e) => {
-                                                  const updated = [...departmentBots];
-                                                  updated[index].botId = e.target.value;
-                                                  setDepartmentBots(updated);
-                                               }}
-                                               className="w-full p-2.5 rounded-lg glass-input text-sm text-white focus:ring-2 focus:ring-indigo-500/50"
-                                            >
-                                               <option value="">Select a bot...</option>
-                                               {availableBots.map((b) => (
-                                                  <option key={b.id} value={b.id}>{b.name}</option>
-                                               ))}
-                                            </select>
-                                         </div>
-                                         <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                               <label className="text-xs text-slate-400 mb-1.5 block">Department ID</label>
-                                               <input
-                                                  type="text"
-                                                  value={deptBot.departmentName}
-                                                  onChange={(e) => {
-                                                     const updated = [...departmentBots];
-                                                     updated[index].departmentName = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                                                     setDepartmentBots(updated);
-                                                  }}
-                                                  placeholder="sales"
-                                                  className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
-                                               />
-                                               <p className="text-[10px] text-slate-600 mt-1">URL-friendly (e.g., sales, support)</p>
-                                            </div>
-                                            <div>
-                                               <label className="text-xs text-slate-400 mb-1.5 block">Display Name</label>
-                                               <input
-                                                  type="text"
-                                                  value={deptBot.departmentLabel}
-                                                  onChange={(e) => {
-                                                     const updated = [...departmentBots];
-                                                     updated[index].departmentLabel = e.target.value;
-                                                     setDepartmentBots(updated);
-                                                  }}
-                                                  placeholder="Sales"
-                                                  className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
-                                               />
-                                               <p className="text-[10px] text-slate-600 mt-1">Shown to users</p>
-                                            </div>
-                                         </div>
-                                      </div>
+                             <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
+                             {featureValidator && !featureValidator.canUseDepartmentalBots() && (
+                                <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
+                                   <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                                   <div className="flex-1">
+                                      <p className="text-xs font-medium text-orange-400">Premium Feature</p>
+                                      <p className="text-xs text-slate-400 mt-0.5">Upgrade your plan to use departmental bots</p>
                                    </div>
-                                ))
+                                </div>
                              )}
+                             <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                                {departmentBots.length === 0 ? (
+                                   <div className="text-center py-6 text-slate-500 text-sm">
+                                      No departments added. Click "Add Department" to get started.
+                                   </div>
+                                ) : (
+                                   departmentBots.map((deptBot, index) => (
+                                      <div key={index} className="p-4 bg-white/5 rounded-xl border border-white/10 space-y-3">
+                                         <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-slate-400">Department {index + 1}</span>
+                                            <button
+                                               onClick={() => {
+                                                  setDepartmentBots(departmentBots.filter((_, i) => i !== index));
+                                               }}
+                                               className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                                               title="Remove department"
+                                            >
+                                               <X className="w-4 h-4" />
+                                            </button>
+                                         </div>
+                                         <div className="space-y-2">
+                                            <div>
+                                               <label className="text-xs text-slate-400 mb-1.5 block">Bot</label>
+                                               <select
+                                                  value={deptBot.botId}
+                                                  onChange={(e) => {
+                                                     const updated = [...departmentBots];
+                                                     updated[index].botId = e.target.value;
+                                                     setDepartmentBots(updated);
+                                                  }}
+                                                  className="w-full p-2.5 rounded-lg glass-input text-sm text-white focus:ring-2 focus:ring-indigo-500/50"
+                                               >
+                                                  <option value="">Select a bot...</option>
+                                                  {availableBots.map((b) => (
+                                                     <option key={b.id} value={b.id}>{b.name}</option>
+                                                  ))}
+                                               </select>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                               <div>
+                                                  <label className="text-xs text-slate-400 mb-1.5 block">Department ID</label>
+                                                  <input
+                                                     type="text"
+                                                     value={deptBot.departmentName}
+                                                     onChange={(e) => {
+                                                        const updated = [...departmentBots];
+                                                        updated[index].departmentName = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                                                        setDepartmentBots(updated);
+                                                     }}
+                                                     placeholder="sales"
+                                                     className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                                                  />
+                                                  <p className="text-[10px] text-slate-600 mt-1">URL-friendly (e.g., sales, support)</p>
+                                               </div>
+                                               <div>
+                                                  <label className="text-xs text-slate-400 mb-1.5 block">Display Name</label>
+                                                  <input
+                                                     type="text"
+                                                     value={deptBot.departmentLabel}
+                                                     onChange={(e) => {
+                                                        const updated = [...departmentBots];
+                                                        updated[index].departmentLabel = e.target.value;
+                                                        setDepartmentBots(updated);
+                                                     }}
+                                                     placeholder="Sales"
+                                                     className="w-full p-2.5 rounded-lg glass-input text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-500/50"
+                                                  />
+                                                  <p className="text-[10px] text-slate-600 mt-1">Shown to users</p>
+                                               </div>
+                                            </div>
+                                         </div>
+                                      </div>
+                                   ))
+                                )}
+                             </div>
+                             <button
+                                onClick={() => {
+                                   if (featureValidator && !featureValidator.canUseDepartmentalBots()) {
+                                     showError('Premium feature', 'Upgrade your plan to use departmental bots.');
+                                     return;
+                                   }
+                                   setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
+                                }}
+                                disabled={featureValidator && !featureValidator.canUseDepartmentalBots()}
+                                className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                             >
+                                <Plus className="w-4 h-4" />
+                                Add Department
+                             </button>
                           </div>
-                          <button
-                             onClick={() => {
-                                if (featureValidator && !featureValidator.canUseDepartmentalBots()) {
-                                  showError('Premium feature', 'Upgrade your plan to use departmental bots.');
-                                  return;
-                                }
-                                setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
-                             }}
-                             disabled={featureValidator && !featureValidator.canUseDepartmentalBots()}
-                             className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                             <Plus className="w-4 h-4" />
-                             Add Department
-                          </button>
-                       </div>
+                       )}
                     </div>
                  </div>
               </>
@@ -728,7 +818,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                    </div>
                    <div className="flex-1 bg-black/40 h-6 rounded-md flex items-center px-3 text-[10px] text-slate-500 font-mono overflow-hidden">
                       <Globe className="w-3 h-3 mr-2 flex-shrink-0" />
-                      <span className="truncate">{bot.website || 'https://your-website.com'}</span>
+                      <span className="truncate">{selectedBot?.website || 'https://your-website.com'}</span>
                    </div>
                 </div>
 
@@ -783,7 +873,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot, integrationId }) => {
                                      <BotIcon className="w-5 h-5 text-white" />
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                     <h4 className="font-bold text-lg leading-tight text-white" style={{ letterSpacing: '-0.02em' }}>{bot.name}</h4>
+                                     <h4 className="font-bold text-lg leading-tight text-white" style={{ letterSpacing: '-0.02em' }}>{selectedBot?.name || 'ChatBot'}</h4>
                                      <p className="text-[13px] opacity-85 flex items-center gap-1.5 mt-0.5 text-white">
                                         <span className="w-1.5 h-1.5 bg-green-400 rounded-full"></span> Online
                                      </p>

@@ -29,6 +29,7 @@ const AppContent: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeBot, setActiveBot] = useState<Bot | null>(null);
   const [activeIntegrationId, setActiveIntegrationId] = useState<string | undefined>(undefined);
+  const [activeIntegrationType, setActiveIntegrationType] = useState<'single' | 'departmental' | undefined>(undefined);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [botsLoading, setBotsLoading] = useState(true);
@@ -755,27 +756,37 @@ const AppContent: React.FC = () => {
           </div>
         );
       case ViewState.INTEGRATION:
-        return activeBot ? (
-          <EmbedCode bot={activeBot} integrationId={activeIntegrationId} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 glass-card rounded-3xl m-8">
-             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-               <span className="text-3xl">🧩</span>
-            </div>
-             <p className="text-lg font-medium text-white">No Bot Selected</p>
-             <p className="text-sm text-slate-500 mt-1">Select a bot from the sidebar to generate its embed code.</p>
-          </div>
+        return (
+          <EmbedCode 
+            bot={activeBot || null} 
+            integrationId={activeIntegrationId}
+            integrationType={activeIntegrationType}
+          />
         );
       case ViewState.INTEGRATIONS:
         return (
           <Integrations 
-            onNavigateToIntegration={(botId, integrationId) => {
-              const bot = bots.find(b => b.id === botId);
-              if (bot) {
-                setActiveBot(bot);
-                setActiveIntegrationId(integrationId);
-                setView(ViewState.INTEGRATION);
+            onNavigateToIntegration={(botId, integrationId, integrationType) => {
+              if (botId) {
+                const bot = bots.find(b => b.id === botId);
+                if (bot) {
+                  setActiveBot(bot);
+                } else {
+                  // Bot not found in loaded bots, try to fetch it
+                  botService.getBotById(botId).then(bot => {
+                    setActiveBot(bot);
+                  }).catch(() => {
+                    // If bot fetch fails, set to null (for departmental integrations)
+                    setActiveBot(null);
+                  });
+                }
+              } else {
+                // Departmental integration - no bot needed
+                setActiveBot(null);
               }
+              setActiveIntegrationId(integrationId);
+              setActiveIntegrationType(integrationType);
+              setView(ViewState.INTEGRATION);
             }}
             isAdmin={isAdmin}
           />

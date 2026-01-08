@@ -194,13 +194,18 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
         await loadSubscriptionInfo();
       }
 
-      // Check integration limit using feature validator
-      if (featureValidator) {
+      // Check if user is super admin - super admins bypass all limits
+      const { isSuperAdmin } = await import('../lib/admin');
+      const isAdmin = await isSuperAdmin();
+
+      // Check integration limit using feature validator (unless super admin)
+      if (!isAdmin && featureValidator) {
         const integrationCheck = await featureValidator.canCreateIntegration();
         if (!integrationCheck.allowed) {
           showError('Integration limit reached', integrationCheck.reason || 'Please upgrade to create more integrations.');
           return;
         }
+      }
 
         // Validate lead collection
         if (collectLeads && !featureValidator.canCollectLeads()) {

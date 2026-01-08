@@ -220,14 +220,22 @@ export const botService = {
     // This handles new bot creation properly even when crypto.randomUUID() generates a valid UUID
     if (isNewBot || !existingBot) {
       // New bot - create (no ID or temp ID, or bot doesn't exist)
+      console.log('[saveBot] Attempting to insert bot with data:', { ...botData, system_instruction: '[truncated]' });
       const { data, error } = await supabase
         .from('bots')
         .insert(botData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[saveBot] ❌ INSERT ERROR:', error);
+        console.error('[saveBot] Error details:', JSON.stringify(error, null, 2));
+        console.error('[saveBot] User ID:', user.id);
+        console.error('[saveBot] Bot data user_id:', botData.user_id);
+        throw error;
+      }
       if (!data) throw new Error('Failed to create bot');
+      console.log('[saveBot] ✅ Bot created successfully:', data.id);
       savedBot = data;
     } else {
       // Bot exists - verify ownership before updating

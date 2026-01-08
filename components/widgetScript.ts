@@ -1610,6 +1610,13 @@ export const generateWidgetJS = (): string => {
         // Update bot reference for the rest of the session
         bot = botToUse;
         console.log('Conversation created/found:', convId, 'with bot:', botToUse.name);
+        
+        // Update bot name in header
+        if (botTitle && botToUse.name) {
+          // Escape HTML to prevent XSS
+          const escapedName = botToUse.name.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          botTitle.textContent = escapedName;
+        }
       } else {
         console.error('Failed to create/find conversation');
         showError('aether-department', 'aether-department-error', 'Failed to start conversation. Please try again.');
@@ -1749,6 +1756,13 @@ export const generateWidgetJS = (): string => {
               ecommerceEnabled: selectedBotConfig.ecommerce_enabled || selectedBotConfig.ecommerceEnabled || false,
               ecommerceSettings: selectedBotConfig.ecommerce_settings || selectedBotConfig.ecommerceSettings || undefined
             };
+            
+            // Update bot name in header
+            if (botTitle && currentBot.name) {
+              // Escape HTML to prevent XSS
+              const escapedName = currentBot.name.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+              botTitle.textContent = escapedName;
+            }
             
             console.log('Switched to department bot:', dept.departmentLabel, currentBot);
           }

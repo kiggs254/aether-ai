@@ -3,7 +3,7 @@ import { useModal } from './ModalContext';
 import { Modal } from './Modal';
 import { Integration, Bot, ViewState } from '../types';
 import { integrationService, botService } from '../services/database';
-import { Globe, Plus, Trash2, Edit, Eye, Code, Search, Filter } from 'lucide-react';
+import { Globe, Plus, Trash2, Edit, Eye, Code, Search, Filter, X } from 'lucide-react';
 
 interface IntegrationWithBot extends Integration {
   botName?: string;
@@ -117,21 +117,25 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
     });
   };
 
-  const handleTypeSelectionContinue = () => {
-    if (!typeSelectionModal.selectedType) {
-      showError('Please select integration type', 'Choose either Single Bot or Departmental Bots.');
-      return;
-    }
+  const handleTypeSelection = (type: 'single' | 'departmental') => {
+    setTypeSelectionModal(prev => ({ ...prev, selectedType: type }));
     
-    if (typeSelectionModal.selectedType === 'single' && !typeSelectionModal.selectedBotId) {
-      showError('Please select a bot', 'Choose a bot for your single bot integration.');
-      return;
+    // For departmental, navigate immediately
+    if (type === 'departmental') {
+      onNavigateToIntegration(null, undefined, 'departmental');
+      setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
     }
+    // For single, wait for bot selection
+  };
 
-    // Navigate to integration page with selected type
-    const botId = typeSelectionModal.selectedType === 'single' ? typeSelectionModal.selectedBotId : null;
-    onNavigateToIntegration(botId, undefined, typeSelectionModal.selectedType);
-    setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
+  const handleBotSelection = (botId: string) => {
+    setTypeSelectionModal(prev => ({ ...prev, selectedBotId: botId }));
+    
+    // If single bot type is selected and bot is chosen, navigate immediately
+    if (typeSelectionModal.selectedType === 'single' && botId) {
+      onNavigateToIntegration(botId, undefined, 'single');
+      setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' });
+    }
   };
 
   // Filter integrations
@@ -331,83 +335,96 @@ const Integrations: React.FC<IntegrationsProps> = ({ onNavigateToIntegration, is
       />
 
       {/* Integration Type Selection Modal */}
-      <Modal
-        isOpen={typeSelectionModal.isOpen}
-        onClose={() => setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' })}
-        onConfirm={handleTypeSelectionContinue}
-        title="Create Integration"
-        message=""
-        type="confirm"
-        variant="info"
-        confirmText="Continue"
-        cancelText="Cancel"
-      >
-        <div className="space-y-4 mt-4">
-          <p className="text-sm text-slate-400 mb-4">Choose the type of integration you want to create:</p>
+      {typeSelectionModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' })}
+          />
           
-          {/* Single Bot Option */}
-          <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-white/5"
-            style={{
-              borderColor: typeSelectionModal.selectedType === 'single' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
-              backgroundColor: typeSelectionModal.selectedType === 'single' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-            }}
-            onClick={() => setTypeSelectionModal(prev => ({ ...prev, selectedType: 'single' }))}
-          >
-            <input
-              type="radio"
-              name="integrationType"
-              value="single"
-              checked={typeSelectionModal.selectedType === 'single'}
-              onChange={() => setTypeSelectionModal(prev => ({ ...prev, selectedType: 'single' }))}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="font-medium text-white mb-1">Single Bot</div>
-              <div className="text-sm text-slate-400">Create an integration for a single bot</div>
-            </div>
-          </label>
-
-          {/* Departmental Bots Option */}
-          <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-white/5"
-            style={{
-              borderColor: typeSelectionModal.selectedType === 'departmental' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
-              backgroundColor: typeSelectionModal.selectedType === 'departmental' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
-            }}
-            onClick={() => setTypeSelectionModal(prev => ({ ...prev, selectedType: 'departmental' }))}
-          >
-            <input
-              type="radio"
-              name="integrationType"
-              value="departmental"
-              checked={typeSelectionModal.selectedType === 'departmental'}
-              onChange={() => setTypeSelectionModal(prev => ({ ...prev, selectedType: 'departmental' }))}
-              className="mt-1"
-            />
-            <div className="flex-1">
-              <div className="font-medium text-white mb-1">Departmental Bots</div>
-              <div className="text-sm text-slate-400">Create an integration with multiple department bots</div>
-            </div>
-          </label>
-
-          {/* Bot Selection for Single Bot */}
-          {typeSelectionModal.selectedType === 'single' && (
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-slate-300 mb-2">Select Bot</label>
-              <select
-                value={typeSelectionModal.selectedBotId}
-                onChange={(e) => setTypeSelectionModal(prev => ({ ...prev, selectedBotId: e.target.value }))}
-                className="w-full px-4 py-2 rounded-xl glass-input text-sm text-white"
+          {/* Modal */}
+          <div className="relative glass-card rounded-2xl p-6 max-w-md w-full border border-white/10 animate-fade-in">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-white mb-1">Create Integration</h3>
+                <p className="text-sm text-slate-400">Choose the type of integration you want to create:</p>
+              </div>
+              <button
+                onClick={() => setTypeSelectionModal({ isOpen: false, selectedType: null, selectedBotId: '' })}
+                className="flex-shrink-0 text-slate-400 hover:text-white transition-colors"
               >
-                {bots.map((bot) => (
-                  <option key={bot.id} value={bot.id}>
-                    {bot.name}
-                  </option>
-                ))}
-              </select>
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
+            
+            <div className="space-y-4">
+              {/* Single Bot Option */}
+              <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-white/5"
+                style={{
+                  borderColor: typeSelectionModal.selectedType === 'single' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: typeSelectionModal.selectedType === 'single' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                }}
+                onClick={() => handleTypeSelection('single')}
+              >
+                <input
+                  type="radio"
+                  name="integrationType"
+                  value="single"
+                  checked={typeSelectionModal.selectedType === 'single'}
+                  onChange={() => handleTypeSelection('single')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-white mb-1">Single Bot</div>
+                  <div className="text-sm text-slate-400">Create an integration for a single bot</div>
+                </div>
+              </label>
+
+              {/* Multi-Bot Widget Option */}
+              <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-white/5"
+                style={{
+                  borderColor: typeSelectionModal.selectedType === 'departmental' ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
+                  backgroundColor: typeSelectionModal.selectedType === 'departmental' ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                }}
+                onClick={() => handleTypeSelection('departmental')}
+              >
+                <input
+                  type="radio"
+                  name="integrationType"
+                  value="departmental"
+                  checked={typeSelectionModal.selectedType === 'departmental'}
+                  onChange={() => handleTypeSelection('departmental')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="font-medium text-white mb-1">Multi-Bot Widget</div>
+                  <div className="text-sm text-slate-400">Create a widget that combines several bots for different departments</div>
+                </div>
+              </label>
+
+              {/* Bot Selection for Single Bot */}
+              {typeSelectionModal.selectedType === 'single' && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Select Bot</label>
+                  <select
+                    value={typeSelectionModal.selectedBotId}
+                    onChange={(e) => handleBotSelection(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl glass-input text-sm text-white"
+                  >
+                    <option value="">Select a bot...</option>
+                    {bots.map((bot) => (
+                      <option key={bot.id} value={bot.id}>
+                        {bot.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 };

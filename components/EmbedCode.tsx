@@ -565,17 +565,17 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
                              <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
                                    <BotIcon className="w-4 h-4 text-indigo-400" />
-                                   Department Bots
+                                   Multi-Bot Widget
                                    <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded uppercase font-medium">Premium</span>
                                 </label>
                              </div>
-                             <p className="text-xs text-slate-500">Select multiple bots for different departments. Users will choose a department after entering their email.</p>
+                             <p className="text-xs text-slate-500">Combine several bots in one widget. Users will choose a department after entering their email.</p>
                              {featureValidator && !featureValidator.canUseDepartmentalBots() && (
                                 <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-start gap-2">
                                    <Lock className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
                                    <div className="flex-1">
                                       <p className="text-xs font-medium text-orange-400">Premium Feature</p>
-                                      <p className="text-xs text-slate-400 mt-0.5">Upgrade your plan to use departmental bots</p>
+                                      <p className="text-xs text-slate-400 mt-0.5">Upgrade your plan to use multi-bot widgets</p>
                                    </div>
                                 </div>
                              )}
@@ -657,7 +657,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
                              <button
                                 onClick={() => {
                                    if (featureValidator && !featureValidator.canUseDepartmentalBots()) {
-                                     showError('Premium feature', 'Upgrade your plan to use departmental bots.');
+                                     showError('Premium feature', 'Upgrade your plan to use multi-bot widgets.');
                                      return;
                                    }
                                    setDepartmentBots([...departmentBots, { botId: '', departmentName: '', departmentLabel: '' }]);
@@ -666,7 +666,7 @@ const EmbedCode: React.FC<EmbedCodeProps> = ({ bot: propBot, integrationId, inte
                                 className="w-full p-3 border-2 border-dashed border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-indigo-400 hover:text-indigo-300 transition-all text-sm font-medium flex items-center justify-center gap-2 bg-indigo-500/5 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed"
                              >
                                 <Plus className="w-4 h-4" />
-                                Add Department
+                                Add Bot to Widget
                              </button>
                           </div>
                        )}

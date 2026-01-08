@@ -8,6 +8,7 @@ import { Bot as BotIcon, Plus, Trash2, Edit, Search, Filter } from 'lucide-react
 
 interface BotWithUser extends Bot {
   userEmail?: string;
+  userId?: string;
 }
 
 interface BotsProps {
@@ -56,15 +57,17 @@ const Bots: React.FC<BotsProps> = ({ onNavigateToBotBuilder, isAdmin = false }) 
 
   const handleDeleteBot = async (bot: BotWithUser) => {
     // Check if this is another user's bot (for admins)
+    // Use userId for reliable ownership check since userEmail may not be populated
     const { data: { user } } = await supabase.auth.getUser();
-    const isOtherUsersBot = isAdmin && user?.email && bot.userEmail && bot.userEmail !== user.email;
+    const isOtherUsersBot = isAdmin && user?.id && bot.userId && bot.userId !== user.id;
 
     if (isOtherUsersBot) {
       // Show info modal explaining admins cannot delete other users' bots
+      const ownerInfo = bot.userEmail ? ` (${bot.userEmail})` : '';
       setModal({
         isOpen: true,
         title: 'Cannot Delete Bot',
-        message: `You cannot delete "${bot.name}" as it belongs to another user (${bot.userEmail}). Admins can only delete their own bots.`,
+        message: `You cannot delete "${bot.name}" as it belongs to another user${ownerInfo}. Admins can only delete their own bots.`,
         variant: 'info',
         type: 'alert',
         onConfirm: () => {

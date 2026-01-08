@@ -322,13 +322,22 @@ export const botService = {
     // Finally, delete the bot itself
     // Due to ON DELETE SET NULL, bot_id in conversations will be set to NULL
     // but archived_bot_id preserves the original bot_id and messages remain intact
-    const { error } = await supabase
+    // Security: Only allow deletion of bots owned by the current user
+    // Even though RLS policies allow super admins broader access, we enforce ownership at application level
+    const { data, error } = await supabase
       .from('bots')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id); // Ensure user owns the bot
+      .eq('user_id', user.id) // Ensure user owns the bot
+      .select();
 
     if (error) throw error;
+    
+    // Check if any rows were actually deleted
+    // If no rows match (bot belongs to another user), data will be empty
+    if (!data || data.length === 0) {
+      throw new Error('Bot not found or you do not have permission to delete this bot');
+    }
   },
 };
 

@@ -581,6 +581,9 @@ export const generateWidgetJS = (): string => {
     }
   }
   
+  // Initialize bot name visibility (hide if form is shown with departments enabled)
+  // Note: updateBotNameVisibility function is defined later, so we'll call it after DOM elements are defined
+  
   // Create lightbox separately and append directly to body (outside container for full-screen)
   const lightboxContainer = document.createElement('div');
   lightboxContainer.id = 'aether-lightbox';
@@ -635,6 +638,7 @@ export const generateWidgetJS = (): string => {
   const departmentGroup = document.getElementById('aether-department-group');
   const phoneGroup = document.getElementById('aether-phone-group');
   const departmentOptions = document.getElementById('aether-department-options');
+  const botTitle = container.querySelector('.aether-title');
   
   let isOpen = false;
   let messageHistory = [];
@@ -1414,6 +1418,36 @@ export const generateWidgetJS = (): string => {
     }
   };
   
+  // Function to toggle bot name visibility based on current state
+  // Hide bot name during email input and department selection (only when departments are enabled)
+  const updateBotNameVisibility = () => {
+    if (!botTitle) return;
+    
+    const departmentBots = config.departmentBots;
+    const hasDepartments = departmentBots && Array.isArray(departmentBots) && departmentBots.length > 0;
+    
+    // Only hide bot name if departments are enabled and we're in form steps
+    if (hasDepartments && leadForm && leadForm.style.display !== 'none') {
+      // Check if step 1 or step 2 is visible
+      const step1Visible = formStep1 && formStep1.style.display !== 'none';
+      const step2Visible = formStep2 && formStep2.style.display !== 'none' && formStep2.style.visibility !== 'hidden';
+      
+      if (step1Visible || step2Visible) {
+        // Hide bot name during email input or department selection
+        botTitle.style.display = 'none';
+      } else {
+        // Show bot name when chat is active
+        botTitle.style.display = '';
+      }
+    } else {
+      // Show bot name when chat is active (no form or form is hidden)
+      botTitle.style.display = '';
+    }
+  };
+  
+  // Initialize bot name visibility (hide if form is shown with departments enabled)
+  updateBotNameVisibility();
+  
   // Start button handler (when no departments) - validates email/phone and starts chatting
   if (startBtn) {
     startBtn.addEventListener('click', async () => {
@@ -1463,6 +1497,8 @@ export const generateWidgetJS = (): string => {
           if (messages) messages.style.display = 'flex';
           if (inputArea) inputArea.style.display = 'block';
           if (input) input.focus();
+          // Show bot name when chat is active
+          updateBotNameVisibility();
         } else {
           showError('aether-email', 'aether-email-error', 'Failed to start conversation. Please try again.');
         }
@@ -1522,6 +1558,8 @@ export const generateWidgetJS = (): string => {
             formStep2.style.opacity = '1';
             console.log('Showing step 2, calling showDepartmentSelection');
             showDepartmentSelection();
+            // Hide bot name during department selection
+            updateBotNameVisibility();
           }
         } else {
           // No departments, create conversation and start chatting directly
@@ -1533,6 +1571,8 @@ export const generateWidgetJS = (): string => {
             if (messages) messages.style.display = 'flex';
             if (inputArea) inputArea.style.display = 'block';
             if (input) input.focus();
+            // Show bot name when chat is active
+            updateBotNameVisibility();
           } else {
             showError('aether-email', 'aether-email-error', 'Failed to start conversation. Please try again.');
           }
@@ -1581,6 +1621,8 @@ export const generateWidgetJS = (): string => {
       if (messages) messages.style.display = 'flex';
       if (inputArea) inputArea.style.display = 'block';
       if (input) input.focus();
+      // Show bot name when chat is active
+      updateBotNameVisibility();
     });
   }
   

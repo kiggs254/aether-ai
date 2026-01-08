@@ -685,12 +685,27 @@ const AppContent: React.FC = () => {
       case ViewState.BOTS:
         return (
           <Bots 
-            onNavigateToBotBuilder={(botId) => {
+            onNavigateToBotBuilder={async (botId) => {
               if (botId) {
-                const bot = bots.find(b => b.id === botId);
+                // First try to find bot in loaded bots array
+                let bot = bots.find(b => b.id === botId);
+                
+                // If not found (e.g., super admin viewing all bots), fetch it
+                if (!bot) {
+                  try {
+                    bot = await botService.getBotById(botId);
+                  } catch (error) {
+                    console.error('Failed to fetch bot:', error);
+                    showError('Failed to load bot', 'Could not load bot details. Please try again.');
+                    return;
+                  }
+                }
+                
                 if (bot) {
                   setActiveBot(bot);
                   setView(ViewState.BOT_BUILDER);
+                } else {
+                  showError('Bot not found', 'The bot you are trying to edit could not be found.');
                 }
               } else {
                 setActiveBot(null);

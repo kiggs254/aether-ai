@@ -130,6 +130,9 @@ export const botService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Check if user is super admin
+    const isAdmin = await isSuperAdmin();
+
     const botData = {
       user_id: user.id,
       name: bot.name,
@@ -167,15 +170,25 @@ export const botService = {
       savedBot = data;
     } else {
       // Update existing bot - first check if it exists
-      const { data: existingBot } = await supabase
+      // Super admins can edit any bot, regular users can only edit their own
+      let existingBotQuery = supabase
         .from('bots')
-        .select('id')
-        .eq('id', bot.id)
-        .eq('user_id', user.id)
-        .single();
+        .select('id, user_id')
+        .eq('id', bot.id);
+      
+      if (!isAdmin) {
+        // Regular users can only edit their own bots
+        existingBotQuery = existingBotQuery.eq('user_id', user.id);
+      }
+      
+      const { data: existingBot } = await existingBotQuery.single();
 
       if (!existingBot) {
-        // Bot doesn't exist, create new one
+        // Bot doesn't exist or user doesn't have permission
+        if (!isAdmin) {
+          throw new Error('Bot not found or you do not have permission to edit this bot');
+        }
+        // For super admin, create new one if it doesn't exist
         const { data, error } = await supabase
           .from('bots')
           .insert(botData)
@@ -187,13 +200,22 @@ export const botService = {
         savedBot = data;
       } else {
         // Update existing bot
-        const { data, error } = await supabase
+        // For super admins editing other users' bots, preserve the original user_id
+        const updateData = isAdmin && existingBot.user_id !== user.id 
+          ? { ...botData, user_id: existingBot.user_id } // Preserve original owner
+          : botData;
+        
+        let updateQuery = supabase
           .from('bots')
-          .update(botData)
-          .eq('id', bot.id)
-          .eq('user_id', user.id)
-          .select()
-          .single();
+          .update(updateData)
+          .eq('id', bot.id);
+        
+        if (!isAdmin) {
+          // Regular users can only update their own bots
+          updateQuery = updateQuery.eq('user_id', user.id);
+        }
+        
+        const { data, error } = await updateQuery.select().single();
 
         if (error) throw error;
         if (!data) throw new Error('Bot not found or update failed');

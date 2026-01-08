@@ -198,15 +198,38 @@ export async function getUserSubscriptionInfo(): Promise<SubscriptionInfo> {
  */
 export class FeatureValidator {
   private subscriptionInfo: SubscriptionInfo;
+  private isAdmin: boolean | null = null; // Cache admin status
 
   constructor(subscriptionInfo: SubscriptionInfo) {
     this.subscriptionInfo = subscriptionInfo;
   }
 
   /**
+   * Check if current user is super admin (synchronous check via plan name)
+   */
+  private isSuperAdminSync(): boolean {
+    return this.subscriptionInfo.planName === 'Super Admin';
+  }
+
+  /**
+   * Check if current user is super admin (with caching, async)
+   */
+  private async checkIsSuperAdmin(): Promise<boolean> {
+    if (this.isAdmin !== null) {
+      return this.isAdmin;
+    }
+    this.isAdmin = await isSuperAdmin();
+    return this.isAdmin;
+  }
+
+  /**
    * Check if user can use a specific model
    */
   canUseModel(provider: string, model: string): boolean {
+    // Super admins can use any model
+    if (this.isSuperAdminSync()) {
+      return true;
+    }
     const identifier = getModelIdentifier(provider, model);
     return this.subscriptionInfo.allowedModels.includes(identifier);
   }
@@ -215,6 +238,11 @@ export class FeatureValidator {
    * Check if user can create a new bot
    */
   async canCreateBot(): Promise<{ allowed: boolean; reason?: string }> {
+    // Super admins can create unlimited bots
+    if (await this.checkIsSuperAdmin()) {
+      return { allowed: true };
+    }
+
     if (this.subscriptionInfo.maxBots === null) {
       return { allowed: true };
     }
@@ -243,6 +271,11 @@ export class FeatureValidator {
    * Check if user can create a new integration
    */
   async canCreateIntegration(): Promise<{ allowed: boolean; reason?: string }> {
+    // Super admins can create unlimited integrations
+    if (await this.checkIsSuperAdmin()) {
+      return { allowed: true };
+    }
+
     if (this.subscriptionInfo.maxIntegrations === null) {
       return { allowed: true };
     }
@@ -271,6 +304,11 @@ export class FeatureValidator {
    * Check if user can use knowledge base with given character count
    */
   canUseKnowledgeChars(chars: number): { allowed: boolean; reason?: string } {
+    // Super admins have unlimited knowledge base
+    if (this.isSuperAdminSync()) {
+      return { allowed: true };
+    }
+
     if (this.subscriptionInfo.maxKnowledgeChars === null) {
       return { allowed: true };
     }
@@ -289,6 +327,11 @@ export class FeatureValidator {
    * Check if user can use storage (in MB)
    */
   async canUseStorage(mb: number): Promise<{ allowed: boolean; reason?: string }> {
+    // Super admins have unlimited storage
+    if (await this.checkIsSuperAdmin()) {
+      return { allowed: true };
+    }
+
     if (this.subscriptionInfo.maxStorageMB === null) {
       return { allowed: true };
     }
@@ -309,6 +352,10 @@ export class FeatureValidator {
    * Check if user can use actions
    */
   canUseActions(): boolean {
+    // Super admins can use all features
+    if (this.isSuperAdminSync()) {
+      return true;
+    }
     return this.subscriptionInfo.allowActions;
   }
 
@@ -316,6 +363,10 @@ export class FeatureValidator {
    * Check if user can collect leads
    */
   canCollectLeads(): boolean {
+    // Super admins can use all features
+    if (this.isSuperAdminSync()) {
+      return true;
+    }
     return this.subscriptionInfo.allowLeadCollection;
   }
 
@@ -323,6 +374,10 @@ export class FeatureValidator {
    * Check if user can use ecommerce
    */
   canUseEcommerce(): boolean {
+    // Super admins can use all features
+    if (this.isSuperAdminSync()) {
+      return true;
+    }
     return this.subscriptionInfo.allowEcommerce;
   }
 
@@ -330,6 +385,10 @@ export class FeatureValidator {
    * Check if user can use departmental bots
    */
   canUseDepartmentalBots(): boolean {
+    // Super admins can use all features
+    if (this.isSuperAdminSync()) {
+      return true;
+    }
     return this.subscriptionInfo.allowDepartmentalBots;
   }
 }

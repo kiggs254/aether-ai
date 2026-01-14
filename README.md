@@ -1,67 +1,72 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Widget Deployment Script
 
-# Run and deploy your AI Studio app
+## Overview
 
-This contains everything you need to run your app locally.
+The `deploy-widget.js` script automates the process of generating, uploading, and deploying widget files to Supabase storage and pushing code changes to Git.
 
-View your app in AI Studio: https://ai.studio/apps/temp/1
+## How It Works
 
-## Run Locally
+The deployment script performs the following steps in sequence:
 
-**Prerequisites:**  Node.js, Supabase account
+### Step 1: Generate Widget Files
+- Runs `npm run generate-widget` to create the widget JavaScript and CSS files
+- Verifies that both `widget.js` and `widget.css` files are generated in the `public/` directory
 
-### Quick Start
+### Step 2: Upload to Supabase Storage
+- Checks for Supabase CLI installation
+- Uploads widget files to Supabase storage bucket (`Assets/public/`)
+- Includes retry logic for network errors and duplicate file conflicts
+- Automatically removes existing files before uploading new versions
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Step 3: Push to Git
+- Stages all changes except files in the `public/` folder (widget files are excluded from git)
+- Generates an accurate commit message that includes:
+  - Summary with widget file sizes
+  - Deployment timestamp
+  - Categorized list of changed files (widget-related, configuration, other)
+  - Confirmation of Supabase storage upload
+- Commits and pushes changes to the remote repository
 
-2. Set up Supabase:
-   - Create a Supabase project at https://supabase.com
-   - Get your project URL and anon key from Settings > API
-   - Create a `.env` file with:
-     ```env
-     VITE_SUPABASE_URL=your_supabase_project_url
-     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-     ```
+## Usage
 
-3. Deploy the edge function:
-   ```bash
-   # Install Supabase CLI (macOS)
-   brew install supabase/tap/supabase
-   
-   # Or use npx (no installation needed)
-   # npx supabase@latest login
-   
-   # Login and link your project
-   supabase login
-   supabase link --project-ref your-project-ref
-   
-   # Set API keys as secrets (set only the ones you need)
-   supabase secrets set GEMINI_API_KEY=your_gemini_api_key
-   supabase secrets set OPENAI_API_KEY=your_openai_api_key  # Optional
-   supabase secrets set DEEPSEEK_API_KEY=your_deepseek_api_key  # Optional
-   
-   # Deploy the function
-   supabase functions deploy proxy-ai
-   ```
+Run the deployment script:
 
-4. Run the app:
-   ```bash
-   npm run dev
-   ```
+```bash
+npm run deploy-widget
+```
 
-### Detailed Setup
+Or directly:
 
-For detailed setup instructions, see [SUPABASE_SETUP.md](./SUPABASE_SETUP.md)
+```bash
+node scripts/deploy-widget.js
+```
 
-## Features
+## Prerequisites
 
-- ✅ Supabase Authentication (Email/Password)
-- ✅ Edge Functions for secure AI API proxying
-- ✅ Protected routes requiring authentication
-- ✅ Real-time chat streaming
-- ✅ Bot builder and management
+- Node.js installed
+- Supabase CLI installed and configured
+- Git repository initialized with remote configured
+- Logged into Supabase: `supabase login`
+- Project linked: `supabase link --project-ref your-project-ref`
+- `Assets` bucket exists in your Supabase project
+
+## Commit Message Format
+
+The script automatically generates descriptive commit messages like:
+
+```
+Deploy widget update to Supabase storage (widget.js: 45.2KB, widget.css: 12.3KB)
+
+Deployed at: 2024-01-15 14:30:25
+
+Widget-related changes:
+  - components/BotBuilder.tsx
+  - components/ChatPlayground.tsx
+
+Configuration changes:
+  - package.json
+
+Widget files uploaded to Supabase storage (Assets/public)
+```
+
+This provides clear visibility into what changed in each deployment.

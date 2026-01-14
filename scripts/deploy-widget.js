@@ -1,6 +1,7 @@
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, statSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -167,7 +168,76 @@ async function deployWidget() {
     try {
       const status = execSync('git diff --staged --name-only', { encoding: 'utf-8' });
       if (status.trim()) {
-        execSync('git commit -m "Update widget files and deploy to Supabase storage"', { stdio: 'inherit' });
+        // Generate accurate commit message based on changes
+        const changedFiles = status.trim().split('\n').filter(f => f.trim());
+        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        
+        // Get widget file sizes for reference
+        let widgetInfo = '';
+        try {
+          const widgetJsStats = statSync(widgetJsPath);
+          const widgetCssStats = statSync(widgetCssPath);
+          widgetInfo = ` (widget.js: ${(widgetJsStats.size / 1024).toFixed(1)}KB, widget.css: ${(widgetCssStats.size / 1024).toFixed(1)}KB)`;
+        } catch (e) {
+          // Ignore if we can't get stats
+        }
+        
+        // Categorize changes
+        const widgetRelated = changedFiles.filter(f => 
+          f.includes('widget') || f.includes('BotBuilder') || f.includes('ChatPlayground')
+        );
+        const configRelated = changedFiles.filter(f => 
+          f.includes('config') || f.includes('package') || f.includes('.json')
+        );
+        const otherFiles = changedFiles.filter(f => 
+          !widgetRelated.includes(f) && !configRelated.includes(f)
+        );
+        
+        // Build descriptive commit message
+        let commitMessage = `Deploy widget update to Supabase storage${widgetInfo}\n\n`;
+        commitMessage += `Deployed at: ${timestamp}\n\n`;
+        
+        if (widgetRelated.length > 0) {
+          commitMessage += `Widget-related changes:\n`;
+          widgetRelated.forEach(f => commitMessage += `  - ${f}\n`);
+          commitMessage += '\n';
+        }
+        
+        if (configRelated.length > 0) {
+          commitMessage += `Configuration changes:\n`;
+          configRelated.forEach(f => commitMessage += `  - ${f}\n`);
+          commitMessage += '\n';
+        }
+        
+        if (otherFiles.length > 0) {
+          commitMessage += `Other changes:\n`;
+          otherFiles.slice(0, 10).forEach(f => commitMessage += `  - ${f}\n`);
+          if (otherFiles.length > 10) {
+            commitMessage += `  ... and ${otherFiles.length - 10} more file(s)\n`;
+          }
+        }
+        
+        commitMessage += '\nWidget files uploaded to Supabase storage (Assets/public)';
+        
+        // Write commit message to temporary file for safe handling of special characters
+        const commitMsgFile = join(tmpdir(), `widget-deploy-commit-${Date.now()}.txt`);
+        try {
+          writeFileSync(commitMsgFile, commitMessage, 'utf-8');
+          
+          // Commit using the message file (more reliable for multi-line messages)
+          execSync(`git commit -F "${commitMsgFile}"`, { stdio: 'inherit' });
+          
+          // Clean up temporary file
+          unlinkSync(commitMsgFile);
+        } catch (commitError) {
+          // Clean up temporary file even on error
+          try {
+            unlinkSync(commitMsgFile);
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+          throw commitError;
+        }
         execSync('git push', { stdio: 'inherit' });
         console.log('✅ Changes pushed to GitHub\n');
       } else {
